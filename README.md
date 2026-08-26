@@ -41,8 +41,8 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 
 ### 📖 Comprehensive Guides & Placement Notes
 - 📘 [Comprehensive Networking Guide](./03-Computer-Networks/01-Comprehensive-Guide/README.md) — Detailed visual guide covering OSI, TCP/IP, DNS, HTTP, and Socket programming
-- 📝 [Computer Networks - Placement Notes](./03-Computer-Networks/02-Placement-Notes/Computer%20Networks%20-%20Placement%20Notes.md) — High-yield placement revision
-- 📝 [Computer Networks Reference](./03-Computer-Networks/02-Placement-Notes/Computer%20Networks.md) — Kurose & Ross / hpbn summary
+- 📝 [Computer Networks - Placement Notes](./02-Computer-Networks/02-Placement-Notes/Computer%20Networks%20-%20Placement%20Notes.md) — High-yield placement revision
+
 
 ### 📑 Question Banks & PDFs
 - 📄 [Computer Networks Placement Notes (PDF)](./03-Computer-Networks/03-PDFs-and-Questions/Computer_Networks_Placement_Notes.pdf)
