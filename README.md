@@ -119,3 +119,4 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 - ðŸ¤– [YT_ChatBot â€” RAG Video-Mind AI Revision](./09-Projects/YT_ChatBot%20-%20RAG%20Video-Mind%20AI%20Revision.md)
   - Retrieval-Augmented Generation (RAG) architecture, embeddings, chunking strategies, vector search, and interview explanations.
 
+
