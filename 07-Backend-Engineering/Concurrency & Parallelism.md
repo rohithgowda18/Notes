@@ -1,325 +1,214 @@
-# Concurrency & Parallelism
+﻿# ⚡ Concurrency & Parallelism in Backend Systems
 
-no: 7
+> **Core Philosophy**: Concurrency is about **dealing with lots of things at once** (structure); Parallelism is about **doing lots of things at once** (execution). 
+> I/O-bound workloads benefit strongly from **concurrency and event-driven non-blocking I/O**, while CPU-bound workloads require **multi-core hardware parallelism**.
 
-# 1. Why Concurrency Matters
+---
 
-Backend applications frequently spend time waiting for **I/O** such as database queries, network/API calls, files, and external services.
+## 📑 Table of Contents
+1. [I/O-Bound vs. CPU-Bound Workloads](#1-io-bound-vs-cpu-bound-workloads)
+2. [Concurrency vs. Parallelism](#2-concurrency-vs-parallelism)
+3. [The Operating System Threading Model](#3-the-operating-system-threading-model)
+4. [Context Switching & Thread Overhead](#4-context-switching--thread-overhead)
+5. [The Event Loop Model (Non-Blocking I/O)](#5-the-event-loop-model-non-blocking-io)
+6. [Async/Await & State Machine Under the Hood](#6-asyncawait--state-machine-under-the-hood)
+7. [Goroutines & Virtual Threads (M:N Scheduling)](#7-goroutines--virtual-threads-mn-scheduling)
+8. [Race Conditions & Shared Mutable State](#8-race-conditions--shared-mutable-state)
+9. [Synchronization Primitives: Mutexes, Locks & Semaphores](#9-synchronization-primitives)
+10. [Optimistic vs. Pessimistic Locking](#10-optimistic-vs-pessimistic-locking)
+11. [Placement Interview Cheat Sheet & Key Questions](#11-placement-interview-cheat-sheet)
 
-Without concurrency, a request that is waiting can leave useful CPU time unused. With concurrency, while Request A waits for I/O, the server can work on Request B.
+---
 
-> **Concurrency keeps the CPU useful while other tasks are waiting.**
-> 
+## 1. I/O-Bound vs. CPU-Bound Workloads
 
-# 2. I/O-Bound vs CPU-Bound
+| Workload Type | Bottleneck | Behavior | Primary Optimization |
+| :--- | :--- | :--- | :--- |
+| **I/O-Bound** | Disk, Network, Database, External APIs | Spends $95\%+$ of time **waiting** for data | **Concurrency** (Event loops, Async/Await, Non-blocking I/O) |
+| **CPU-Bound** | CPU cycles, ALU, Memory bandwidth | Spends $95\%+$ of time **calculating** (Crypto, Compression, Video Encoding) | **Parallelism** (Multi-core scaling, GPU acceleration) |
 
-## I/O-Bound
+---
 
-An operation is I/O-bound when the program spends significant time **waiting for an external resource**.
-
-Examples:
-
-- Database queries
-- Network/API calls
-- File read/write
-- Logging and other external I/O
-
-**Think:** `I/O-bound = mostly waiting`
-
-## CPU-Bound
-
-An operation is CPU-bound when the program spends most of its time **performing computation**.
-
-Examples from the material:
-
-- Image processing
-- Heavy calculations
-- Encryption
-
-**Think:** `CPU-bound = mostly calculating`
-
-<aside>
-🧠
-
-**Rule of thumb:** I/O-bound workloads benefit strongly from concurrency; CPU-heavy workloads benefit from parallelism.
-
-</aside>
-
-# 3. Concurrency vs Parallelism
-
-**Concurrency** means multiple tasks are in progress. They may take turns on a single CPU core, especially when one task is waiting.
+## 2. Concurrency vs. Parallelism
 
 ```
-Time →
-A A A | B B B | A A | B B
+Concurrency (1 CPU Core, Time-Slicing)         Parallelism (Multiple CPU Cores)
+Time ──▶                                       Core 1 ──▶ [Task A][Task A][Task A]
+Core 1: [Task A][Task B][Task A][Task B]       Core 2 ──▶ [Task B][Task B][Task B]
 ```
 
-**Parallelism** means multiple tasks are actually executing at the same time, typically on multiple CPU cores.
+- **Concurrency**: Interleaved execution of tasks on a single or multiple cores. Deals with task scheduling and waiting.
+- **Parallelism**: Simultaneous physical execution on multiple distinct CPU cores.
+
+---
+
+## 3. The Operating System Threading Model
+
+An OS **Thread** is the smallest schedulable unit of execution managed by the kernel:
 
 ```
-Core 1 → A A A A
-Core 2 → B B B B
+Process (Isolated Memory Space, Heap)
+ ├── Thread 1 (Program Counter, Registers, Stack: ~1MB)
+ ├── Thread 2 (Program Counter, Registers, Stack: ~1MB)
+ └── Thread 3 (Program Counter, Registers, Stack: ~1MB)
 ```
 
-> **Concurrency = dealing with multiple tasks**
-> 
+- Threads inside the same process share the **Heap, global variables, and open file descriptors**.
+- Each thread possesses its own private **Call Stack and CPU Registers**.
 
-> **Parallelism = executing multiple tasks simultaneously**
-> 
+---
 
-# 4. Threading Model
+## 4. Context Switching & Thread Overhead
 
-A **thread** is an independent execution unit managed by the operating system.
+Creating an OS thread for every incoming HTTP connection (e.g., traditional Apache Web Server) fails at scale due to three costs:
 
-```
-Process
- ├── Thread 1
- ├── Thread 2
- └── Thread 3
-```
-
-A thread has execution state such as its stack, instruction pointer, registers, and other OS-managed bookkeeping. The OS scheduler decides which runnable thread gets CPU time.
-
-Threads allow multiple requests/tasks to make progress concurrently. With multiple CPU cores, multiple threads can also execute in parallel.
-
-# 5. Thread Overhead & Context Switching
-
-Threads have overhead. The three main costs are:
-
-1. **Memory overhead** — each thread requires a stack and other resources.
-2. **Creation/management overhead** — the OS must create and manage the thread.
-3. **Context-switching overhead** — switching between threads requires saving and restoring execution state.
-
-## Context Switching
-
-Conceptually:
-
-```
-Thread A running
-      ↓
-Save A's state
-      ↓
-Choose Thread B
-      ↓
-Restore B's state
-      ↓
-Thread B running
+```mermaid
+sequenceDiagram
+    autonumber
+    Note over CPU, Thread A: Thread A Running
+    CPU->>Memory: Save Thread A CPU registers & Program Counter to PCB/TCB
+    Note over CPU: CPU Cache Thrashing / TLB Flushes
+    CPU->>Memory: Restore Thread B CPU registers & Stack Pointer
+    Note over CPU, Thread B: Thread B Running
 ```
 
-The CPU spends time doing this management work instead of directly performing application logic.
+### The 3 Core Overhead Factors:
+1. **Memory Allocation**: $10,000\text{ threads} \times 1\text{MB stack} \approx \mathbf{10\text{ GB RAM}}$ just for idle stacks!
+2. **Context-Switch CPU Waste**: The CPU spends more time swapping register contexts than executing business logic.
+3. **CPU Cache Invalidation**: Switching threads invalidates L1/L2 CPU caches, forcing slow RAM fetches.
 
-> **Context switch = save current thread state → select another thread → restore its state.**
-> 
+---
 
-Too many threads can therefore cause higher memory usage and more scheduling/context-switching overhead, which can hurt scalability.
+## 5. The Event Loop Model (Non-Blocking I/O)
 
-# 6. Event Loop Model
+Instead of spawning 10,000 threads, an **Event Loop (Node.js, Python asyncio, NGINX, Redis)** uses **a single thread** with OS-level multiplexing (`epoll` in Linux, `kqueue` in macOS).
 
-An event-loop model can handle many I/O operations using a **single main thread** rather than creating one OS thread for every waiting task.
-
-Example:
-
-```
-Request A → DB → WAIT
-                 ↓
-             Event Loop
-                 ↓
-             Process B
-                 ↓
-             Process C
-                 ↓
-DB response arrives → Resume A
+```mermaid
+flowchart TD
+    Req1[Request A: DB Query] --> Loop[Single-Threaded Event Loop]
+    Loop -->|Register async callback with OS epoll| OS[Kernel / Background I/O]
+    Req2[Request B: Cache Read] --> Loop
+    Loop -->|Handle instantly in RAM| RespB[Return Response B]
+    OS -. DB Query Complete .-> Queue[Event Queue]
+    Queue --> Loop
+    Loop --> RespA[Resume & Return Response A]
 ```
 
-When A starts an I/O operation, it gives control back to the event loop instead of blocking the event-loop thread while waiting.
+> [!WARNING]
+> **The Golden Rule of Event Loops**: **NEVER BLOCK THE EVENT LOOP.**  
+> If you run a heavy CPU calculation (e.g., synchronous bcrypt hash or complex loop) on the main thread, all other 10,000 waiting requests freeze!
 
-The event loop can monitor pending I/O and resume the appropriate task when the operation completes.
+---
 
-## Critical Rule
+## 6. Async/Await & State Machine Under the Hood
 
-> **Never block the event loop.**
-> 
+`async` / `await` does **NOT** spawn background threads. It is syntactic sugar for compiler-generated **State Machines**.
 
-Waiting for I/O is okay because the event loop can handle other work.
-
-Heavy CPU work is dangerous because it occupies the event-loop thread and prevents other tasks from being processed efficiently.
-
-# 7. Async/Await
-
-`async/await` provides a readable way to express asynchronous operations.
-
-```jsx
-const user = await getUser();
+```javascript
+async function handleOrder(userId) {
+    const user = await getUser(userId);      // State 0 -> Yield execution
+    const orders = await getOrders(user.id);  // State 1 -> Yield execution
+    return orders;                           // State 2 -> Resolve
+}
 ```
 
-Conceptually:
-
 ```
-Start I/O
-   ↓
-await
-   ↓
-Give control back
-   ↓
-Other work runs
-   ↓
-I/O completes
-   ↓
-Resume function
+Compiler-Generated State Machine:
+┌───────────┐    I/O wait    ┌───────────┐    I/O wait    ┌───────────┐
+│  State 0  │ ─────────────▶ │  State 1  │ ─────────────▶ │  State 2  │
+│(Get User) │ (Yield to Loop)│(Get Order)│ (Yield to Loop)│ (Return)  │
+└───────────┘                └───────────┘                └───────────┘
 ```
 
-**Important:** `await` does **not** create a new thread.
+---
 
-> **`await` pauses the function's progress while allowing the event loop to handle other work until the awaited operation is ready.**
-> 
+## 7. Goroutines & Virtual Threads (M:N Scheduling)
 
-Also remember: `async/await` does not magically make CPU-heavy work non-blocking. A long CPU operation on the event-loop thread can still block other work.
+Modern languages bridge the gap between simple synchronous syntax and non-blocking scale using **M:N User-Space Schedulers** (Go Goroutines, Java 21 Virtual Threads):
 
-# 8. Goroutines / Virtual Threads
+$$M \text{ User Goroutines (Tiny ~2KB initial stack)} \xrightarrow[\text{Runtime Scheduler}]{\text{Multiplexed onto}} N \text{ OS Kernel Threads}$$
 
-Go uses **goroutines**, which are lightweight, runtime-managed execution units.
+```
+Go / Java Virtual Threads:
+[Goroutine 1] [Goroutine 2] [Goroutine 3] ... [Goroutine 100,000]
+                      ↓ (User-space Runtime Scheduler)
+                [OS Thread 1]  [OS Thread 2]  [OS Thread 3]
+                      ↓
+                 [CPU Core 1]   [CPU Core 2]   [CPU Core 3]
+```
+
+- When a Goroutine blocks on I/O, the Go runtime parks it in user space and swaps another Goroutine onto the OS thread in nanoseconds without kernel context switching.
+
+---
+
+## 8. Race Conditions & Shared Mutable State
+
+A **Race Condition** occurs when multiple concurrent execution threads access and modify shared data without synchronization, producing results dependent on non-deterministic thread interleaving.
+
+### The Classic Lost Update Bug:
+```
+Initial Shared State: balance = $100
+
+Thread 1 (Withdraw $50)                 Thread 2 (Withdraw $50)
+-----------------------                 -----------------------
+1. Read balance ($100)                  1. Read balance ($100)
+2. Compute new balance ($50)            2. Compute new balance ($50)
+3. Write balance = $50                  3. Write balance = $50
+
+Result: balance = $50 (One $50 withdrawal was completely lost!)
+```
+
+$$\text{Shared Mutable State} + \text{Concurrency} = \mathbf{\text{Race Conditions}}$$
+
+---
+
+## 9. Synchronization Primitives
+
+### 1. Mutex (Mutual Exclusion Lock)
+Guarantees that **only 1 thread** can execute inside the critical section at any given time:
 
 ```go
-go myFunction()
+var mu sync.Mutex
+
+mu.Lock()
+balance = balance - 50 // Critical Section: Thread-safe
+mu.Unlock()
 ```
 
-The Go runtime scheduler manages many goroutines and schedules them onto a smaller number of OS threads.
+### 2. Counting Semaphore
+Maintains a set of permits allowing at most **$K$ concurrent threads** to access a resource (e.g., limiting max 10 concurrent database connections).
 
-```
-Many Goroutines
-      ↓
-Go Runtime Scheduler
-      ↓
-OS Threads
-```
+### 3. Read-Write Mutex (`RWMutex`)
+- Multiple concurrent **Readers** allowed ($N$ threads can read simultaneously).
+- Only **1 Writer** allowed (locks out all readers and writers during mutation).
 
-The important distinction is:
+---
 
-- **OS thread** → managed by the operating system and relatively expensive
-- **Goroutine** → lightweight and managed by the Go runtime
+## 10. Optimistic vs. Pessimistic Locking
 
-# 9. Async/Await Under the Hood — State Machines
+| Dimension | Pessimistic Locking | Optimistic Locking |
+| :--- | :--- | :--- |
+| **Philosophy** | *"Conflicts will happen; lock early."* | *"Conflicts are rare; validate before commit."* |
+| **Mechanism** | `SELECT ... FOR UPDATE` (Database row lock) | Version numbers / Timestamps (`WHERE version = 1`) |
+| **Lock Duration** | Throughout the entire transaction duration | Zero row locks held during reading/computation |
+| **Best For** | High contention (Ticket booking, bank transfers) | Low contention (Editing user profile, CMS articles) |
 
-When an asynchronous function reaches an `await`, the program needs to remember **where execution should continue** after the asynchronous operation finishes.
+```sql
+-- Optimistic Locking in SQL:
+UPDATE Accounts 
+SET balance = balance - 50, version = version + 1 
+WHERE id = 101 AND version = 1;
 
-Conceptually, the function can be viewed as states:
-
-```
-State 0 → Start
-   ↓
-State 1 → await getUser()
-   ↓
-State 2 → await getOrders()
-   ↓
-State 3 → return
+-- If rows_affected == 0, conflict detected! Rollback & retry.
 ```
 
-The saved state allows the function to resume from the correct point later.
+---
 
-> **State machine = remember the current execution state so async work can suspend and resume correctly.**
-> 
+## 11. Placement Interview Cheat Sheet
 
-# 10. Race Conditions & Shared State
-
-A **race condition** occurs when multiple concurrent tasks access or modify shared state and the final result depends on their timing or ordering.
-
-Example:
-
-```
-balance = 100
-
-A reads 100
-B reads 100
-A writes 50
-B writes 50
-```
-
-After two ₹50 withdrawals, we would expect `0`, but the incorrect final value could be `50` because both operations read the old value before either write was observed.
-
-> **Concurrent access + shared mutable state → possible race condition.**
-> 
-
-# 11. Locks & Mutexes
-
-A **mutex** means **mutual exclusion**. It ensures that only one task can enter a protected critical section at a time.
-
-```
-Lock
-  ↓
-Access / modify shared data
-  ↓
-Unlock
-```
-
-Example concept:
-
-```
-A → 🔒 → modify balance → 🔓
-                            ↓
-B ───────────────────────→ 🔒 → modify balance
-```
-
-A mutex prevents multiple tasks from modifying the protected state simultaneously.
-
-### Trade-off
-
-Locks solve race conditions, but they introduce waiting. If one task holds a lock, other tasks that need the same protected resource may have to wait.
-
-> **Race condition → protect shared state → Mutex / Lock**
-> 
-
-# ⭐ Placement Cheat Sheet
-
-| Concept | Remember |
-| --- | --- |
-| Concurrency | Multiple tasks in progress |
-| Parallelism | Multiple tasks executing simultaneously |
-| I/O-bound | Mostly waiting |
-| CPU-bound | Mostly computing |
-| Thread | OS-managed execution unit |
-| Context switch | Save one thread's state → restore another |
-| Event loop | Efficient model for I/O concurrency |
-| `await` | Give control back while waiting for async I/O |
-| Goroutine | Lightweight Go execution unit |
-| State machine | Saves where async execution should resume |
-| Race condition | Timing-dependent shared-state bug |
-| Mutex | One task at a time in a critical section |
-
-# 🎤 Common Placement Questions
-
-### Why is context switching overhead?
-
-Because the OS must save the current thread's execution state and restore another thread's state. This consumes CPU time without directly doing the application's actual work.
-
-### Why are event loops good for I/O-bound workloads?
-
-Because tasks can give control back while waiting for I/O, allowing the same event-loop thread to process other work instead of blocking.
-
-### Can `await` create a new thread?
-
-No. `await` is a mechanism for suspending the current asynchronous function's progress and resuming it later; it does not inherently create a new OS thread.
-
-### What is a race condition?
-
-A bug where the result depends on the timing/order of concurrent operations accessing shared state.
-
-### What is a mutex?
-
-A synchronization mechanism that provides mutual exclusion so only one task can access a protected critical section at a time.
-
-<aside>
-🔥
-
-**5 lines to memorize:**
-
-**I/O-bound → waiting → concurrency**  
-
-**CPU-bound → computation → parallelism**  
-
-**Too many threads → memory + context-switching overhead**  
-
-**Event loop → don't block it**  
-
-**Shared mutable state → race condition → mutex/lock**
-
-</aside>
+### 🎯 5 Core Takeaways:
+1. **I/O-Bound** $\rightarrow$ Waiting on network/disk $\rightarrow$ Optimize via **Concurrency / Event loops**.
+2. **CPU-Bound** $\rightarrow$ Active computation $\rightarrow$ Optimize via **Parallel multi-core processing**.
+3. **Context switching** consumes CPU cycles and invalidates CPU cache lines.
+4. **`async/await`** is a compiler state machine; it does not magically spawn OS threads.
+5. **Protect shared state** with Mutexes, Atomic operations, or Optimistic version checks.

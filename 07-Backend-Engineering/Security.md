@@ -1,796 +1,189 @@
-# Security
+﻿# 🔐 Web Security & Backend Defense Architecture
 
-no: 4
-source: https://youtu.be/xB1C1xZZW4k
-
-# 🔐 Backend Security — Engineer Notes
-
-> **Goal:** Understand how attackers exploit backend applications and how to design defenses.
-> 
+> **Core Philosophy**: Security is not an afterthought or an external plugin—it is **defense in depth**. Assume every network packet is hostile, every client input is untrusted, and internal microservice boundaries must authenticate and authorize every single operation.
 
 ---
 
-## 1. 💉 Injection Attacks
-
-Injection happens when **untrusted input is interpreted as code/commands**.
-
-The general problem:
-
-```
-Attacker Input → Application → Interpreter
-                              ↓
-                       Unexpected behavior
-```
-
-Common examples:
-
-- SQL Injection
-- Command Injection
-- NoSQL Injection
-- Template Injection
-
-### SQL Injection
-
-SQL injection occurs when user input changes the meaning of a database query.
-
-**Bad approach:**
-
-```
-"SELECT * FROM users WHERE name = '" + userInput + "'"
-```
-
-The input becomes part of the SQL syntax.
-
-### Prevention
-
-Use **parameterized queries / prepared statements**:
-
-```
-SQL structure → Query
-User input   → Parameter
-```
-
-Other defenses:
-
-- Use safe ORM/database APIs
-- Avoid string concatenation
-- Validate input where appropriate
-- Use least-privilege DB accounts
-- Don't expose database errors
-
-> **Key idea:** Separate **data from instructions**.
-> 
+## 📑 Table of Contents
+1. [Authentication vs. Authorization (401 vs. 403)](#1-authentication-vs-authorization)
+2. [Secure Password Storage (Bcrypt, Argon2, Salt & Pepper)](#2-secure-password-storage)
+3. [Session-Based Auth vs. JWT (JSON Web Tokens)](#3-session-based-auth-vs-jwt)
+4. [OAuth 2.0 & OpenID Connect (OIDC Flow)](#4-oauth-20--openid-connect)
+5. [SQL Injection (SQLi) & Parameterized Queries](#5-sql-injection-sqli)
+6. [Cross-Site Scripting (XSS) & Content Security Policy (CSP)](#6-cross-site-scripting-xss)
+7. [Cross-Site Request Forgery (CSRF) & SameSite Cookies](#7-cross-site-request-forgery-csrf)
+8. [Cross-Origin Resource Sharing (CORS) & Preflight Requests](#8-cross-origin-resource-sharing-cors)
+9. [HTTPS, TLS Handshake & Man-in-the-Middle (MitM)](#9-https-tls-handshake--mitm)
+10. [OWASP Top 10 Placement Quick Reference](#10-owasp-top-10-placement-quick-reference)
 
 ---
 
-### Command Injection
-
-Command injection happens when user input reaches an OS command.
+## 1. Authentication vs. Authorization
 
 ```
-User Input
-    ↓
-Application
-    ↓
-Shell / OS Command
-    ↓
-System
+            Authentication (AuthN)                    Authorization (AuthZ)
+       ┌──────────────────────────────┐          ┌──────────────────────────────┐
+       │   "Who are you?"             │          │   "What are you allowed      │
+       │                              │          │    to do?"                   │
+       │   Verifying identity         │          │   Checking permissions       │
+       │   (Password, OTP, FaceID)    │          │   (Admin, User, Role-Based)  │
+       └──────────────────────────────┘          └──────────────────────────────┘
 ```
 
-### Prevention
-
-**Best option:** avoid shell commands when a library/API can do the job.
-
-If commands are unavoidable:
-
-- Avoid shell interpretation where possible
-- Pass arguments separately
-- Use strict allowlists
-- Validate expected input
-- Run with minimal OS privileges
-
-> **Key idea:** Don't let arbitrary user input become part of a command.
-> 
+### HTTP Status Codes:
+- `401 Unauthorized`: Actually means **Unauthenticated** (No valid token or login credentials provided).
+- `403 Forbidden`: Authenticated successfully, but you **lack permission** to access this specific resource.
 
 ---
 
-# 2. 🔑 Password Storage
+## 2. Secure Password Storage
 
-Passwords should **never be stored directly**.
+> ❌ **Never use fast cryptographic hashes (MD5, SHA-1, SHA-256) for passwords!** GPUs can compute billions of SHA-256 hashes per second, making dictionary/rainbow table attacks trivial.
 
-### ❌ Bad
+### Modern Password Hashing:
+1. **Salt**: A cryptographically random string generated per user and appended to password before hashing (defends against Rainbow Tables).
+2. **Work Factor / Iterations**: Slows down computation (e.g., $100\text{ms}$ per check).
+3. **Pepper**: A secret key stored outside the database (in Hardware Security Module or KMS).
 
-```
-password123
-```
-
-If the database is compromised, the password is immediately exposed.
-
-### ❌ Also avoid
-
-Using a fast general-purpose hash such as:
-
-```
-SHA-256(password)
-```
-
-Password hashing needs to be deliberately expensive.
+$$\text{Password Hash} = \mathbf{\text{Argon2id}} \text{ or } \mathbf{\text{Bcrypt}}(\text{Password} + \text{Salt} + \text{Pepper}, \text{Cost}=12)$$
 
 ---
 
-## Hashing + Salt
+## 3. Session-Based Auth vs. JWT (JSON Web Tokens)
 
-A password should be processed using a password-hashing algorithm with a **unique salt**.
-
-```
-Password
-   +
-Unique Salt
-   ↓
-Argon2id
-   ↓
-Password Hash
-```
-
-### Why Salt?
-
-Without unique salts:
-
-```
-password123 → same hash
-password123 → same hash
+```mermaid
+flowchart TD
+    subgraph SessionAuth [Stateful Session Auth]
+        C1[Client] -->|Cookie: session_id=abc| S1[Server]
+        S1 <-->|Lookup session_id in RAM/Redis| Redis[(Redis Session Store)]
+    end
+    subgraph JWTAuth [Stateless JWT Auth]
+        C2[Client] -->|Header: Bearer eyJhbGciOi...| S2[Server]
+        S2 -->|Verify Cryptographic HMAC/RSA Signature locally| S2
+    end
 ```
 
-With unique salts:
+### JWT Structure (`Header.Payload.Signature`):
+1. **Header**: Algorithm (`HS256`, `RS256`) and Token Type (`JWT`).
+2. **Payload**: Claims (`user_id`, `role`, `exp` timestamp). *Note: Base64 encoded, NOT encrypted!*
+3. **Signature**: `HMACSHA256(Base64(Header) + "." + Base64(Payload), SecretKey)`.
 
-```
-password123 + saltA → hashA
-password123 + saltB → hashB
-```
-
-This prevents attackers from efficiently reusing precomputed hashes across accounts.
-
-**Salt:**
-
-- Should be unique
-- Should be randomly generated
-- Does not need to be secret
-- Is normally stored with the password hash
+### Production Token Strategy:
+- **Short-Lived Access Token (JWT)**: Valid for 15 minutes (stored in memory or `HttpOnly` cookie).
+- **Long-Lived Refresh Token (Opaque String)**: Valid for 7–30 days (stored in Database with revocation capability).
 
 ---
 
-## Argon2id
+## 4. OAuth 2.0 & OpenID Connect
 
-**Argon2id** is a modern password-hashing algorithm designed to make password guessing expensive.
+- **OAuth 2.0**: Protocol for **Delegated Authorization** (*"Allow App X to access my Google Drive files"*).
+- **OpenID Connect (OIDC)**: Identity layer built on top of OAuth 2.0 for **Authentication** (*"Sign in with Google"*).
 
-Good password storage should be:
-
-- Slow enough to resist guessing
-- Fast enough for legitimate login
-- Tunable as hardware improves
-- Resistant to large-scale cracking
-
-### Login Flow
-
-```
-User enters password
-        ↓
-Retrieve stored salt/config
-        ↓
-Hash entered password
-        ↓
-Compare with stored hash
-        ↓
-Login success/failure
-```
-
-> **Key idea:** Password storage should make offline password guessing expensive.
-> 
-
----
-
-# 3. 🔐 Authentication
-
-Authentication answers:
-
-> **Who are you?**
-> 
-
-Examples:
-
-- Password
-- Passkey
-- OAuth/OIDC
-- Session cookie
-- JWT
-- API key
-
-### Common authentication attacks
-
-- Brute force
-- Credential stuffing
-- Weak passwords
-- Account enumeration
-- Session theft
-- Session fixation
-- Weak password reset
-- Token theft
-
-### Defenses
-
-- Strong password hashing
-- Rate limiting
-- Secure password-reset flows
-- MFA/passkeys where appropriate
-- Secure session management
-- Short-lived credentials where appropriate
-
----
-
-# 4. 🛡️ Authorization
-
-Authorization answers:
-
-> **What are you allowed to do?**
-> 
-
-This is different from authentication.
-
-```
-Authentication
-"Who are you?"
-
-        ↓
-
-Authorization
-"What can you access/do?"
-```
-
-Being logged in does **not** mean the user can access everything.
-
----
-
-## BOLA / IDOR
-
-**BOLA = Broken Object Level Authorization**
-
-Example:
-
-```
-GET /api/orders/123
-```
-
-The attacker changes:
-
-```
-123 → 124
-```
-
-If order `124` belongs to another user and the server returns it, authorization is broken.
-
-### Bad authorization check
-
-```
-Is the user logged in?
-        ↓
-YES → return order
-```
-
-### Better
-
-```
-Is the user logged in?
-        ↓
-Is this user allowed to access order 124?
-        ↓
-YES → return order
-```
-
-> **Always authorize the specific object.**
-> 
-
----
-
-## BFLA
-
-**BFLA = Broken Function Level Authorization**
-
-The user is authenticated but accesses a function they shouldn't.
-
-Example:
-
-```
-Normal user
-    ↓
-/api/admin/delete-user
-```
-
-Being authenticated isn't enough.
-
-Authorization should consider:
-
-- User
-- Role/permissions
-- Resource
-- Action
-- Endpoint
-
----
-
-# 5. 🍪 Session Management
-
-After authentication, the application needs a way to remember the user.
-
-Typical flow:
-
-```
-Login
-  ↓
-Authentication succeeds
-  ↓
-Session created
-  ↓
-Session ID stored in cookie
-  ↓
-Browser sends cookie with requests
+```mermaid
+sequenceDiagram
+    autonumber
+    User->>ClientApp: Click "Sign in with Google"
+    ClientApp->>AuthServer: Redirect with client_id & PKCE code_challenge
+    AuthServer-->>User: Present Google Consent Screen
+    User->>AuthServer: Approve Consent
+    AuthServer-->>ClientApp: Redirect with Authorization Code
+    ClientApp->>AuthServer: POST /token (Authorization Code + code_verifier)
+    AuthServer-->>ClientApp: Returns Access Token + ID Token (OIDC JWT)
 ```
 
 ---
 
-## Cookie Security
+## 5. SQL Injection (SQLi)
 
-### `Secure`
+Occurs when untrusted user input is directly concatenated into SQL query strings:
 
-Cookie is only sent over HTTPS.
+```sql
+-- Vulnerable Code:
+SELECT * FROM users WHERE email = 'user@example.com' AND password = '' OR '1'='1'; -- Returns all records!
 
-### `HttpOnly`
-
-JavaScript cannot directly read the cookie.
-
-This can reduce the impact of some XSS attacks.
-
-### `SameSite`
-
-Controls cross-site cookie sending and can help with CSRF protection.
+-- Secure Code (Parameterized / Prepared Statement):
+SELECT * FROM users WHERE email = ? AND password = ?;
+```
+> **Defense**: Always use **Prepared Statements / Parameterized Queries** or ORMs. User input is treated strictly as data literals, never as executable SQL code.
 
 ---
 
-## Session Threats
+## 6. Cross-Site Scripting (XSS)
 
-### Session Fixation
+Occurs when an attacker injects malicious JavaScript that executes in victim browsers.
 
-Attacker causes a victim to use a session identifier known to the attacker.
+### Types of XSS:
+1. **Stored XSS**: Malicious script saved in the database (e.g., in a comment field) and served to all viewers.
+2. **Reflected XSS**: Script embedded in URL query parameters (`/search?q=<script>...`) reflected back in response.
+3. **DOM-based XSS**: Vulnerability inside client-side JS modifying DOM unsafely (`element.innerHTML = location.hash`).
 
-**Defense:** Regenerate the session ID after login/privilege changes.
-
-### Session Theft
-
-Attacker obtains a valid session token.
-
-Possible causes:
-
-- XSS
-- Insecure transport
-- Token leakage
-- Malware
-- Poor cookie configuration
-
-### Session Expiration
-
-Use appropriate:
-
-- Idle timeouts
-- Absolute session lifetimes
-- Session revocation
-
-> **Treat session IDs like passwords.**
-> 
+### Defenses:
+- **Context-Aware Output Encoding**: Convert `<` to `&lt;`, `>` to `&gt;`.
+- **`HttpOnly` Cookie Flag**: Prevents JavaScript `document.cookie` from reading session tokens.
+- **Content Security Policy (CSP)**: HTTP header restricting allowed script execution domains:
+  ```http
+  Content-Security-Policy: default-src 'self'; script-src https://trustedscripts.com;
+  ```
 
 ---
 
-# 6. 🎫 JWT Security
+## 7. Cross-Site Request Forgery (CSRF)
 
-JWTs are commonly used for stateless authentication.
-
-A JWT generally looks like:
+An attacker tricks a victim's browser into executing unwanted actions on a trusted site where the user is currently authenticated.
 
 ```
-Header.Payload.Signature
+Attacker Site (evil.com) ──▶ <img src="https://bank.com/transfer?to=attacker&amount=1000">
+                                            │
+                             Browser automatically includes bank.com session cookies!
 ```
 
-### Important distinction
-
-A JWT is **not automatically secure authentication**.
-
-Security depends on how it is:
-
-- Created
-- Signed
-- Validated
-- Stored
-- Expired
-- Revoked
-- Used
+### Defenses:
+1. **`SameSite` Cookie Attribute**:
+   - `SameSite=Strict`: Cookies never sent on cross-site requests.
+   - `SameSite=Lax`: Cookies sent only on safe top-level navigations (`GET`).
+2. **Anti-CSRF Tokens (Synchronizer Token Pattern)**: A cryptographically random token injected into HTML forms and validated on `POST` requests.
 
 ---
 
-## JWT Validation
+## 8. Cross-Origin Resource Sharing (CORS)
 
-Depending on your architecture, validate:
+CORS is a **browser security mechanism** that restricts web pages from making AJAX/Fetch requests to a different origin (domain, protocol, or port).
 
-- Signature
-- Expected algorithm
-- `exp` — expiration
-- `iss` — issuer
-- `aud` — audience
-
-Protect signing keys carefully.
-
-### Common mistakes
-
-- Not verifying signatures
-- Accepting unexpected algorithms
-- Trusting claims without validation
-- Tokens that live too long
-- Poor signing-key management
-- Putting unnecessary sensitive data in tokens
-- Assuming JWT automatically supports revocation
-
-> **JWT provides a token format; your application provides the security model.**
-> 
-
----
-
-# 7. 🚦 Rate Limiting
-
-Rate limiting controls how frequently an operation can be performed.
-
-Especially important for:
-
-- Login
-- Password reset
-- OTP verification
-- Account creation
-- Expensive API endpoints
-- Search/compute-heavy operations
-
-### Why?
-
-Without rate limiting:
-
-```
-Attacker
-   ↓
-10 requests
-   ↓
-1,000 requests
-   ↓
-1,000,000 requests
+```mermaid
+sequenceDiagram
+    autonumber
+    Browser->>Server: OPTIONS /api/data (Preflight: Origin: https://app.com, Method: POST)
+    Server-->>Browser: 204 No Content (Access-Control-Allow-Origin: https://app.com)
+    Browser->>Server: POST /api/data (Actual Request)
+    Server-->>Browser: 200 OK (Response Data)
 ```
 
-Possible attacks:
-
-- Brute force
-- Credential stuffing
-- Enumeration
-- Resource abuse
-- Denial of service
+> [!NOTE]
+> CORS is a **browser-enforced protection**, not a server firewall. Postman or cURL will always bypass CORS because they are not browsers.
 
 ---
 
-## What Can You Limit By?
+## 9. HTTPS, TLS Handshake & MitM
 
-Depending on the endpoint:
+HTTPS encrypts HTTP traffic over **Transport Layer Security (TLS 1.3)** on Port 443:
 
 ```
-IP
-Account
-API key
-Session
-Device
-Endpoint
+Client ──[TLS 1.3 Handshake: Server Certificate + ECDHE Key Exchange]──▶ Server
+Client ◀══════════ Encrypted Symmetric AES-GCM Channel ══════════════▶ Server
 ```
-
-Often you need multiple dimensions.
-
-### Distributed Applications
-
-If you have:
-
-```
-Load Balancer
- ↓     ↓     ↓
-App A App B App C
-```
-
-A counter stored only in App A's memory won't necessarily provide a global limit.
-
-You may need shared/distributed rate-limiting state.
-
-> **Key idea:** Rate limiting is both a security and availability control.
-> 
+- **Confidentiality**: Prevents eavesdropping on public Wi-Fi.
+- **Integrity**: Detects packet tampering via HMAC.
+- **Authentication**: Validates server identity via Certificate Authorities (CA).
 
 ---
 
-# 8. 🖥️ Cross-Site Scripting (XSS)
-
-XSS occurs when attacker-controlled content is interpreted as executable code in a user's browser.
-
-```
-Attacker Input
-      ↓
-Application
-      ↓
-HTML / JS Context
-      ↓
-Victim Browser
-      ↓
-Script executes
-```
-
----
-
-## Types
-
-### Stored XSS
-
-Malicious content is stored by the application.
-
-Example:
-
-```
-Comment → Database → Other users
-```
-
-### Reflected XSS
-
-Input is immediately reflected in the response.
-
-### DOM XSS
-
-Client-side JavaScript creates an unsafe DOM operation using attacker-controlled data.
-
----
-
-## Prevention
-
-- Context-aware output encoding
-- Safe DOM APIs
-- Avoid unsafe HTML construction
-- Sanitize HTML when HTML is actually required
-- Content Security Policy (CSP)
-- Secure cookie configuration
-
-> **Key idea:** The correct defense depends on the context where data is used.
-> 
-
----
-
-# 9. 🛡️ CSRF
-
-**CSRF = Cross-Site Request Forgery**
-
-The attacker tricks a victim's browser into sending an unwanted authenticated request.
-
-```
-Victim logged into website
-          ↓
-Visits attacker-controlled site
-          ↓
-Browser sends request
-          ↓
-Target website
-```
-
-The attack is especially relevant when authentication relies on cookies that the browser automatically sends.
-
-### Defenses
-
-- `SameSite` cookies
-- CSRF tokens
-- Origin/Referer validation where appropriate
-- Don't use GET for state-changing actions
-
-> **Key idea:** Don't assume that because a request contains valid authentication, it was intentionally made by the user.
-> 
-
----
-
-# 10. ⚙️ Security Misconfiguration
-
-Security problems can come from configuration rather than application code.
-
-### Common examples
-
-- Debug mode enabled
-- Default credentials
-- Exposed secrets
-- Verbose error messages
-- Unnecessary services
-- Excessive permissions
-- Exposed admin interfaces
-- Outdated dependencies
-- Incorrect cloud permissions
-
-### Production Checklist
-
-- Disable debugging
-- Don't expose stack traces
-- Store secrets securely
-- Apply least privilege
-- Remove unnecessary services
-- Keep dependencies updated
-- Restrict administrative interfaces
-- Configure security headers where appropriate
-
-> **Secure code + insecure configuration = insecure application.**
-> 
-
----
-
-# 11. 🧠 Security Mindset
-
-For every backend endpoint, ask:
-
-### 1. Authentication
-
-**Who is making this request?**
-
-### 2. Authorization
-
-**Are they allowed to perform this action?**
-
-### 3. Input
-
-**Can the attacker control this data?**
-
-### 4. Injection
-
-**Can this data become code?**
-
-### 5. Object Access
-
-**Can they access another user's resource?**
-
-### 6. Abuse
-
-**Can they repeat this request thousands of times?**
-
-### 7. Output
-
-**Can attacker-controlled data execute in another context?**
-
-### 8. Configuration
-
-**Could deployment settings expose the system?**
-
----
-
-# 🧩 Security Mental Model
-
-Think about every request like this:
-
-```
-             HTTP Request
-                  ↓
-          ┌───────────────┐
-          │ Authentication│
-          └───────┬───────┘
-                  ↓
-          ┌───────────────┐
-          │ Authorization │
-          └───────┬───────┘
-                  ↓
-          ┌───────────────┐
-          │ Input Handling│
-          └───────┬───────┘
-                  ↓
-          ┌───────────────┐
-          │ Business Logic│
-          └───────┬───────┘
-                  ↓
-          ┌───────────────┐
-          │ Database/OS   │
-          └───────────────┘
-```
-
-At every boundary:
-
-> **"What happens if the caller is malicious?"**
-> 
-
----
-
----
-
-# 🧠 Quick Revision Sheet
-
-## Injection
-
-**Problem:** Data becomes code.
-
-**Defense:** Keep data and instructions separate.
-
----
-
-## Passwords
-
-**Problem:** Password database gets compromised.
-
-**Defense:** Argon2id + unique salt + appropriate parameters.
-
----
-
-## Authentication
-
-**Question:** Who are you?
-
-**Threats:** Brute force, credential stuffing, session theft, weak recovery.
-
----
-
-## Authorization
-
-**Question:** What are you allowed to do?
-
-**Threats:** BOLA, BFLA, privilege escalation.
-
----
-
-## Sessions
-
-**Problem:** Stolen/fixed session identifiers.
-
-**Defense:** Secure cookies, rotation, expiration, HTTPS, appropriate `SameSite`.
-
----
-
-## JWT
-
-**Problem:** Incorrect validation or excessive trust in token claims.
-
-**Defense:** Verify signatures and relevant claims; manage keys and lifetimes carefully.
-
----
-
-## XSS
-
-**Problem:** Attacker-controlled content executes in a browser.
-
-**Defense:** Context-aware output encoding, safe APIs, sanitization where necessary, CSP.
-
----
-
-## CSRF
-
-**Problem:** Browser is tricked into sending an authenticated request.
-
-**Defense:** SameSite cookies, CSRF tokens, origin checks where appropriate.
-
----
-
-## Rate Limiting
-
-**Problem:** Unlimited requests enable brute force and abuse.
-
-**Defense:** Apply appropriate limits to sensitive/expensive operations.
-
----
-
-## Misconfiguration
-
-**Problem:** Secure code deployed with insecure settings.
-
-**Defense:** Secure defaults, least privilege, hardened production configuration.
-
-# 📚 Resources
-
-- [PortSwigger Web Security Academy](https://portswigger.net/web-security?utm_source=chatgpt.com)
-- [OWASP Top 10](https://owasp.org/www-project-top-ten/?utm_source=chatgpt.com)
-- [OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/?utm_source=chatgpt.com)
-
-### Recommended Practice
-
-**Learn → Build vulnerable app → Attack locally → Fix → Test again**
-
-Hands-on practice is much more valuable than memorizing vulnerability names.
+## 10. OWASP Top 10 Placement Quick Reference
+
+| Vulnerability | Attack Vector | Primary Mitigation |
+| :--- | :--- | :--- |
+| **SQL Injection** | Dynamic SQL string concatenation | **Prepared Statements (Parameterized Queries)** |
+| **Broken Auth** | Weak passwords, predictable tokens | **Argon2id/Bcrypt + Refresh Token Rotation** |
+| **XSS** | Untrusted HTML/JS injection | **Output Encoding + CSP + `HttpOnly` Cookies** |
+| **CSRF** | Cross-site unauthorized form POST | **`SameSite=Lax/Strict` + Anti-CSRF Tokens** |
+| **Sensitive Data Exposure** | Plaintext transmission/storage | **TLS 1.3 + AES-256-GCM at rest** |
+| **Security Misconfiguration** | Default passwords, verbose stack traces | **Hardened configs, Disable debug mode in prod** |

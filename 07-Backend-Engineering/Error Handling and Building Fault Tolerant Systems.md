@@ -1,743 +1,159 @@
-# Error Handling and Building Fault Tolerant Systems
+﻿# 🛡️ Error Handling & Fault-Tolerant Distributed Systems
 
-no: 3
-source: https://www.youtube.com/watch?v=8NaM_9aKS24
-
-# Backend Error Handling & Fault Tolerance
-
-> **Goal:** Errors are inevitable in backend systems. A good backend engineer designs systems that **detect, handle, recover from, and prevent** errors from affecting users.
-> 
+> **Core Philosophy**: In distributed systems, **failures are inevitable**. Hardware will fail, networks will partition, and downstream APIs will time out. 
+> Resilience is not about preventing failures, but **isolating faults, failing fast, preventing cascading disasters, and recovering gracefully**.
 
 ---
 
-# 🎯 Core Mindset
-
-> **The question is not *if* errors will happen, but *how* your system will handle them.**
-> 
-
-Backend systems should be:
-
-- Fault tolerant
-- Resilient
-- Observable
-- Recoverable
-
-Common failures include:
-
-- Database query failures
-- External API timeouts
-- Invalid user input
-- Business logic bugs
-- Infrastructure failures
+## 📑 Table of Contents
+1. [The Anatomy of Cascading Failures](#1-the-anatomy-of-cascading-failures)
+2. [Timeouts & Deadline Propagation](#2-timeouts--deadline-propagation)
+3. [Retries, Exponential Backoff & Full Jitter](#3-retries-exponential-backoff--full-jitter)
+4. [The Circuit Breaker Pattern (Closed, Open, Half-Open)](#4-the-circuit-breaker-pattern)
+5. [Fallback Strategies & Graceful Degradation](#5-fallback-strategies--graceful-degradation)
+6. [The Bulkhead Pattern (Resource Isolation)](#6-the-bulkhead-pattern)
+7. [Idempotency & Idempotent API Design](#7-idempotency--idempotent-api-design)
+8. [Rate Limiting Algorithms (Token Bucket, Leaky Bucket, Sliding Window)](#8-rate-limiting-algorithms)
+9. [Placement Interview Checklist & System Design Patterns](#9-placement-interview-checklist)
 
 ---
 
-# 🚨 Types of Backend Errors
+## 1. The Anatomy of Cascading Failures
 
-## **1. Logic Errors**
-
-**Definition**
-
-The application runs successfully but produces incorrect results.
-
-### Examples
-
-- Discount applied twice
-- Wrong tax calculation
-- Incorrect payment amount
-- Duplicate rewards issued
-
-### Causes
-
-- Misunderstood requirements
-- Incorrect algorithm implementation
-- Missing edge cases
-
-### Why They're Dangerous
-
-- No application crash
-- Hard to detect
-- Can silently cause financial loss or corrupt business data
-
-### Prevention
-
-- Requirement clarification
-- Unit tests
-- Integration tests
-- Edge case testing
-- Code reviews
-
----
-
-## 2. Database Errors
-
-Most backend applications rely heavily on databases.
-
-If the database fails, the application usually cannot function correctly.
-
----
-
-### A. Connection Errors
-
-Occurs when the backend cannot communicate with the database.
-
-### Causes
-
-- Database server down
-- Network failure
-- Connection pool exhausted
-
-### Result
-
-- HTTP 500 errors
-- Empty frontend responses
-- Complete application outage
-
----
-
-### B. Constraint Violations
-
-Occurs when database rules are violated.
-
-#### Unique Constraint
-
-Example
+Without defensive boundaries, a single minor outage in Service C can bring down the entire company:
 
 ```
-User with email already exists.
-```
-
-Database rejects duplicate email.
-
-#### Foreign Key Constraint
-
-Example
-
-```
-Orders table references Customer ID 15
-
-Customer ID 15 doesn't exist.
-```
-
-Database rejects insertion.
-
-### Prevention
-
-- Validate user input
-- Handle database exceptions gracefully
-- Return meaningful error messages
-
-Example
-
-```
-❌ Internal Server Error
-
-✅ Email already exists.
+Service A (User API) ──▶ Service B (Order Service) ──▶ Service C (Payment Gateway - HANGS)
+     │                         │                                  │
+All 500 worker threads    All 500 worker threads            Server unresponsive
+blocked waiting for B     blocked waiting for C             (Taking 60s per call)
+     ↓                         ↓                                  ↓
+Service A crashes! 💥     Service B crashes! 💥             System Offline! 💥
 ```
 
 ---
 
-### C. Query Errors
+## 2. Timeouts & Deadline Propagation
 
-Occurs due to malformed SQL.
+Every network call **MUST** have an explicit timeout. Never rely on OS socket default timeouts ($\approx 2-15\text{ minutes}$).
 
-Example
-
-```
-SELECT * FROM custmers;
-```
-
-instead of
-
-```
-SELECT * FROM customers;
-```
-
-Other causes
-
-- Missing table
-- Invalid syntax
-- Query timeout
+- **Connect Timeout**: Max time allowed to establish TCP/TLS handshake ($\approx 500\text{ms} - 2\text{s}$).
+- **Read Timeout**: Max time allowed to wait for the next data packet ($\approx 1\text{s} - 5\text{s}$).
+- **End-to-End Deadline Propagation**: If an API gateway has a 2-second timeout, pass the remaining budget in headers (`X-Request-Deadline: 1200ms`) so downstream services abort work if time has already expired.
 
 ---
 
-### D. Deadlocks
+## 3. Retries, Exponential Backoff & Full Jitter
 
-Occurs when multiple transactions wait on each other.
+Blind immediate retries create a **Retry Storm** that finishes off a struggling downstream server.
 
 ```
-Transaction A waits for B
-
-↓
-
-Transaction B waits for A
-
-↓
-
-Neither proceeds
+❌ Bad Retry: Immediate retry 3 times -> 10,000 requests * 3 = 30,000 instant requests on failing service!
+✅ Good Retry: Exponential backoff with randomized jitter.
 ```
+
+```mermaid
+flowchart LR
+    Attempt1[Attempt 1: Fail] -->|Wait 100ms ± Jitter| Attempt2[Attempt 2: Fail]
+    Attempt2 -->|Wait 200ms ± Jitter| Attempt3[Attempt 3: Fail]
+    Attempt3 -->|Wait 400ms ± Jitter| Attempt4[Attempt 4: Success / Fallback]
+```
+
+### Mathematical Formula (Full Jitter):
+$$\text{Backoff} = \text{random}\left(0, \, \min\left(\text{MaxCap}, \, \text{Base} \times 2^{\text{retry\_count}}\right)\right)$$
+
+> [!IMPORTANT]
+> **Retry Rule**: Only retry **transient, idempotent errors** (e.g., HTTP 503, 504, TCP Connection Drops). **NEVER** retry non-idempotent operations without an Idempotency Key!
 
 ---
 
-# 3. External Service Errors
+## 4. The Circuit Breaker Pattern
 
-Modern backend systems depend on external services.
+Prevents an application from repeatedly trying to execute an operation that is almost certain to fail.
 
-Examples
+```mermaid
+stateDiagram-v2
+    [*] --> Closed
+    
+    Closed --> Open: Failure rate > 50% (Fast Fail)
+    Open --> HalfOpen: Sleep window expires (e.g., 30s)
+    
+    HalfOpen --> Closed: Test requests succeed
+    HalfOpen --> Open: Test request fails (Reset sleep timer)
+```
 
-- Payment gateways
-- Email providers
-- Authentication providers
-- AI APIs
-- Cloud storage
-
-Every dependency introduces another possible point of failure.
+| State | Behavior |
+| :--- | :--- |
+| **CLOSED** | Normal operations. All requests pass through. Tracks failure metrics. |
+| **OPEN** | **Fast Fail**. Requests do not hit the downstream service; returns fallback immediately. |
+| **HALF-OPEN**| Allows a small probe batch ($5-10\%$ traffic) through to test if service has recovered. |
 
 ---
 
-## Common Causes
+## 5. Fallback Strategies & Graceful Degradation
 
-### Network Failures
-
-- Timeout
-- DNS failure
-- Network partition
-
----
-
-### Authentication Errors
-
-- Expired tokens
-- Invalid credentials
-- Missing permissions
+When the circuit breaker is **OPEN** or a call times out:
+1. **Cache Fallback**: Return slightly stale cached data (e.g., yesterday's product recommendations).
+2. **Default Stub**: Return empty list or static placeholder (e.g., "Trending Items temporarily unavailable").
+3. **Async Offload**: Accept the user's order, save to local disk/queue, and confirm: *"Order received, confirming shortly."*
 
 ---
 
-### Rate Limiting
+## 6. The Bulkhead Pattern
 
-External APIs may return
-
-```
-429 Too Many Requests
-```
-
-### Solution
-
-Use **Exponential Backoff**
+Named after the watertight partition compartments in ships (Titanic design). If one compartment floods, the others remain buoyant.
 
 ```
-Retry
+Shared Thread Pool (Danger):
+[ All 100 Worker Threads Allocated to Broken Payment Gateway ] -> Entire Server Freezes!
 
-↓
+Bulkhead Isolation (Safe):
+┌─────────────────────────┐  ┌─────────────────────────┐  ┌─────────────────────────┐
+│ Search Pool (50 threads)│  │ Auth Pool (30 threads)  │  │ Payment Pool (20 threads)│
+└─────────────────────────┘  └─────────────────────────┘  └─────────────────────────┘
+```
+If Payment Gateway hangs, only its 20 threads get exhausted. Search and Auth continue functioning at $100\%$ speed.
 
-Wait 1 min
+---
 
-↓
+## 7. Idempotency & Idempotent API Design
 
-Retry
+An operation is **idempotent** if applying it multiple times produces the exact same result as applying it once:
+$$f(f(x)) = f(x)$$
 
-↓
-
-Wait 2 min
-
-↓
-
-Retry
-
-↓
-
-Wait 4 min
-
-↓
-
-Continue until success
+### The `X-Idempotency-Key` Pattern (Payment Systems):
+```mermaid
+sequenceDiagram
+    autonumber
+    Client->>API: POST /charges (Header: Idempotency-Key: "uuid-1234", Amount: $50)
+    API->>Redis: SETNX idempotency:uuid-1234 "PROCESSING" EX 120
+    Note over API: If key exists, return stored response immediately!
+    API->>PaymentGateway: Charge Credit Card $50
+    API->>DB: Record Charge Success
+    API->>Redis: SET idempotency:uuid-1234 "SUCCESS: Charge_999"
+    API-->>Client: 200 OK (Charged $50)
 ```
 
 ---
 
-### Service Outages
+## 8. Rate Limiting Algorithms
 
-Cloud providers can go down.
+Protects backends against DDoS attacks, brute-force bots, and noisy neighbors.
 
-Use:
-
-- Fallback services
-- Cached responses
-- Backup infrastructure
-- Graceful degradation
-
----
-
-# 4. Input Validation Errors
-
-Caused by invalid user input.
-
-Validation is the first line of defense.
+| Algorithm | Mechanism | Pros | Cons |
+| :--- | :--- | :--- | :--- |
+| **Token Bucket** | Tokens added to bucket at constant rate; each request consumes 1 token. | Handles **bursts** smoothly; memory efficient. | Token refill math on high concurrency. |
+| **Leaky Bucket** | Requests enter FIFO queue; processed at fixed constant rate. | Smooths output traffic rate. | Drops bursty requests if queue is full. |
+| **Sliding Window Log** | Stores timestamp of each request in a Redis Sorted Set (`ZSET`). | $100\%$ precise window boundary. | High memory consumption ($O(N)$ timestamps). |
+| **Sliding Window Counter** | Blends count of previous window with current window: $\text{Count} = C_{\text{curr}} + C_{\text{prev}} \times (1 - \text{overlap})$. | Low memory ($O(1)$) + smooth boundary. | Minor approximation error ($\approx 0.05\%$). |
 
 ---
 
-## Types
-
-### Format Validation
-
-Examples
-
-- Email format
-- Phone number
-- Date format
-
----
-
-### Range Validation
-
-Examples
-
-```
-Age
-
-18–100
-
-Price
-
->0
-
-Array Size
-
-1–100
-```
-
----
-
-### Required Field Validation
-
-Example
-
-```
-POST /users
-
-Missing email
-```
-
-Return
-
-```
-400 Bad Request
-```
-
----
-
-# 5. Configuration Errors
-
-Usually happen during deployment.
-
-Example
-
-```
-Developer adds
-
-OPENAI_API_KEY
-
-↓
-
-Works locally
-
-↓
-
-Forgot in Production
-
-↓
-
-Runtime failure
-```
-
-### Best Practice
-
-Validate configuration before server startup.
-
-Fail immediately if required configuration is missing.
-
-Better:
-
-```
-Application won't start.
-```
-
-than
-
-```
-Users receive runtime 500 errors.
-```
-
----
-
-# 🛡 Error Prevention
-
-## Best Principle
-
-> **The best error handling starts before errors happen.**
-> 
-
----
-
-# ❤️ Health Checks
-
-Expose endpoint
-
-```
-/health
-```
-
-Returns
-
-```
-200 OK
-```
-
-when healthy.
-
----
-
-## Health Checks Should Verify
-
-- Server running
-- Database connectivity
-- Query execution
-- Cache availability
-- External services
-- Required configuration
-
----
-
-# 📊 Monitoring & Observability
-
-Monitoring should cover
-
-- HTTP errors
-- Database failures
-- External API failures
-- Business logic failures
-
----
-
-## Performance Metrics
-
-Monitor
-
-- Response time
-- CPU usage
-- Memory usage
-- Throughput
-
-Performance degradation often appears before failures.
-
----
-
-## Business Metrics
-
-Examples
-
-- Successful payments
-- Successful logins
-- Successful transactions
-
-A sudden drop usually indicates hidden technical issues.
-
----
-
-# 📝 Logging
-
-Good logs should be
-
-- Structured
-- Searchable
-- Context-rich
-
-Preferred format
-
-```
-{
-  "timestamp":"...",
-  "level":"ERROR",
-  "requestId":"...",
-  "userId":"...",
-  "message":"Database connection failed"
-}
-```
-
-Prefer JSON logs over plain text.
-
----
-
-# 🔄 Error Recovery
-
-Recovery depends on whether the error is temporary or permanent.
-
----
-
-## Recoverable Errors
-
-Examples
-
-- Network timeout
-- Email failure
-- Connection pool exhaustion
-
-Strategies
-
-- Retry
-- Exponential Backoff
-
----
-
-## Non-Recoverable Errors
-
-Examples
-
-- Invalid configuration
-- Corrupt database
-
-Strategies
-
-- Disable affected features
-- Switch to cached data
-- Use backup services
-- Graceful degradation
-
----
-
-# 💾 Data Recovery
-
-Data is the most valuable asset.
-
-Protect it using
-
-- Backups
-- Transaction logs
-- Restore procedures
-- Recovery tools
-
----
-
-# ⬆ Error Propagation
-
-Errors should move upward with more context.
-
-```
-Repository
-
-↓
-
-Service
-
-↓
-
-Handler
-
-↓
-
-Global Error Handler
-```
-
-Each layer adds business context.
-
----
-
-# 🌐 Global Error Handling
-
-Centralize all error handling in one middleware.
-
-Typical architecture
-
-```
-Client
-
-↓
-
-Router
-
-↓
-
-Handler
-
-↓
-
-Service
-
-↓
-
-Repository
-
-↓
-
-Database
-
-↓
-
-Error
-
-↓
-
-Global Error Handler
-
-↓
-
-HTTP Response
-```
-
----
-
-## Example Responses
-
-### Validation Error
-
-```
-400 Bad Request
-
-Book name cannot exceed 500 characters.
-```
-
----
-
-### Unique Constraint
-
-```
-400 Bad Request
-
-Book already exists.
-```
-
----
-
-### Resource Not Found
-
-```
-404 Not Found
-
-Book not found.
-```
-
----
-
-### Foreign Key Violation
-
-```
-404 Not Found
-
-Author not found.
-```
-
----
-
-### Unexpected Error
-
-```
-500 Internal Server Error
-
-Something went wrong.
-```
-
----
-
-# ✅ Benefits of Global Error Handling
-
-- Consistent API responses
-- Less duplicate code
-- Easier maintenance
-- Centralized logging
-- Better security
-- Easier debugging
-
----
-
-# 🔒 Security Best Practices
-
-## Never expose
-
-- Table names
-- SQL queries
-- Stack traces
-- Constraint names
-- Internal exceptions
-
-Wrong
-
-```
-duplicate key violates unique constraint books_name_key
-```
-
-Correct
-
-```
-Book already exists.
-```
-
----
-
-# 🔑 Authentication Errors
-
-Never reveal whether
-
-- Email exists
-- Password is incorrect
-
-Wrong
-
-```
-User does not exist.
-```
-
-or
-
-```
-Password incorrect.
-```
-
-Correct
-
-```
-Invalid email or password.
-```
-
-This prevents **user enumeration attacks**.
-
----
-
-# 🔐 Secure Logging
-
-Never log
-
-- Passwords
-- Credit card numbers
-- JWT tokens
-- API keys
-- Secrets
-
-Prefer
-
-- User ID
-- Request ID
-- Correlation ID
-
----
-
-# ⭐ Best Practices Checklist
-
-- ✅ Assume failures will happen.
-- ✅ Validate input at the entry point.
-- ✅ Handle database exceptions gracefully.
-- ✅ Centralize error handling with global middleware.
-- ✅ Use proper HTTP status codes.
-- ✅ Retry transient failures with exponential backoff.
-- ✅ Implement health checks.
-- ✅ Monitor infrastructure, application, and business metrics.
-- ✅ Use structured (JSON) logging.
-- ✅ Fail fast on missing configuration.
-- ✅ Never expose internal implementation details.
-- ✅ Never log sensitive information.
-- ✅ Design systems to degrade gracefully instead of crashing.
-
----
-
-# 📌 Summary
-
-A robust backend system is not one that never fails—it is one that **fails predictably, recovers gracefully, protects user data, and provides meaningful feedback**. Effective error handling combines **validation, monitoring, centralized error management, retries, recovery strategies, and security best practices** to build reliable and fault-tolerant applications.
+## 9. Placement Interview Checklist
+
+- [ ] **Timeout**: Did you define both connection and read timeouts?
+- [ ] **Retries**: Are retries using exponential backoff with full randomized jitter?
+- [ ] **Circuit Breaker**: Does the system fail fast when a downstream dependency is down?
+- [ ] **Bulkheads**: Are critical resources (thread pools, DB connections) isolated per service?
+- [ ] **Idempotency**: Can the user safely retry a payment or order POST without double-charging?
+- [ ] **Rate Limiting**: Are public API endpoints protected with Token Bucket / Sliding Window algorithms?
