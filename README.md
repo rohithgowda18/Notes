@@ -1,10 +1,10 @@
-﻿# ðŸš€ Tech Placement & Interview Preparation Hub
+﻿# 🚀 Tech Placement & Interview Preparation Hub
 
 Welcome to the organized, comprehensive revision repository for Software Engineering, Backend, and Tech Placements. All materials are categorized into clean, focused subject modules with direct access to notes, interview question banks, system design deep-dives, and project case studies.
 
 ---
 
-## ðŸ“š Table of Contents
+## 📑 Table of Contents
 
 - [1. Operating Systems (`01-Operating-Systems`)](#1-operating-systems)
 - [2. Database Management Systems (`02-DBMS`)](#2-database-management-systems)
@@ -14,83 +14,86 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 - [6. Java & Spring Boot Ecosystem (`06-Java-and-Spring-Boot`)](#6-java--spring-boot-ecosystem)
 - [7. Backend Engineering & Distributed Systems (`07-Backend-Engineering`)](#7-backend-engineering--distributed-systems)
 - [8. High-Level System Design (`08-System-Design`)](#8-high-level-system-design)
-- [9. Project Deep Dives & Case Studies (`09-Projects`)](#9-project-deep-dives--case-studies)
+- [9. Personal Project Deep Dives (`09-Projects`)](#9-personal-project-deep-dives)
 
 ---
 
 ## 1. Operating Systems
-ðŸ“ **Directory:** [`01-Operating-Systems/`](./01-Operating-Systems/) | ðŸ“– [Module Guide](./01-Operating-Systems/README.md)
+📁 **Directory:** [`01-Operating-Systems/`](./01-Operating-Systems/) | 📖 [Module Guide](./01-Operating-Systems/README.md)
 
-- ðŸ“„ [OS Full Notes](./01-Operating-Systems/OS_Full_Notes.pdf) â€” Complete theoretical reference
-- ðŸ“„ [Operating Systems 30 Interview Questions](./01-Operating-Systems/Operating%20Systems%2030%20Interview%20Questions.pdf) â€” Top curated interview Q&A
-- ðŸ“„ [Operating System Interview Questions](./01-Operating-Systems/Operating-System-Interview-Questions.pdf) â€” Core concepts & viva prep
-- ðŸ“„ [Last Minute Notes (GeeksforGeeks)](./01-Operating-Systems/Last%20Minute%20Notes%20-%20Operating%20Systems%20-%20GeeksforGeeks.pdf) â€” Fast last-minute recap
+- 📄 [OS Full Notes](./01-Operating-Systems/OS_Full_Notes.pdf) — Complete theoretical reference
+- 📄 [Operating Systems 30 Interview Questions](./01-Operating-Systems/Operating%20Systems%2030%20Interview%20Questions.pdf) — Top curated interview Q&A
+- 📄 [Operating System Interview Questions](./01-Operating-Systems/Operating-System-Interview-Questions.pdf) — Core concepts & viva prep
+- 📄 [Last Minute Notes (GeeksforGeeks)](./01-Operating-Systems/Last%20Minute%20Notes%20-%20Operating%20Systems%20-%20GeeksforGeeks.pdf) — Fast last-minute recap
 
 ---
 
 ## 2. Database Management Systems
-ðŸ“ **Directory:** [`02-DBMS/`](./02-DBMS/) | ðŸ“– [Module Guide](./02-DBMS/README.md)
+📁 **Directory:** [`02-DBMS/`](./02-DBMS/) | 📖 [Module Guide](./02-DBMS/README.md)
 
-- ðŸ“„ [DBMS Full Notes](./02-DBMS/DBMS_Full_Notes.pdf) â€” Relational models, SQL, Normalization, Transactions & Concurrency
-- ðŸ“„ [DBMS Interview Questions](./02-DBMS/DBMS%20INTERVIEW%20QUESTION.pdf) â€” Essential placement interview questions
+- 📝 [SQL Placement — High-Value Query Patterns](./02-DBMS/SQL-High-Value-Query-Patterns.md) — Master query patterns (Ranking, Top-N per group, LAG/LEAD, Deduplication, Anti-joins, Conditional Aggregation)
+- 📝 [SQL Advanced Syntax Cheat Sheet](./02-DBMS/SQL-Advanced-Syntax-CheatSheet.md) — Non-trivial syntax: Frame clauses (`ROWS BETWEEN`), `NTILE`, Recursive CTEs, Date/Time math, Regex, `ROLLUP`, and `FOR UPDATE` locking
+- 📄 [DBMS Full Notes](./02-DBMS/DBMS_Full_Notes.pdf) — Relational models, SQL, Normalization, Transactions & Concurrency
+- 📄 [DBMS Interview Questions](./02-DBMS/DBMS%20INTERVIEW%20QUESTION.pdf) — Essential placement interview questions
 
 ---
 
 ## 3. Computer Networks
-ðŸ“ **Directory:** [`03-Computer-Networks/`](./03-Computer-Networks/) | ðŸ“– [Module Guide](./03-Computer-Networks/README.md)
+📁 **Directory:** [`03-Computer-Networks/`](./03-Computer-Networks/) | 📖 [Module Guide](./03-Computer-Networks/README.md)
 
-- ðŸ“˜ [Comprehensive Visual Guide](./03-Computer-Networks/01-Comprehensive-Guide/README.md) â€” 30 diagrams covering OSI, TCP/IP, DNS, HTTP, and Sockets
-- ðŸ“ [Computer Networks - Placement Notes](./03-Computer-Networks/Computer%20Networks%20-%20Placement%20Notes.md) â€” High-yield placement revision
-- ðŸ“ [Computer Networks Reference](./03-Computer-Networks/Computer%20Networks.md) â€” Kurose & Ross / hpbn summary
-- ðŸ“„ [Computer Networks Placement Notes (PDF)](./03-Computer-Networks/Computer_Networks_Placement_Notes.pdf)
-- ðŸ“„ [Computer Networking Notes for Tech Placements](./03-Computer-Networks/Computer%20Networking%20Notes%20for%20Tech%20Placements.pdf)
-- ðŸ“„ [Networking Interview Questions](./03-Computer-Networks/Networking-Interview-Questions.pdf)
+- 🖼️ [Comprehensive Visual Guide](./03-Computer-Networks/01-Comprehensive-Guide/README.md) — 30 diagrams covering OSI, TCP/IP, DNS, HTTP, and Sockets
+- 📝 [Computer Networks - Placement Notes](./03-Computer-Networks/Computer%20Networks%20-%20Placement%20Notes.md) — High-yield placement revision
+- 📝 [Computer Networks Reference](./03-Computer-Networks/Computer%20Networks.md) — Kurose & Ross / hpbn summary
+- 📄 [Computer Networks Placement Notes (PDF)](./03-Computer-Networks/Computer_Networks_Placement_Notes.pdf)
+- 📄 [Computer Networking Notes for Tech Placements](./03-Computer-Networks/Computer%20Networking%20Notes%20for%20Tech%20Placements.pdf)
+- 📄 [Networking Interview Questions](./03-Computer-Networks/Networking-Interview-Questions.pdf)
 
 ---
 
 ## 4. Object-Oriented Programming & Design Patterns
-ðŸ“ **Directory:** [`04-OOPs-and-Design-Patterns/`](./04-OOPs-and-Design-Patterns/) | ðŸ“– [Module Guide](./04-OOPs-and-Design-Patterns/README.md)
+📁 **Directory:** [`04-OOPs-and-Design-Patterns/`](./04-OOPs-and-Design-Patterns/) | 📖 [Module Guide](./04-OOPs-and-Design-Patterns/README.md)
 
-- ðŸ“ [OOPS Notes](./04-OOPs-and-Design-Patterns/OOPS-Notes.md) â€” Encapsulation, Polymorphism, Inheritance, Abstraction & SOLID
-- ðŸ“„ [OOPS Concepts in Java (PDF)](./04-OOPs-and-Design-Patterns/OOPS-Concepts-in-Java.pdf) â€” Java OOP deep dive
-- ðŸ“„ [OOPs Interview Questions](./04-OOPs-and-Design-Patterns/OOPs-Interview-Questions.pdf) â€” Frequently asked OOP questions
-- ðŸ“„ [Design Patterns Placement Notes](./04-OOPs-and-Design-Patterns/Design_Patterns_Placement_Notes.pdf) â€” Creational, Structural, and Behavioral patterns
+- 📝 [OOPS Notes & SOLID Principles](./04-OOPs-and-Design-Patterns/OOPS-Notes.md) — 4 OOP Pillars, In-depth SOLID with code refactorings, and Composition over Inheritance
+- 📄 [OOPS Concepts in Java (PDF)](./04-OOPs-and-Design-Patterns/OOPS-Concepts-in-Java.pdf) — Java OOP deep dive
+- 📄 [OOPs Interview Questions](./04-OOPs-and-Design-Patterns/OOPs-Interview-Questions.pdf) — Frequently asked OOP questions
+- 📄 [Design Patterns Placement Notes](./04-OOPs-and-Design-Patterns/Design_Patterns_Placement_Notes.pdf) — Creational, Structural, and Behavioral patterns
 
 ---
 
 ## 5. Data Structures & Algorithms
-ðŸ“ **Directory:** [`05-DSA/`](./05-DSA/) | ðŸ“– [Module Guide](./05-DSA/README.md)
+📁 **Directory:** [`05-DSA/`](./05-DSA/) | 📖 [Module Guide](./05-DSA/README.md)
 
-- ðŸ“„ [DSA Quick Revision Guide](./05-DSA/DSA%20Quick%20Revision%20Guide.pdf) â€” Fast review of Arrays, Trees, Graphs, DP, Heaps, and Sorting algorithms
+- 📄 [DSA Quick Revision Guide](./05-DSA/DSA%20Quick%20Revision%20Guide.pdf) — Fast review of Arrays, Trees, Graphs, DP, Heaps, and Sorting algorithms
 
 ---
 
 ## 6. Java & Spring Boot Ecosystem
-ðŸ“ **Directory:** [`06-Java-and-Spring-Boot/`](./06-Java-and-Spring-Boot/) | ðŸ“– [Module Guide](./06-Java-and-Spring-Boot/README.md)
+📁 **Directory:** [`06-Java-and-Spring-Boot/`](./06-Java-and-Spring-Boot/) | 📖 [Module Guide](./06-Java-and-Spring-Boot/README.md)
 
-- ðŸ“„ [Java Programming Notes](./06-Java-and-Spring-Boot/java%20Programming.pdf) â€” Core Java, JVM architecture & Collections
-- ðŸ“ [Java Streams & Functional Programming](./06-Java-and-Spring-Boot/Java%20Streams.md) â€” Lambdas, Filters, Maps, Reducers
-- ðŸ“ [Maven Build Lifecycle & Dependencies](./06-Java-and-Spring-Boot/Maven.md) â€” Scopes, Lifecycles, Plugins
-- ðŸ“„ [Spring Boot Complete Notes](./06-Java-and-Spring-Boot/Spring%20Boot%20Complete%20Notes.pdf) â€” Spring Core, JPA, Security & REST
+- 📄 [Java Programming Notes](./06-Java-and-Spring-Boot/java%20Programming.pdf) — Core Java, JVM architecture & Collections
+- 📝 [Java Streams & Functional Programming](./06-Java-and-Spring-Boot/Java%20Streams.md) — Lambdas, Pipelines, Collectors, ForkJoinPool & placement coding patterns
+- 📝 [Maven Build Lifecycle & Dependencies](./06-Java-and-Spring-Boot/Maven.md) — Dependency tree resolution, Scopes, POM configuration, and build phases
+- 📄 [Spring Boot Complete Notes](./06-Java-and-Spring-Boot/Spring%20Boot%20Complete%20Notes.pdf) — Spring Core, JPA, Security & REST
 
 ---
 
 ## 7. Backend Engineering & Distributed Systems
-ðŸ“ **Directory:** [`07-Backend-Engineering/`](./07-Backend-Engineering/) | ðŸ“– [Module Guide](./07-Backend-Engineering/README.md)
+📁 **Directory:** [`07-Backend-Engineering/`](./07-Backend-Engineering/) | 📖 [Module Guide](./07-Backend-Engineering/README.md)
 
-- ðŸ“ˆ [Scaling & Performance - Part 1](./07-Backend-Engineering/Backend%20Scaling%20%26%20Performance%20-%20Part%201.md)
-- ðŸ“ˆ [Scaling & Performance - Part 2](./07-Backend-Engineering/Backend%20Scaling%20%26%20Performance%20-%20Part%202.md)
-- âš¡ [Concurrency & Parallelism](./07-Backend-Engineering/Concurrency%20%26%20Parallelism.md)
-- ðŸ›¡ï¸ [Fault Tolerance & Resilience](./07-Backend-Engineering/Error%20Handling%20and%20Building%20Fault%20Tolerant%20Systems.md)
-- â±ï¸ [Task Queues & Background Jobs](./07-Backend-Engineering/Task%20queues%20and%20background%20jobs.md)
-- ðŸ” [Elastic Search & Storage](./07-Backend-Engineering/Elastic%20Search.md)
-- ðŸ”’ [Backend Security](./07-Backend-Engineering/Security.md)
-- ðŸ³ [Docker CheatSheet](./07-Backend-Engineering/Docker%20CheatSheet%20ApnaCollege.pdf)
+- ⚡ [Real-Time Backend Systems](./07-Backend-Engineering/Real-Time%20Backend%20Systems.md) — Polling vs Long Polling vs SSE vs WebSockets, Pub/Sub, offsets, fan-out & reconnection storms
+- 📈 [Scaling & Performance - Part 1](./07-Backend-Engineering/Backend%20Scaling%20%26%20Performance%20-%20Part%201.md) — Latency percentiles, queueing curves, profiling, N+1 queries, indexes, and caching tiers
+- 📈 [Scaling & Performance - Part 2](./07-Backend-Engineering/Backend%20Scaling%20%26%20Performance%20-%20Part%202.md) — Stateless servers, load balancing, read replicas, sharding, CDNs, and async queues
+- ⚡ [Concurrency & Parallelism](./07-Backend-Engineering/Concurrency%20%26%20Parallelism.md) — Event loops, context switching, state machines, Goroutines, race conditions, and mutexes
+- 🛡️ [Fault Tolerance & Resilience](./07-Backend-Engineering/Error%20Handling%20and%20Building%20Fault%20Tolerant%20Systems.md) — Circuit breakers, exponential backoff with jitter, bulkheads, idempotency keys, and rate limiters
+- ⚙️ [Task Queues & Background Jobs](./07-Backend-Engineering/Task%20queues%20and%20background%20jobs.md) — Producers, brokers, workers, visibility timeouts, DLQs, and idempotency
+- 🔍 [Elasticsearch & Distributed Search](./07-Backend-Engineering/Elastic%20Search.md) — Inverted indexes, analyzers, cluster shards/replicas, and query/fetch phases
+- 🔐 [Backend Security Architecture](./07-Backend-Engineering/Security.md) — Password hashing, Session vs JWT, OAuth2/OIDC, SQLi, XSS, CSRF, and CORS
+- 🐳 [Docker CheatSheet](./07-Backend-Engineering/Docker%20CheatSheet%20ApnaCollege.pdf) — Docker CLI commands, multi-stage builds, volumes, and networking
 
 ---
 
 ## 8. High-Level System Design
-ðŸ“ **Directory:** [`08-System-Design/`](./08-System-Design/) | ðŸ“– [Curriculum Readme](./08-System-Design/Readme.md)
+📁 **Directory:** [`08-System-Design/`](./08-System-Design/) | 📖 [Curriculum Readme](./08-System-Design/Readme.md)
 
 | # | System Design Topic | # | System Design Topic |
 |---|---|---|---|
@@ -111,13 +114,10 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 
 ---
 
-## 9. Project Deep Dives & Case Studies
-ðŸ“ **Directory:** [`09-Projects/`](./09-Projects/) | ðŸ“– [Module Guide](./09-Projects/README.md)
+## 9. Personal Project Deep Dives
+📁 **Directory:** [`09-Projects/`](./09-Projects/) | 📖 [Module Guide](./09-Projects/README.md)
 
-- ðŸš— [Drive Verify â€” Vehicle Registration & Fraud Verification](./09-Projects/Drive%20Verify%20-%20Vehicle%20Registration%20%26%20Fraud%20Verification.md)
-  - Full-stack vehicle verification architecture, database schema, fraud-detection logic, and interview discussion points.
-- ðŸ¤– [YT_ChatBot â€” RAG Video-Mind AI Revision](./09-Projects/YT_ChatBot%20-%20RAG%20Video-Mind%20AI%20Revision.md)
-  - Retrieval-Augmented Generation (RAG) architecture, embeddings, chunking strategies, vector search, and interview explanations.
-
-
-
+- 🚗 [Drive Verify — Vehicle Registration & Fraud Verification](./09-Projects/Drive%20Verify%20-%20Vehicle%20Registration%20%26%20Fraud%20Verification.md)
+  - Full-stack vehicle verification platform using Java 21, Spring Boot, MongoDB, and React. Covers automated ownership transfer audit trails, derived owner count logic, fraud indicators, and 60-second / 2-minute interview pitch scripts.
+- 🤖 [Video-Mind AI (YT_ChatBot) — RAG YouTube Intelligence](./09-Projects/YT_ChatBot%20-%20RAG%20Video-Mind%20AI%20Revision.md)
+  - Retrieval-Augmented Generation (RAG) platform using React, FastAPI, LangChain, HuggingFace MiniLM, FAISS, and Gemini 2.5 Flash. Covers transcript ingestion, vector similarity search, grounded prompt engineering, and timestamped citations.
