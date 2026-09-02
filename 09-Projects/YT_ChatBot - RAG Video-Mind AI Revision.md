@@ -1,859 +1,211 @@
-# YT_ChatBot
+﻿# 🤖 Video-Mind AI (YT_ChatBot) — RAG-Powered YouTube Video Intelligence
 
-# 📚 RAG — Placement Revision Notes
-
-> **Goal:** Understand RAG well enough to explain the concept, architecture, and my Video-Mind AI implementation confidently in interviews.
-> 
+> **Project Summary**: An AI-powered video intelligence and question-answering platform built with **React, FastAPI, LangChain, HuggingFace Embeddings, FAISS, and Gemini 2.5 Flash**. 
+> Uses **Retrieval-Augmented Generation (RAG)** to extract YouTube video transcripts, chunk and index them in a local vector database, and provide grounded, timestamp-backed answers, executive summaries, and key takeaways without hallucination.
 
 ---
 
-# 1. RAG in 30 Seconds
-
-**RAG = Retrieval-Augmented Generation**
-
-RAG gives an LLM relevant information from an external knowledge source before asking it to generate an answer.
-
-```
-User Question
-      ↓
-Retrieve relevant information
-      ↓
-Add it to the prompt
-      ↓
-LLM
-      ↓
-Grounded Answer
-```
-
-### One-line interview answer
-
-> **RAG is a technique where relevant information is retrieved from an external knowledge base and provided to an LLM as context so it can generate a more grounded answer.**
-> 
+## 📑 Table of Contents
+1. [The Problem Statement & Business Goal](#1-the-problem-statement--business-goal)
+2. [What is RAG? (Retrieval-Augmented Generation)](#2-what-is-rag)
+3. [End-to-End System Architecture](#3-end-to-end-system-architecture)
+4. [The Ingestion Pipeline (Transcript → Chunking → Vectors)](#4-the-ingestion-pipeline)
+5. [The Retrieval & Generation Pipeline (Q&A Workflow)](#5-the-retrieval--generation-pipeline)
+6. [Summary & Key Takeaways Generation](#6-summary--key-takeaways-generation)
+7. [Tech Stack & Architectural Justifications](#7-tech-stack--architectural-justifications)
+8. [RAG vs. Traditional LLM vs. Fine-Tuning](#8-rag-vs-traditional-llm-vs-fine-tuning)
+9. [Key Challenges & Production Considerations](#9-key-challenges--production-considerations)
+10. [Interview Preparation, Pitches & Q&A](#10-interview-preparation-pitches--qa)
 
 ---
 
-# 2. Why Do We Need RAG?
+## 1. The Problem Statement & Business Goal
 
-An LLM already has knowledge from its training data, but it may not know:
+### The Problem:
+- Long educational and technical YouTube videos (1–3 hours) are difficult to navigate for specific answers.
+- Manually scrubbing through video timelines is slow and tedious.
+- Standard LLMs cannot answer questions about specific private or newly uploaded video content without hallucinations or context loss.
 
-- Private documents
-- Company data
-- Newly created information
-- A specific YouTube video's content
-- Internal databases
-
-Without RAG:
-
-```
-Question → LLM → Answer
-```
-
-The model may rely on its existing knowledge.
-
-With RAG:
-
-```
-Question
-   ↓
-Search knowledge base
-   ↓
-Relevant information
-   ↓
-Question + Context
-   ↓
-LLM
-   ↓
-Answer
-```
-
-### Key idea
-
-> **RAG does not retrain the model. It gives the model relevant information at inference time.**
-> 
+### The Solution:
+**Video-Mind AI** allows users to input any YouTube URL, automatically indexes the video's transcript into semantic vector space, and allows users to ask questions, receiving **grounded answers paired with exact YouTube timestamp source citations**.
 
 ---
 
-# 3. Complete RAG Architecture
+## 2. What is RAG?
+
+**RAG (Retrieval-Augmented Generation)** connects an external dynamic knowledge base to an LLM:
 
 ```
-
-┌──────────────────────────────────────────────────────────────────────┐
-│                         INDEXING PHASE                               │
-│                                                                      │
-│            YouTube → Transcript → Chunks → Embeddings → FAISS        │
-│                                                                      │
-└──────────────────────────────────┬───────────────────────────────────┘
-                                   │
-                                   │ Stored Knowledge
-                                   ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                         QUERY PHASE                                  │
-│                                                                      │
-│ Question → Query Embedding → FAISS Search → Relevant Chunks          │
-│                                              │                       │
-│                                              ▼                       │
-│                                    Question + Context                │
-│                                              │                       │
-│                                              ▼                       │
-│                                       Gemini 2.5 Flash               │
-│                                              │                       │
-│                                              ▼                       │
-│                                   Grounded Answer + Sources          │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
+User Query ──▶ 1. Semantic Search (FAISS) ──▶ 2. Retrieve Relevant Chunks ──▶ 3. Prompt + Chunks (Gemini) ──▶ 4. Grounded Answer
 ```
 
-## Remember
+### Why RAG over Vanilla LLMs?
+- **Zero Retraining Required**: Instantly understands brand-new videos.
+- **Drastically Reduced Hallucinations**: Constrained by strict context grounding prompts.
+- **Verifiable Citations**: Every answer links back to specific video timestamps.
 
-```
-INDEXING                         QUERYING
+---
 
-Documents                        Question
-   ↓                                ↓
-Chunks                         Query Embedding
-   ↓                                ↓
-Embeddings                         FAISS
-   ↓                                ↓
-FAISS                        Relevant Chunks
-                                    ↓
-                             Context + Question
-                                    ↓
-                                   LLM
-                                    ↓
-                                  Answer
+## 3. End-to-End System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Ingestion [1. Video Ingestion Pipeline]
+        URL[YouTube Video URL] --> Fetch[YouTube Transcript API]
+        Fetch --> Split[Recursive Character Text Splitter: 1200 / 250]
+        Split --> Embed[HuggingFace MiniLM Embeddings: 384-dim]
+        Embed --> FAISS[(Local FAISS Vector Index)]
+    end
+
+    subgraph QueryPipeline [2. User Query Pipeline]
+        Query[User Question] --> QEmbed[Generate Query Embedding]
+        QEmbed --> SimSearch[FAISS Cosine / L2 Similarity Search]
+        FAISS -->|Retrieve Top 6 Chunks| SimSearch
+        SimSearch --> Context[Relevant Context + Video Timestamps]
+        Context --> Prompt[Augmented Grounding Prompt]
+        Query --> Prompt
+        Prompt --> LLM[Gemini 2.5 Flash]
+        LLM --> UI[Grounded Answer + Clickable Timestamps]
+    end
 ```
 
 ---
 
-# 4. Phase 1 — Indexing Pipeline
+## 4. The Ingestion Pipeline
 
-Indexing prepares the knowledge base **before the user asks questions**.
+When a user submits a YouTube URL:
 
-## Step 1: Load Data
+1. **Transcript Extraction**: Fetches timed text segments using `youtube-transcript-api`.
+2. **Text Chunking**:
+   - **Chunk Size**: `1200` characters ($\approx 200-250$ words).
+   - **Chunk Overlap**: `250` characters (Preserves semantic context across sentence boundaries).
+3. **Vector Embeddings**:
+   - Model: **`sentence-transformers/all-MiniLM-L6-v2`** (HuggingFace).
+   - Output: Converts each chunk into a **384-dimensional dense vector**.
+4. **Vector Storage**: Indexes vectors inside **FAISS** (Facebook AI Similarity Search) and persists to local disk.
 
-For Video-Mind AI:
-
-```
-YouTube Video
-      ↓
-YouTube Transcript
-```
-
-Example:
-
-```
-00:00 → "If you've started learning AI..."
-00:03 → "you've probably heard of LangChain..."
-00:07 → "So, what exactly is LangChain?"
-```
+> [!TIP]
+> **Cost Optimization**: Ingestion uses local HuggingFace embeddings and FAISS index creation. **Gemini API is NOT called during video loading**, ensuring zero LLM API cost during ingestion!
 
 ---
 
-## Step 2: Chunking
+## 5. The Retrieval & Generation Pipeline
 
-A complete transcript can be very large, so we divide it into smaller meaningful pieces.
+When a user asks a question (e.g., *"How does indexing work in this video?"*):
 
-Video-Mind AI:
-
-```
-Chunk size ≈ 1200 characters
-Overlap ≈ 250 characters
-```
-
-```
-Transcript
-────────────────────────────────────
-
-Chunk 1
-████████████████████████
-
-             overlap
-             █████
-
-             Chunk 2
-             ███████████████████████
-
-                          overlap
-                          █████
-
-                          Chunk 3
-                          ███████████████████
+```mermaid
+sequenceDiagram
+    autonumber
+    Client->>FastAPI: POST /ask { "question": "...", "videoId": "..." }
+    FastAPI->>FAISS: Search top_k = 6 nearest vector neighbors
+    FAISS-->>FastAPI: Return 6 most semantically relevant chunks with timestamps
+    FastAPI->>FastAPI: Assemble Grounded Prompt (Question + Context)
+    FastAPI->>Gemini: Call Gemini 2.5 Flash API
+    Gemini-->>FastAPI: Return Grounded Natural Language Response
+    FastAPI-->>Client: 200 OK { answer, top_3_sources: [{text, timestamp}] }
 ```
 
-### Why overlap?
+### The Grounding Prompt Template:
+```text
+You are an expert AI assistant answering questions about a YouTube video.
+Answer the user's question STRICTLY based on the provided transcript context below.
+If the answer cannot be found in the context, state "I cannot find this in the video transcript."
+Do NOT make up facts or extrapolate outside the context.
 
-Important sentences may lie near chunk boundaries.
-
-Overlap keeps some surrounding context in the next chunk.
-
-### Interview answer
-
-> **Chunking divides large documents into smaller retrievable units, while overlap helps preserve context across chunk boundaries.**
-> 
-
----
-
-# 5. Step 3 — Embeddings
-
-An embedding converts text into a numerical vector representing its semantic meaning.
-
-```
-"What is LangChain?"
-        ↓
-Embedding Model
-        ↓
-[0.12, -0.42, 0.73, ...]
-```
-
-Video-Mind AI uses:
-
-```
-sentence-transformers/all-MiniLM-L6-v2
-```
-
-### Why embeddings?
-
-Because we want **semantic search**, not just keyword matching.
-
-For example:
-
-```
-"What is LangChain?"
-        ↕
-"Explain the LangChain framework"
-```
-
-Different words, similar meaning → similar vectors.
-
-### Remember
-
-> **Embedding = Text → Vector representing semantic meaning**
-> 
-
----
-
-# 6. Step 4 — Vector Database / FAISS
-
-The embeddings are stored in **FAISS**.
-
-**FAISS = Facebook AI Similarity Search**
-
-```
-Chunks
-   ↓
-Embeddings
-   ↓
-FAISS
-```
-
-FAISS allows us to efficiently find vectors similar to a query vector.
-
-### Video-Mind AI
-
-FAISS indexes are persisted locally:
-
-```
-faiss_indexes/
-│
-├── VIDEO_ID_1/
-│   ├── index.faiss
-│   └── index.pkl
-│
-└── VIDEO_ID_2/
-    ├── index.faiss
-    └── index.pkl
-```
-
-This means we don't need to recreate the embeddings every time the same video is loaded.
-
-### Interview answer
-
-> **I used FAISS because it provides efficient local vector similarity search and is lightweight for a portfolio-scale RAG application.**
-> 
-
----
-
-# 7. Phase 2 — Query Pipeline
-
-Now the user asks:
-
-> **What is LangChain?**
-> 
-
-The system performs:
-
-```
-Question
-   ↓
-FAISS similarity search
-   ↓
-Top relevant chunks
-   ↓
-Context
-   ↓
-Gemini
-   ↓
-Answer
-```
-
----
-
-# 8. Step 5 — Retrieval
-
-Video-Mind AI retrieves:
-
-```
-Top K = 6 chunks
-```
-
-Conceptually:
-
-```
-"What is LangChain?"
-        ↓
-     FAISS
-        ↓
- ┌───────────────┐
- │ Chunk 1 ⭐⭐⭐⭐⭐│
- │ Chunk 2 ⭐⭐⭐⭐ │
- │ Chunk 3 ⭐⭐⭐⭐ │
- │ Chunk 4 ⭐⭐⭐  │
- │ Chunk 5 ⭐⭐⭐  │
- │ Chunk 6 ⭐⭐⭐  │
- └───────────────┘
-```
-
-The chunks are selected based on semantic similarity.
-
-### Important distinction
-
-**Retrieval ≠ Generation**
-
-```
-FAISS
- ↓
-Find relevant information
-```
-
-```
-Gemini
- ↓
-Generate an answer using that information
-```
-
----
-
-# 9. Step 6 — Augmentation
-
-The retrieved chunks are added to the question as context.
-
-```
-Question
-   +
-Retrieved Chunks
-   ↓
-Augmented Prompt
-```
-
-Example:
-
-```
 Context:
-[01:03]
-LangChain is an open-source framework...
+{retrieved_chunks_with_timestamps}
 
-[02:57]
-LangChain provides components for RAG...
-
-Question:
-What is LangChain?
-```
-
-This is where the **"Augmented"** in RAG comes from.
-
----
-
-# 10. Step 7 — Generation
-
-The augmented prompt is sent to:
-
-**Gemini 2.5 Flash**
-
-```
-Question + Retrieved Context
-              ↓
-         Gemini 2.5 Flash
-              ↓
-          Final Answer
-```
-
-Gemini's job is **not to search the transcript**.
-
-Its job is to:
-
-> Use the retrieved context to formulate a useful natural-language answer.
-> 
-
----
-
-# 11. Grounding
-
-Video-Mind AI uses a grounding instruction:
-
-```
-Answer ONLY using the provided transcript context.
-
-Do not use outside knowledge.
-Do not invent information.
-```
-
-Therefore:
-
-```
-Question
-   ↓
-Retrieved Context
-   ↓
-Gemini
-   ↓
-Grounded Answer
-```
-
-If the information isn't available:
-
-```
-"I could not find the answer in the transcript."
-```
-
-### Why?
-
-To reduce hallucination.
-
-### Important
-
-RAG **does not completely eliminate hallucinations**.
-
-It helps by giving the model relevant evidence and instructing it to stay within that evidence.
-
----
-
-# 12. Timestamped Sources
-
-Each transcript chunk stores metadata:
-
-```
-video_id
-start
-duration
-```
-
-Example:
-
-```
-{
-  "video_id":"VIDEO_ID",
-  "start":63.72,
-  "duration":20.4
-}
-```
-
-Therefore the application can generate:
-
-```
-📍 01:03
-
-"LangChain is an open-source framework..."
-
-Watch at timestamp
-```
-
-### Flow
-
-```
-Retrieved Chunk
-      ↓
-Metadata
-      ↓
-Start Timestamp
-      ↓
-YouTube URL
-      ↓
-Frontend Source
-```
-
-Video-Mind AI returns only the **top 3 short sources** to the UI, while the full retrieved chunks are used as Gemini context.
-
----
-
-# 13. Summary & Key Takeaways
-
-These are **on-demand features**.
-
-They are not generated when the video is loaded.
-
-### Summary
-
-```
-Click Summary
-      ↓
-FAISS Retrieval
-      ↓
-Relevant Context
-      ↓
-Gemini
-      ↓
-Summary
-```
-
-### Key Takeaways
-
-```
-Click Key Takeaways
-      ↓
-FAISS Retrieval
-      ↓
-Relevant Context
-      ↓
-Gemini
-      ↓
-5–7 Takeaways
-```
-
-### Important design decision
-
-```
-Load Video
-   ↓
-Transcript + FAISS
-   ↓
-NO Gemini
-```
-
-Gemini is only called when the user actually needs generation.
-
----
-
-# 14. Video-Mind AI — Complete Workflow
-
-```
-                 ┌─────────────────┐
-                 │   YouTube URL   │
-                 └────────┬────────┘
-                          ↓
-                     Transcript
-                          ↓
-                      Chunking
-                    1200 / 250
-                          ↓
-                    Embeddings
-                          ↓
-                       FAISS
-                          ↓
-                  Save Local Index
-                          │
-══════════════════════════╪══════════════════════════
-                          │
-                    USER QUESTION
-                          ↓
-                  FAISS Similarity
-                       Search
-                          ↓
-                    Top 6 Chunks
-                          ↓
-                 Retrieved Context
-                          ↓
-                Question + Context
-                          ↓
-                  Gemini 2.5 Flash
-                          ↓
-                  Grounded Answer
-                          │
-                    ┌─────┴─────┐
-                    ↓           ↓
-                 Answer     Top 3 Sources
-                                ↓
-                         YouTube Timestamp
+Question: {user_question}
 ```
 
 ---
 
-# 15. Video-Mind AI Tech Stack
+## 6. Summary & Key Takeaways Generation
 
-| Component | Technology | Role |
-| --- | --- | --- |
-| Frontend | React | UI |
-| Backend | FastAPI | REST API |
-| Transcript | YouTube Transcript API | Extract transcript |
-| RAG Framework | LangChain | RAG components |
-| Embeddings | HuggingFace MiniLM | Text → vectors |
-| Vector Store | FAISS | Similarity search |
-| LLM | Gemini 2.5 Flash | Generation |
-| Storage | Local filesystem | FAISS persistence |
+In addition to open-ended Q&A, the platform provides:
+
+- **Executive Summary**: Calls Gemini with full or aggregated high-relevance chunks to generate a structured 3-paragraph executive overview.
+- **Key Takeaways**: Prompts Gemini to synthesize 5–7 actionable bullet points from retrieved core topics.
 
 ---
 
-# 16. Why Each Component?
+## 7. Tech Stack & Architectural Justifications
 
-### Why LangChain?
-
-Provides reusable components for:
-
-- Document processing
-- Chunking
-- Embeddings
-- Retrievers
-- Prompt templates
-- LLM integration
-
-### Why HuggingFace Embeddings?
-
-Converts transcript chunks and queries into semantic vectors.
-
-### Why FAISS?
-
-Fast, local, simple vector similarity search.
-
-### Why Gemini?
-
-Generates natural-language responses from retrieved transcript context.
-
-### Why FastAPI?
-
-Provides a lightweight backend API connecting React with the RAG pipeline.
-
-### Why React?
-
-Provides the interactive interface for:
-
-- Loading videos
-- Asking questions
-- Viewing answers
-- Viewing sources
-- Generating summaries
-- Generating takeaways
+| Component | Technology | Why Chosen? |
+| :--- | :--- | :--- |
+| **Frontend** | React + TypeScript + Tailwind | Clean interactive UI with video player and chat interface. |
+| **Backend** | Python + FastAPI | High-performance async REST API; native support for ML libraries. |
+| **RAG Orchestration**| LangChain | Industry standard abstractions for chunking, prompt templates, and vector stores. |
+| **Embedding Model** | HuggingFace `all-MiniLM-L6-v2` | Lightweight, fast CPU inference, high semantic accuracy (384 dimensions). |
+| **Vector Database** | FAISS | In-memory, ultra-fast vector similarity search without heavy cloud DB overhead. |
+| **LLM Engine** | Gemini 2.5 Flash | High speed, large context window, cost-effective reasoning and instruction following. |
 
 ---
 
-# 17. RAG vs Traditional LLM
+## 8. RAG vs. Traditional LLM vs. Fine-Tuning
 
-| Traditional LLM | RAG |
-| --- | --- |
-| Question → LLM | Question → Retrieval → LLM |
-| Uses model knowledge | Uses external knowledge + model |
-| Harder to use private data | Designed for external/private data |
-| May hallucinate | Retrieval provides supporting context |
-| No retrieval step | Has retrieval step |
+```mermaid
+mindmap
+  root((LLM Approaches))
+    Traditional LLM
+      General Knowledge
+      Static Training Cutoff
+      Hallucination Risk on Private Data
+    RAG (This Project)
+      Dynamic Knowledge Ingestion
+      Zero Retraining Cost
+      Source Attribution & Citations
+      Controlled Grounding
+    Fine-Tuning
+      Changes Model Weights
+      Teaches Tone / Style / Format
+      Expensive & Cannot Easily Remove Data
+```
+
+> **Interview Distinction**:  
+> *"RAG changes the **context and knowledge** provided to the model at inference time. Fine-tuning changes the **model's internal weights** through retraining."*
 
 ---
 
-# 18. RAG vs Fine-Tuning
+## 9. Key Challenges & Production Considerations
 
-### RAG
+### 1. Chunk Size Tuning
+- *Too Small ($< 300$ chars)*: Loss of complete semantic ideas.
+- *Too Large ($> 3000$ chars)*: Irrelevant context dilutes similarity search and fills LLM token budget.
+- *Optimal Sweet Spot*: **1200 characters with 250 overlap**.
 
-```
-External Knowledge
-       ↓
-Retrieval
-       ↓
-LLM
-```
+### 2. Video Language & Audio-only Transcripts
+- Handled videos with native subtitles; for audio-only videos, the production roadmap would integrate **OpenAI Whisper** for local speech-to-text.
 
-Use when:
-
-- Knowledge changes frequently
-- You need private documents
-- You want citations/sources
-- You don't want to retrain the model
-
-### Fine-tuning
-
-```
-Training Data
-      ↓
-Model Training
-      ↓
-Modified Model
-```
-
-Use when you want to change things like:
-
-- Model behavior
-- Style
-- Output format
-- Task-specific behavior
-
-### Key difference
-
-> **RAG changes the information available to the model at inference time. Fine-tuning changes the model itself.**
-> 
+### 3. Production Scaling Roadmap:
+- Replace local FAISS file storage with a distributed vector DB (**Pinecone / Qdrant / Milvus**) for multi-user cloud scale.
+- Add Redis caching for frequently asked video queries.
 
 ---
 
-# 19. Common RAG Problems
+## 10. Interview Preparation, Pitches & Q&A
 
-## 1. Bad Chunking
-
-If chunks are too small:
-
-```
-Not enough context
-```
-
-If chunks are too large:
-
-```
-Irrelevant information
-```
+### 🎙️ 60-Second Elevator Pitch
+> *"Video-Mind AI is an AI-powered video intelligence platform that I built using React, FastAPI, LangChain, FAISS, and Gemini 2.5 Flash.*  
+> *The problem it solves is the inefficiency of manually scrubbing through 1- to 2-hour technical YouTube videos to find specific information. The application extracts the video transcript, splits it into semantically meaningful chunks with overlap, computes 384-dimensional embeddings using HuggingFace MiniLM, and indexes them in FAISS.*  
+> *When a user asks a question, the system retrieves the top-6 most relevant transcript passages using cosine similarity, augments a grounding prompt, and passes it to Gemini 2.5 Flash to generate an accurate answer along with clickable YouTube timestamp citations.*  
+> *This project gave me deep hands-on experience with RAG pipelines, vector search, chunking trade-offs, and prompt engineering."*
 
 ---
 
-## 2. Poor Retrieval
+### 🎯 High-Frequency Interview Questions:
 
-If FAISS retrieves the wrong chunks:
+#### Q1: Why did you use FAISS instead of Pinecone or Milvus?
+> *"FAISS is lightweight, runs in-memory on the local server, and provides ultra-low latency similarity search without external network calls or cloud costs. For a single-user or portfolio scale system, FAISS is optimal. For an enterprise multi-tenant cloud service, I would migrate to Pinecone or Qdrant for horizontal scaling."*
 
-```
-Wrong Context
-     ↓
-LLM
-     ↓
-Poor Answer
-```
+#### Q2: What is the purpose of chunk overlap?
+> *"Chunk overlap (250 characters in this project) ensures that critical sentences or ideas spanning across chunk boundaries are not split in half, preserving semantic continuity during embedding generation."*
 
-**Garbage in → garbage out.**
+#### Q3: Does RAG completely eliminate hallucinations?
+> *"No, but it drastically reduces them. By combining targeted Top-K context retrieval with strict system grounding prompts ('Answer ONLY based on the provided context; if not found, say so'), we constrain the model's output to verifiable facts."*
 
 ---
 
-## 3. Hallucination
-
-Even with RAG, an LLM can generate information that isn't supported by the retrieved context.
-
-Grounding prompts help reduce this.
-
----
-
-## 4. Context Limit
-
-Sending too many chunks to an LLM increases:
-
-- Token usage
-- Cost
-- Latency
-- Irrelevant context
-
-Therefore we retrieve only the most relevant chunks.
-
----
-
-# 20. Important RAG Terms
-
-| Term | Meaning |
-| --- | --- |
-| **Document** | Original knowledge/data |
-| **Chunk** | Smaller piece of a document |
-| **Embedding** | Numerical representation of text |
-| **Vector** | Numerical representation used for similarity |
-| **Vector Store** | Stores/searches embeddings |
-| **Retriever** | Finds relevant chunks |
-| **Context** | Retrieved information given to LLM |
-| **Augmentation** | Adding retrieved context to the query |
-| **Generation** | LLM producing the final response |
-| **Grounding** | Keeping the answer supported by retrieved information |
-| **Top-K** | Number of chunks retrieved |
-
----
-
-# 21. Interview Questions — Quick Revision
-
-### Q1. What is RAG?
-
-> Retrieval-Augmented Generation retrieves relevant information from an external knowledge source and provides it to an LLM as context for generating a grounded answer.
-> 
-
-### Q2. Why use embeddings?
-
-> To represent text semantically as vectors so we can perform similarity search.
-> 
-
-### Q3. Why chunk documents?
-
-> To create manageable and meaningful retrieval units and avoid sending entire documents to the LLM.
-> 
-
-### Q4. Why overlap chunks?
-
-> To preserve context across chunk boundaries.
-> 
-
-### Q5. What does FAISS do?
-
-> It performs efficient similarity search over vector embeddings.
-> 
-
-### Q6. Does FAISS generate answers?
-
-> No. FAISS retrieves relevant information. The LLM generates the answer.
-> 
-
-### Q7. What does Gemini do in this project?
-
-> Gemini receives the user's question and retrieved transcript context and generates a grounded response.
-> 
-
-### Q8. Why not send the entire transcript to Gemini?
-
-> It can be too large, expensive, slow, and contain irrelevant information. Retrieval provides only the relevant context.
-> 
-
-### Q9. Does RAG eliminate hallucinations?
-
-> No. It reduces hallucination risk by providing relevant context and grounding instructions, but it cannot guarantee zero hallucinations.
-> 
-
-### Q10. RAG vs fine-tuning?
-
-> RAG provides external knowledge at inference time, while fine-tuning modifies the model through additional training.
-> 
-
-### Q11. What is Top-K retrieval?
-
-> It means retrieving the K most relevant chunks for a query. This project currently retrieves the top 6 chunks for Q&A.
-> 
-
-### Q12. Why FAISS instead of a cloud vector database?
-
-> FAISS is lightweight, local, fast, and sufficient for this portfolio-scale project without requiring additional infrastructure.
-> 
-
----
-
-# 22. ⭐ The One Diagram to Memorize
-
-If you have only **30 seconds before an interview**, remember this:
-
-```
-        DOCUMENTS
-            ↓
-         CHUNKING
-            ↓
-        EMBEDDINGS
-            ↓
-          FAISS
-            │
-            │
-        USER QUERY
-            ↓
-      SIMILARITY SEARCH
-            ↓
-      RELEVANT CHUNKS
-            ↓
-    QUESTION + CONTEXT
-            ↓
-           LLM
-            ↓
-         ANSWER
-```
-
-### And say:
-
-> **"First, I split the source data into chunks and convert those chunks into embeddings, which I store in FAISS. When the user asks a question, I retrieve the most semantically relevant chunks, combine them with the question as context, and send that augmented prompt to the LLM. The LLM then generates a grounded answer based on the retrieved information."**
->
+### 💡 30-Second Mental Diagram to Memorize:
+$$\text{Transcript} \longrightarrow \text{Chunking (1200/250)} \longrightarrow \text{Embeddings (MiniLM)} \longrightarrow \text{FAISS}$$
+$$\text{Query} \longrightarrow \text{Top-6 Chunks Retrieval} \longrightarrow \text{Prompt + Context} \longrightarrow \text{Gemini 2.5 Flash} \longrightarrow \text{Answer + Timestamps}$$
