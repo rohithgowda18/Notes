@@ -1,708 +1,203 @@
-# Java Streams
+﻿# 🌊 Java 8+ Stream API — Master Placement Guide
 
-# Java 8 Stream API
-
----
-
-## What is Stream API?
-
-The **Stream API**, introduced in **Java 8**, provides a clean and functional way to process data from collections.
-
-A stream does **not store data**. It processes elements from a source using a sequence of operations.
-
-### Basic Example
-
-```java
-List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
-
-numbers.stream()
-       .filter(n -> n % 2 == 0)
-       .forEach(System.out::println);
-```
-
-**Output:**
-
-```
-2
-4
-```
+> **Core Philosophy**: A **Stream** is a sequence of elements supporting sequential and parallel aggregate operations. 
+> Streams do **not store data** (unlike Collections)—they provide a functional, declarative pipeline to process, transform, and filter data with **lazy evaluation** and **short-circuit optimization**.
 
 ---
 
-## Why Use Streams?
-
-Streams can make collection processing:
-
-- More concise
-- Easier to read
-- Easier to combine into pipelines
-- Suitable for functional-style programming
-- Capable of parallel processing when appropriate
-
-> Streams are not automatically better than loops. Use whichever makes the code clearer and more appropriate.
-> 
+## 📑 Table of Contents
+1. [Collections vs. Streams](#1-collections-vs-streams)
+2. [Functional Interfaces Primer (`Predicate`, `Function`, `Consumer`, `Supplier`)](#2-functional-interfaces-primer)
+3. [The Stream Pipeline Architecture](#3-the-stream-pipeline-architecture)
+4. [Intermediate Operations (Lazy)](#4-intermediate-operations-lazy)
+5. [Terminal Operations (Eager Execution)](#5-terminal-operations-eager-execution)
+6. [Advanced Collectors (`groupingBy`, `partitioningBy`, `toMap`, `joining`)](#6-advanced-collectors)
+7. [Parallel Streams & The ForkJoinPool](#7-parallel-streams--the-forkjoinpool)
+8. [High-Frequency Placement Coding Patterns with Streams](#8-high-frequency-placement-coding-patterns)
 
 ---
 
-# Stream Pipeline
+## 1. Collections vs. Streams
 
-A stream usually has three parts.
+| Feature | Java Collection (List, Set, Map) | Java 8+ Stream |
+| :--- | :--- | :--- |
+| **Data Storage** | Stores physical data elements in memory | **Does not store data**; operates on a source |
+| **Modification** | Can add/remove elements | Does not modify the underlying data source |
+| **Iteration** | **External Iteration** (for-each loops) | **Internal Iteration** (JVM optimizes traversal) |
+| **Execution** | Eagerly evaluated | **Lazily evaluated** (Computed only when terminal op called) |
+| **Reusability** | Traversed multiple times | **Single-use only** (Throws `IllegalStateException` if reused) |
 
-### 1. Source
+---
 
-The data from which the stream is created.
+## 2. Functional Interfaces Primer
 
-```java
-List<Integer> numbers = Arrays.asList(1, 2, 3, 4, 5);
+Streams rely on standard `@FunctionalInterface` contracts from `java.util.function`:
 
-Stream<Integer> stream = numbers.stream();
+| Functional Interface | Signature | Lambda Example | Stream Method Usage |
+| :--- | :--- | :--- | :--- |
+| **`Predicate<T>`** | `T -> boolean` | `x -> x > 10` | `.filter(Predicate)` |
+| **`Function<T, R>`** | `T -> R` | `user -> user.getName()` | `.map(Function)` |
+| **`Consumer<T>`** | `T -> void` | `x -> System.out.println(x)` | `.forEach(Consumer)` |
+| **`Supplier<T>`** | `() -> T` | `() -> new ArrayList<>()` | `Stream.generate(Supplier)` |
+| **`BinaryOperator<T>`** | `(T, T) -> T` | `(a, b) -> a + b` | `.reduce(BinaryOperator)` |
+
+---
+
+## 3. The Stream Pipeline Architecture
+
+A stream pipeline consists of three distinct phases:
+
+```mermaid
+flowchart LR
+    Source[1. Source: List, Array, I/O Channel] --> Inter[2. Intermediate Ops: filter, map, sorted (Lazy)]
+    Inter --> Term[3. Terminal Op: collect, reduce, count (Executes Pipeline)]
 ```
 
-### 2. Intermediate Operations
+> [!IMPORTANT]
+> **Lazy Evaluation**: Intermediate operations are **never executed** until a terminal operation is invoked. If no terminal operation is present, zero iterations occur!
 
-Transform or filter data.
+---
 
-Examples:
+## 4. Intermediate Operations (Lazy)
 
+Intermediate operations return a new `Stream<T>` and can be chained:
+
+### Core Methods:
+- `.filter(Predicate<T>)`: Keeps only elements matching condition.
+- `.map(Function<T, R>)`: Transforms element $T \rightarrow R$ (1-to-1 mapping).
+- `.flatMap(Function<T, Stream<R>>)`: Flattens nested streams/lists (1-to-N mapping into single stream).
+- `.distinct()`: Filters duplicates using `equals()` and `hashCode()`.
+- `.sorted()` / `.sorted(Comparator<T>)`: Sorts elements in natural or custom order.
+- `.limit(long n)`: Short-circuit truncation to first $n$ elements.
+- `.skip(long n)`: Discards first $n$ elements.
+- `.peek(Consumer<T>)`: Non-intrusive debug inspection.
+
+### `map` vs `flatMap` Example:
 ```java
-filter()
-map()
-sorted()
-distinct()
-limit()
-flatMap()
-```
+List<List<String>> nested = List.of(List.of("A", "B"), List.of("C", "D"));
 
-These operations are **lazy**.
-
-### 3. Terminal Operation
-
-Produces the final result and starts stream processing.
-
-Examples:
-
-```java
-forEach()
-collect()
-count()
-findFirst()
-reduce()
+// map returns Stream<List<String>>
+// flatMap flattens into Stream<String>
+List<String> flatList = nested.stream()
+    .flatMap(Collection::stream)
+    .toList(); // ["A", "B", "C", "D"]
 ```
 
 ---
 
-# Intermediate Operations
+## 5. Terminal Operations (Eager)
 
-## `filter()`
+Terminal operations trigger the stream computation and produce a non-stream result (List, int, Object, or void).
 
-Selects elements based on a condition.
+### A. Reductions & Aggregations:
+```java
+// Reduce: Sum of elements
+int sum = numbers.stream().reduce(0, (a, b) -> a + b);
+
+// Min / Max with Comparator
+Optional<Employee> maxSalaryEmp = employees.stream()
+    .max(Comparator.comparingDouble(Employee::getSalary));
+```
+
+### B. Short-Circuit Matching:
+- `.anyMatch(Predicate)`: Returns `true` if **at least 1** matches (Stops evaluating immediately).
+- `.allMatch(Predicate)`: Returns `true` if **all** match.
+- `.noneMatch(Predicate)`: Returns `true` if **none** match.
+- `.findFirst()`: Returns `Optional<T>` containing first element.
+- `.findAny()`: Returns `Optional<T>` (optimized for parallel streams).
+
+---
+
+## 6. Advanced Collectors
+
+The `.collect(Collectors.xxx)` method is the most versatile terminal operation.
+
+### A. Grouping By (Simulating SQL `GROUP BY`):
+```java
+// Group employees by department
+Map<String, List<Employee>> byDept = employees.stream()
+    .collect(Collectors.groupingBy(Employee::getDepartment));
+
+// Count employees per department (GROUP BY dept, COUNT(*))
+Map<String, Long> countByDept = employees.stream()
+    .collect(Collectors.groupingBy(Employee::getDepartment, Collectors.counting()));
+
+// Average salary per department
+Map<String, Double> avgSalaryByDept = employees.stream()
+    .collect(Collectors.groupingBy(
+        Employee::getDepartment, 
+        Collectors.averagingDouble(Employee::getSalary)
+    ));
+```
+
+### B. Partitioning By (Splitting into 2 Boolean Groups):
+```java
+// Partition students into Passed (>= 40) vs Failed (< 40)
+Map<Boolean, List<Student>> passedVsFailed = students.stream()
+    .collect(Collectors.partitioningBy(s -> s.getMarks() >= 40));
+```
+
+### C. String Joining:
+```java
+String names = employees.stream()
+    .map(Employee::getName)
+    .collect(Collectors.joining(", ", "[", "]")); // "[Alice, Bob, Charlie]"
+```
+
+---
+
+## 7. Parallel Streams & The ForkJoinPool
+
+Parallel streams split data across multiple threads using the common `ForkJoinPool.commonPool()`:
 
 ```java
-List<Integer> evenNumbers = numbers.stream()
-    .filter(n -> n % 2 == 0)
+list.parallelStream()
+    .filter(expensivePredicate)
     .collect(Collectors.toList());
 ```
 
-**Result:**
-
-```
-[2, 4]
-```
-
-`filter()` uses a `Predicate<T>`:
-
-```
-true  → keep element
-false → discard element
-```
+> [!WARNING]
+> **When NOT to use Parallel Streams**:
+> - Small datasets (thread coordination overhead > sequential processing).
+> - Operations with shared mutable state or blocking I/O calls (can exhaust common ForkJoinPool).
+> - Operations sensitive to element order.
 
 ---
 
-## `map()`
+## 8. High-Frequency Placement Coding Patterns
 
-Transforms every element.
-
+### Pattern 1: Find 2nd Highest Number in an Array
 ```java
-List<Integer> squares = numbers.stream()
-    .map(n -> n * n)
-    .collect(Collectors.toList());
+List<Integer> numbers = List.of(10, 50, 30, 90, 90, 70);
+
+Integer secondHighest = numbers.stream()
+    .distinct()
+    .sorted(Comparator.reverseOrder())
+    .skip(1)
+    .findFirst()
+    .orElseThrow(); // 70
 ```
 
-**Result:**
-
-```
-[1, 4, 9, 16, 25]
-```
-
-Common uses:
-
-- Convert objects
-- Extract fields
-- Perform calculations
-- Change values
-
----
-
-## `sorted()`
-
-Sorts elements.
-
+### Pattern 2: Count Frequency of Each Character in a String
 ```java
-numbers.stream()
-       .sorted()
-       .forEach(System.out::println);
+String input = "banana";
+
+Map<Character, Long> charCount = input.chars()
+    .mapToObj(c -> (char) c)
+    .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+// {b=1, a=3, n=2}
 ```
 
-Reverse order:
-
+### Pattern 3: Find First Non-Repeating Character
 ```java
-numbers.stream()
-       .sorted(Comparator.reverseOrder())
-       .forEach(System.out::println);
+String str = "swiss";
+
+Character firstNonRepeat = str.chars()
+    .mapToObj(c -> (char) c)
+    .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()))
+    .entrySet().stream()
+    .filter(entry -> entry.getValue() == 1L)
+    .map(Map.Entry::getKey)
+    .findFirst()
+    .orElse(null); // 'w'
 ```
-
----
-
-## `distinct()`
-
-Removes duplicates.
-
-```java
-List<Integer> numbers = Arrays.asList(1, 2, 2, 3, 3, 4);
-
-numbers.stream()
-       .distinct()
-       .forEach(System.out::println);
-```
-
-**Output:**
-
-```
-1
-2
-3
-4
-```
-
----
-
-## `limit()`
-
-Limits the number of elements.
-
-```java
-numbers.stream()
-       .limit(3)
-       .forEach(System.out::println);
-```
-
-Only the first three elements are processed.
-
----
-
-## `flatMap()`
-
-Used to flatten nested collections.
-
-```java
-List<List<Integer>> list = Arrays.asList(
-    Arrays.asList(1, 2),
-    Arrays.asList(3, 4)
-);
-
-list.stream()
-    .flatMap(List::stream)
-    .forEach(System.out::println);
-```
-
-**Output:**
-
-```
-1
-2
-3
-4
-```
-
-Think of it as:
-
-```
-map + flatten
-```
-
----
-
-# Terminal Operations
-
-## `forEach()`
-
-Processes every element.
-
-```java
-numbers.stream()
-       .forEach(System.out::println);
-```
-
----
-
-## `collect()`
-
-Collects results into a collection.
-
-```java
-List<Integer> result = numbers.stream()
-    .filter(n -> n > 2)
-    .collect(Collectors.toList());
-```
-
-**Result:**
-
-```
-[3, 4, 5]
-```
-
-Common collectors:
-
-```java
-Collectors.toList()
-Collectors.toSet()
-Collectors.joining()
-Collectors.groupingBy()
-```
-
----
-
-## `count()`
-
-Counts elements.
-
-```java
-long count = numbers.stream()
-    .filter(n -> n % 2 == 0)
-    .count();
-```
-
-**Result:**
-
-```
-2
-```
-
----
-
-## `findFirst()`
-
-Finds the first matching element.
-
-```java
-Optional<Integer> result = numbers.stream()
-    .filter(n -> n > 3)
-    .findFirst();
-```
-
-**Result:** `4`
-
-Because a match may not exist, the result is an `Optional`.
-
----
-
-## `reduce()`
-
-Combines elements into one value.
-
-```java
-int sum = numbers.stream()
-    .reduce(0, (a, b) -> a + b);
-```
-
-**Result:**
-
-```
-15
-```
-
-Shorter version:
-
-```java
-int sum = numbers.stream()
-    .reduce(0, Integer::sum);
-```
-
----
-
-# Common Stream Methods
-
-| Method | Type | Purpose |
-| --- | --- | --- |
-| `filter()` | Intermediate | Select elements |
-| `map()` | Intermediate | Transform elements |
-| `flatMap()` | Intermediate | Flatten nested data |
-| `sorted()` | Intermediate | Sort elements |
-| `distinct()` | Intermediate | Remove duplicates |
-| `limit()` | Intermediate | Limit elements |
-| `forEach()` | Terminal | Process elements |
-| `collect()` | Terminal | Collect results |
-| `count()` | Terminal | Count elements |
-| `findFirst()` | Terminal | Find first match |
-| `reduce()` | Terminal | Combine elements |
-
----
-
-# Combining Operations
-
-The main strength of streams is chaining operations.
-
-```java
-List<Integer> result = numbers.stream()
-    .filter(n -> n % 2 == 0)
-    .map(n -> n * n)
-    .sorted()
-    .collect(Collectors.toList());
-```
-
-For:
-
-```
-[5, 2, 4, 1, 3]
-```
-
-the result is:
-
-```
-[4, 16]
-```
-
-Pipeline:
-
-```
-numbers
-   ↓
-filter()
-   ↓
-map()
-   ↓
-sorted()
-   ↓
-collect()
-   ↓
-result
-```
-
----
-
-# Stream API with Strings
-
-Streams are useful for searching and filtering strings.
-
-```java
-List<String> names = Arrays.asList("Ram", "Shyam", "Amit");
-
-names.stream()
-     .filter(name -> name.startsWith("A"))
-     .forEach(System.out::println);
-```
-
-**Output:**
-
-```
-Amit
-```
-
----
-
-# Stream vs Traditional Loop
-
-### Traditional
-
-```java
-List<Integer> evenNumbers = new ArrayList<>();
-
-for (Integer number : numbers) {
-    if (number % 2 == 0) {
-        evenNumbers.add(number);
-    }
-}
-```
-
-### Stream
-
-```java
-List<Integer> evenNumbers = numbers.stream()
-    .filter(n -> n % 2 == 0)
-    .collect(Collectors.toList());
-```
-
----
-
-# Parallel Streams
-
-Java supports parallel processing with:
-
-```java
-numbers.parallelStream()
-       .forEach(System.out::println);
-```
-
-Parallel streams can use multiple CPU cores.
-
-### Important
-
-Parallel streams are **not always faster**.
-
-Consider:
-
-- Dataset size
-- Operation complexity
-- CPU availability
-- Thread safety
-- Ordering requirements
-
-With `parallelStream()`, `forEach()` does not guarantee encounter order.
-
-If order matters:
-
-```java
-numbers.parallelStream()
-       .forEachOrdered(System.out::println);
-```
-
-Avoid modifying shared mutable data inside parallel stream operations.
-
----
-
-# Advantages
-
-- Less boilerplate
-- Clean and readable pipelines
-- Easy filtering and transformation
-- Functional programming style
-- Optional parallel processing
-
-# Limitations
-
-- Can be harder to debug when pipelines become long
-- Not ideal for every simple operation
-- Streams cannot be reused after a terminal operation
-- May add overhead for small/simple tasks
-- Parallel streams require careful use
-
-### Stream cannot be reused
-
-```java
-Stream<Integer> stream = numbers.stream();
-
-stream.forEach(System.out::println);
-
-// IllegalStateException
-stream.count();
-```
-
-Create a new stream instead:
-
-```java
-numbers.stream().forEach(System.out::println);
-numbers.stream().count();
-```
-
----
-
-# When to Use Streams
-
-Good use cases include:
-
-- Filtering collections
-- Transforming objects
-- Sorting
-- Searching
-- Aggregation
-- Grouping data
-- Building data-processing pipelines
-
-### Example
-
-```java
-List<Employee> result = employees.stream()
-    .filter(employee -> employee.getSalary() > 50000)
-    .collect(Collectors.toList());
-```
-
----
-
-# When NOT to Use Streams
-
-A traditional loop may be clearer when:
-
-- Logic is very simple
-- You need complex control flow
-- You need `break` or `continue`
-- Mutable state is central to the algorithm
-- A stream makes the code harder to understand
-- Performance profiling shows a loop is more appropriate
-
----
-
-# Real-World Examples
-
-### Filter
-
-```java
-List<User> activeUsers = users.stream()
-    .filter(User::isActive)
-    .collect(Collectors.toList());
-```
-
-### Transform
-
-```java
-List<String> names = users.stream()
-    .map(User::getName)
-    .collect(Collectors.toList());
-```
-
-### Sort
-
-```java
-List<Employee> sortedEmployees = employees.stream()
-    .sorted(Comparator.comparing(Employee::getSalary))
-    .collect(Collectors.toList());
-```
-
-### Sum
-
-```java
-double totalSalary = employees.stream()
-    .mapToDouble(Employee::getSalary)
-    .sum();
-```
-
----
-
-# Quick Revision
-
-### What is Stream API?
-
-A Java 8 feature for processing sequences of data in a functional and declarative way.
-
-### Does a Stream store data?
-
-**No.** It processes data from a source.
-
-### What are intermediate operations?
-
-They return another stream and are lazy.
-
-```java
-filter()
-map()
-sorted()
-distinct()
-limit()
-flatMap()
-```
-
-### What are terminal operations?
-
-They produce a result and trigger execution.
-
-```java
-forEach()
-collect()
-count()
-findFirst()
-reduce()
-```
-
-### Can a Stream be reused?
-
-**No.** A stream is consumed after a terminal operation.
-
-### Is `parallelStream()` always faster?
-
-**No.** It depends on the workload and execution environment.
-
----
-
-## Ways to Create Streams
-
-### 1. From a Collection — `stream()`
-
-Used with `List`, `Set`, etc.
-
-```java
-List<Integer> numbers = Arrays.asList(1,2,3);
-Stream<Integer> stream = numbers.stream();
-```
-
-> **Collection → `stream()`**
-> 
-
----
-
-### 2. From an Array — `Arrays.stream()`
-
-Used for arrays, including primitive arrays.
-
-```java
-int[] numbers = {1,2,3};
-IntStream stream = Arrays.stream(numbers);
-```
-
-> **Array → `Arrays.stream()`**
-> 
-
----
-
-### 3. Using `Stream.of()`
-
-Used to create a stream from individual values.
-
-```java
-Stream<Integer> stream = Stream.of(1,2,3);
-```
-
-> **Individual values → `Stream.of()`**
-> 
-
-⚠️ With a `List`, `Stream.of(list)` creates a stream containing the **List as one element**, so normally use `list.stream()`.
-
----
-
-### 4. Using `Stream.generate()` / `Stream.iterate()`
-
-Used to create generated or potentially infinite streams.
-
-```java
-Stream.iterate(1,n ->n+1)
-			.limit(5)
-			.forEach(System.out::println);
-```
-
-Output:
-
-```
-1
-2
-3
-4
-5
-```
-
-> **Generated sequence → `iterate()` / `generate()`**
-> 
-
-### Quick Memory Trick
-
-```java
-Collection → stream()
-Array      → Arrays.stream()
-Values     → Stream.of()
-Sequence   → iterate() / generate()
-```
-
-# Final Cheat Sheet
-
-> **Remember:**
-> 
-> 
-> **Source → Intermediate Operations → Terminal Operation → Result**
->
