@@ -121,3 +121,4 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
   - Full-stack vehicle verification platform using Java 21, Spring Boot, MongoDB, and React. Covers automated ownership transfer audit trails, derived owner count logic, fraud indicators, and 60-second / 2-minute interview pitch scripts.
 - 🤖 [Video-Mind AI (YT_ChatBot) — RAG YouTube Intelligence](./09-Projects/YT_ChatBot%20-%20RAG%20Video-Mind%20AI%20Revision.md)
   - Retrieval-Augmented Generation (RAG) platform using React, FastAPI, LangChain, HuggingFace MiniLM, FAISS, and Gemini 2.5 Flash. Covers transcript ingestion, vector similarity search, grounded prompt engineering, and timestamped citations.
+
