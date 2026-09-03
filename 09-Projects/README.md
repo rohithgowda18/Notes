@@ -31,6 +31,7 @@ This directory contains deep-dive interview preparation guides for full-stack an
 ---
 
 ### 3. 🧬 [XMARs — Mutation Analysis, Machine Learning & SHAP](./XMARS.md)
+- 🎯 [XMARs Interview Questions & Answers (Cheat Sheet)](./XMARs%20Interview%20Questions%20%26%20Answers.md)
 - **Role**: ML / Mutation Analysis Subsystem Lead (4-Person Team Project)
 - **Stack**: Python, Scikit-Learn, SHAP, Pandas, NumPy, RobustScaler
 - **Core Focus**:
@@ -49,3 +50,4 @@ This directory contains deep-dive interview preparation guides for full-stack an
 - **Task**: What was your specific responsibility and system goal within the team?
 - **Action**: What architecture did you choose? What databases, ML pipelines, and design patterns did you implement?
 - **Result**: What metrics did you achieve (e.g., query latency, test accuracy, throughput, scalability)?
+
