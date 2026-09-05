@@ -1,7 +1,7 @@
 # 🚪 04 — Spring Cloud API Gateway
 
 > **Covers Edge Routing, Filtering & Centralized Edge Security**  
-> Why direct client-to-microservice communication fails, anatomy of **Spring Cloud Gateway**, Route Predicates, Pre/Post Gateway Filters, dynamic discovery routing, and edge cross-cutting concerns.
+> Why direct client-to-microservice communication fails, anatomy of **Spring Cloud Gateway**, Route Predicates, Pre/Post Gateway Filters, dynamic discovery routing, JWT edge validation, Redis Token-Bucket rate limiting, and edge cross-cutting concerns.
 
 ---
 
@@ -11,11 +11,13 @@
 3. [Spring Cloud Gateway Architecture](#3-spring-cloud-gateway-architecture)
 4. [Route Predicates & Filters Explained](#4-route-predicates--filters-explained)
 5. [Configuring Routes: Static vs. Dynamic Discovery](#5-configuring-routes-static-vs-dynamic-discovery)
-6. [Writing Custom Gateway Filters (Pre & Post)](#6-writing-custom-gateway-filters-pre--post)
-7. [Cross-Cutting Concerns at the Edge](#7-cross-cutting-concerns-at-the-edge)
-8. [Anti-Pattern: The Gateway as a Business Dump](#8-anti-pattern-the-gateway-as-a-business-dump)
-9. [Interview Questions & Deep-Dive Answers](#9-interview-questions--deep-dive-answers)
-10. [Core Architectural Summary](#10-core-architectural-summary)
+6. [Writing Custom Gateway Filters (Pre & Post) with Code](#6-writing-custom-gateway-filters-pre--post-with-code)
+7. [JWT Edge Authentication Filter with Code](#7-jwt-edge-authentication-filter-with-code)
+8. [Redis Token Bucket Rate Limiting with Code](#8-redis-token-bucket-rate-limiting-with-code)
+9. [Cross-Cutting Concerns at the Edge](#9-cross-cutting-concerns-at-the-edge)
+10. [Anti-Pattern: The Gateway as a Business Dump](#10-anti-pattern-the-gateway-as-a-business-dump)
+11. [Interview Questions & Deep-Dive Answers](#11-interview-questions--deep-dive-answers)
+12. [Core Architectural Summary](#12-core-architectural-summary)
 
 ---
 
@@ -152,15 +154,15 @@ spring:
 
 ---
 
-## 6. Writing Custom Gateway Filters (Pre & Post)
+## 6. Writing Custom Gateway Filters (Pre & Post) with Code
 
 You can write custom global or route-specific filters using reactive `Mono`:
 
 ```java
 @Component
-public class LoggingAndAuthGlobalFilter implements GlobalFilter, Ordered {
+public class LoggingAndTimingGlobalFilter implements GlobalFilter, Ordered {
 
-    private static final Logger log = LoggerFactory.getLogger(LoggingAndAuthGlobalFilter.class);
+    private static final Logger log = LoggerFactory.getLogger(LoggingAndTimingGlobalFilter.class);
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -168,13 +170,8 @@ public class LoggingAndAuthGlobalFilter implements GlobalFilter, Ordered {
         long startTime = System.currentTimeMillis();
 
         // --- PRE-FILTER LOGIC ---
-        log.info("[GATEWAY PRE] Inbound {} {}", request.getMethod(), request.getURI());
-        
-        // Example: Validate Header or Token
-        if (!request.getHeaders().containsKey("Authorization") && request.getPath().toString().startsWith("/api/v1/secure")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
-        }
+        log.info("[GATEWAY PRE] Inbound {} {} from IP={}", 
+                request.getMethod(), request.getURI(), request.getRemoteAddress());
 
         // --- DELEGATE TO DOWNSTREAM & RUN POST-FILTER ---
         return chain.filter(exchange).then(Mono.fromRunnable(() -> {
@@ -195,7 +192,127 @@ public class LoggingAndAuthGlobalFilter implements GlobalFilter, Ordered {
 
 ---
 
-## 7. Cross-Cutting Concerns at the Edge
+## 7. JWT Edge Authentication Filter with Code
+
+Centralizing JWT authentication at the API Gateway prevents unauthorized traffic from penetrating the internal VPC:
+
+```java
+@Component
+public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
+
+    private final JwtTokenValidator jwtValidator;
+
+    public JwtAuthenticationFilter(JwtTokenValidator jwtValidator) {
+        super(Config.class);
+        this.jwtValidator = jwtValidator;
+    }
+
+    public static class Config {
+        // Configuration properties if needed
+    }
+
+    @Override
+    public GatewayFilter apply(Config config) {
+        return (exchange, chain) -> {
+            ServerHttpRequest request = exchange.getRequest();
+
+            // 1. Check for Authorization header
+            if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
+                return onError(exchange, "Missing Authorization Header", HttpStatus.UNAUTHORIZED);
+            }
+
+            String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                return onError(exchange, "Invalid Authorization Header", HttpStatus.UNAUTHORIZED);
+            }
+
+            String token = authHeader.substring(7);
+
+            // 2. Validate Token Signature & Expiration
+            try {
+                Claims claims = jwtValidator.validateAndExtractClaims(token);
+                
+                // 3. Mutate Request: Add authenticated user identity headers for downstream services
+                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                        .header("X-User-Id", claims.getSubject())
+                        .header("X-User-Role", claims.get("role", String.class))
+                        .build();
+
+                return chain.filter(exchange.mutate().request(mutatedRequest).build());
+
+            } catch (Exception ex) {
+                return onError(exchange, "JWT Token Expired or Invalid", HttpStatus.UNAUTHORIZED);
+            }
+        };
+    }
+
+    private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(httpStatus);
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+        String jsonError = String.format("{\"error\": \"%s\", \"status\": %d}", err, httpStatus.value());
+        DataBuffer buffer = response.bufferFactory().wrap(jsonError.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
+    }
+}
+```
+
+---
+
+## 8. Redis Token Bucket Rate Limiting with Code
+
+Spring Cloud Gateway integrates out-of-the-box with Redis using the **Token Bucket Algorithm**.
+
+### Step 1: Add Redis Reactive Dependency
+```xml
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+</dependency>
+```
+
+### Step 2: Define KeyResolver Bean (Resolve by User ID or IP)
+```java
+@Configuration
+public class RateLimiterConfig {
+
+    @Bean
+    public KeyResolver userKeyResolver() {
+        // Rate limit based on authenticated User ID header, fallback to IP address
+        return exchange -> {
+            String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
+            if (userId != null) {
+                return Mono.just(userId);
+            }
+            return Mono.just(exchange.getRequest().getRemoteAddress().getAddress().getHostAddress());
+        };
+    }
+}
+```
+
+### Step 3: Configure Token Bucket in `application.yml`
+```yaml
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: order-service-route
+          uri: lb://ORDER-SERVICE
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10   # 10 tokens replenished per second
+                redis-rate-limiter.burstCapacity: 20   # Maximum burst limit of 20 tokens
+                key-resolver: "#{@userKeyResolver}"
+```
+
+If an IP/User exceeds the limit, the Gateway automatically rejects calls with `HTTP 429 Too Many Requests`.
+
+---
+
+## 9. Cross-Cutting Concerns at the Edge
 
 ```mermaid
 graph TD
@@ -212,7 +329,7 @@ graph TD
     Concerns --> Services[Protected Backend Microservices]
 ```
 
-### Handling Centralized CORS
+### Handling Centralized CORS in `application.yml`
 ```yaml
 spring:
   cloud:
@@ -226,13 +343,15 @@ spring:
               - POST
               - PUT
               - DELETE
+              - OPTIONS
             allowedHeaders: "*"
             allowCredentials: true
+            maxAge: 3600
 ```
 
 ---
 
-## 8. Anti-Pattern: The Gateway as a Business Dump
+## 10. Anti-Pattern: The Gateway as a Business Dump
 
 > [!CAUTION]
 > **Do not write Domain Business Logic in the API Gateway.**
@@ -254,7 +373,7 @@ The Gateway should focus strictly on **Transport, Routing, Edge Security, and Pr
 
 ---
 
-## 9. Interview Questions & Deep-Dive Answers
+## 11. Interview Questions & Deep-Dive Answers
 
 ### Q1: What is the underlying runtime difference between Netflix Zuul 1.x and Spring Cloud Gateway?
 > **Answer**:  
@@ -270,7 +389,7 @@ The Gateway should focus strictly on **Transport, Routing, Edge Security, and Pr
 
 ---
 
-## 10. Core Architectural Summary
+## 12. Core Architectural Summary
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -280,6 +399,7 @@ The Gateway should focus strictly on **Transport, Routing, Edge Security, and Pr
 │ 2. Route = Predicates (matching conditions) + Filters (transformations) │
 │ 3. Use 'lb://SERVICE-NAME' for dynamic Eureka integration               │
 │ 4. Offload Edge concerns: JWT Auth, Rate Limiting, CORS, SSL, Logging   │
-│ 5. NEVER put business domain rules or database logic in the Gateway     │
+│ 5. Use Redis Token-Bucket (RequestRateLimiter) to throttle abuse        │
+│ 6. NEVER put business domain rules or database logic in the Gateway     │
 └─────────────────────────────────────────────────────────────────────────┘
 ```

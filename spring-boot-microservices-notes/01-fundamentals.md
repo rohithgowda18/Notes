@@ -1,7 +1,7 @@
 # 🏛️ 01 — Microservices Fundamentals
 
 > **Covers Foundation & Architectural Trade-offs**  
-> Understanding when to transition from a Monolith to Microservices, defining clean Domain Boundaries, adopting the **Database-per-Service** pattern, and contrasting **Synchronous vs. Asynchronous** inter-service communication.
+> Understanding when to transition from a Monolith to Microservices, defining clean Domain Boundaries, adopting the **Database-per-Service** pattern, and contrasting **Synchronous vs. Asynchronous** inter-service communication with production Spring Boot code.
 
 ---
 
@@ -11,11 +11,12 @@
 3. [Domain Boundaries & Sizing Services](#3-domain-boundaries--sizing-services)
 4. [Database-per-Service Pattern](#4-database-per-service-pattern)
 5. [End-to-End Microservice Topology](#5-end-to-end-microservice-topology)
-6. [Synchronous Communication (RPC / REST)](#6-synchronous-communication-rpc--rest)
-7. [Asynchronous Communication (Event-Driven)](#7-asynchronous-communication-event-driven)
+6. [Synchronous Communication (RPC / REST) with Code](#6-synchronous-communication-rpc--rest-with-code)
+7. [Asynchronous Event-Driven Architecture with Kafka Code](#7-asynchronous-event-driven-architecture-with-kafka-code)
 8. [Architectural Comparison: Sync vs. Async](#8-architectural-comparison-sync-vs-async)
-9. [Interview Questions & Deep-Dive Answers](#9-interview-questions--deep-dive-answers)
-10. [Core Architectural Summary](#10-core-architectural-summary)
+9. [Handling Cross-Service Data: The Saga Pattern with Code](#9-handling-cross-service-data-the-saga-pattern-with-code)
+10. [Interview Questions & Deep-Dive Answers](#10-interview-questions--deep-dive-answers)
+11. [Core Architectural Summary](#11-core-architectural-summary)
 
 ---
 
@@ -45,7 +46,7 @@ graph TD
 
 ### Where Monoliths Break Down at Scale
 - **Deployment Coupling**: A small bug fix in the payment module requires testing, building, and deploying the entire application.
-- **Scaling Inefficiency**: If the `Order` processing requires high CPU while `User` profile requires high memory, you cannot scale them independently. The entire monolith must be duplicated across multiple servers.
+- **Scaling Inefficiency**: If `Order` processing requires high CPU while `User` profile requires high memory, you cannot scale them independently. The entire monolith must be duplicated across multiple servers.
 - **Blast Radius**: A memory leak or uncaught OutOfMemoryError in a non-critical module (e.g., PDF generation) crashes the entire JVM process for all users.
 - **Tech Stack Lock-in**: The whole system is bound to a single framework and language version; upgrading Spring Boot or Java versions becomes a massive high-risk undertaking.
 
@@ -140,9 +141,24 @@ graph TD
 2. **Connection Pool Contention**: High query volume from reporting or analytics can starve critical transactional connections.
 3. **Impeded Technology Choice**: Forces all domains into the same storage paradigm, preventing `Order Service` from using PostgreSQL while `Recommendation Service` uses Neo4j or Redis.
 
-### How Services Share Data
-- **Synchronous API Query**: `Order Service` calls `GET /inventory/{sku}` via Feign/RestClient.
-- **Asynchronous Event Projection (CQRS)**: `Order Service` listens to `StockChangedEvent` from Kafka and stores a local read-model replica of relevant inventory counts.
+### Dedicated Database Configuration (`application.yml`)
+Each service defines its isolated datasource and Flyway/Liquibase migration paths:
+
+```yaml
+# Order Service - application.yml
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/order_db
+    username: ${DB_USER:order_user}
+    password: ${DB_PASS:order_secret}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+```
 
 ---
 
@@ -180,7 +196,7 @@ flowchart TD
 
 ---
 
-## 6. Synchronous Communication (RPC / REST)
+## 6. Synchronous Communication (RPC / REST) with Code
 
 In **Synchronous Communication**, the caller sends a request over HTTP/REST and blocks or waits for the downstream service to compute and return a response.
 
@@ -193,19 +209,32 @@ Order Service                               Payment Service
       ▼                                            ▼
 ```
 
-### When to Use
-- When the client cannot proceed without the immediate response (e.g., Fetching user profile details to render on screen, checking real-time price calculation).
-- When operations are lightweight, fast, and idempotent.
+### Spring Boot Controller Example: Synchronous Endpoint
+```java
+@RestController
+@RequestMapping("/api/v1/orders")
+public class OrderController {
 
-### Vulnerabilities
-- **Cascading Failure Risk**: If `Payment Service` slows down from 50ms to 8 seconds, `Order Service` worker threads remain occupied waiting for responses. Soon, `Order Service` runs out of threads, crashing as well.
-- **Tight Temporal Coupling**: Both caller and callee must be online and available at the exact same moment.
+    private final OrderService orderService;
+
+    public OrderController(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    @PostMapping
+    public ResponseEntity<OrderResponse> placeOrder(@Valid @RequestBody CreateOrderRequest request) {
+        // Synchronous call blocks until order is created and confirmed
+        OrderResponse response = orderService.createOrder(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+}
+```
 
 ---
 
-## 7. Asynchronous Communication (Event-Driven)
+## 7. Asynchronous Event-Driven Architecture with Kafka Code
 
-In **Asynchronous Communication**, the producer publishes an event or command message to an intermediary message broker (Kafka, RabbitMQ) and immediately returns a confirmation to the caller without waiting for the downstream consumers to finish.
+In **Asynchronous Communication**, the producer publishes an event message to a broker (Kafka, RabbitMQ) and returns immediately. Consumers process the event independently.
 
 ```mermaid
 sequenceDiagram
@@ -230,10 +259,69 @@ sequenceDiagram
     end
 ```
 
-### Core Benefits
-- **Temporal Decoupling**: Consumers do not need to be running when the event is produced. If `Notification Service` is down for maintenance, messages buffer in the broker and process upon recovery.
-- **Traffic Smoothing (Load Leveling)**: Spikes in checkout requests sit safely in the message queue without overwhelming downstream payment backends.
-- **High Fan-out**: Multiple decoupled services can react to a single event without modifying the publisher.
+### Kafka Producer in `Order Service`
+```java
+// Immutable Event Payload
+public record OrderCreatedEvent(
+    String orderId,
+    String customerId,
+    BigDecimal totalAmount,
+    Instant timestamp
+) {}
+```
+
+```java
+@Service
+public class OrderEventPublisher {
+
+    private static final String TOPIC = "order-created-events";
+    private final KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate;
+
+    public OrderEventPublisher(KafkaTemplate<String, OrderCreatedEvent> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
+    }
+
+    public void publishOrderCreated(OrderCreatedEvent event) {
+        // Asynchronous publish using orderId as the partition key
+        CompletableFuture<SendResult<String, OrderCreatedEvent>> future = 
+                kafkaTemplate.send(TOPIC, event.orderId(), event);
+
+        future.whenComplete((result, ex) -> {
+            if (ex == null) {
+                log.info("Event sent successfully to partition {}", result.getRecordMetadata().partition());
+            } else {
+                log.error("Failed to publish OrderCreatedEvent for orderId={}", event.orderId(), ex);
+            }
+        });
+    }
+}
+```
+
+### Kafka Consumer in `Payment Service`
+```java
+@Service
+public class PaymentEventListener {
+
+    private final PaymentProcessor paymentProcessor;
+
+    public PaymentEventListener(PaymentProcessor paymentProcessor) {
+        this.paymentProcessor = paymentProcessor;
+    }
+
+    @KafkaListener(topics = "order-created-events", groupId = "payment-group")
+    public void handleOrderCreated(OrderCreatedEvent event, Acknowledgment ack) {
+        log.info("Received OrderCreatedEvent for orderId={}", event.orderId());
+        
+        try {
+            paymentProcessor.processPayment(event.orderId(), event.totalAmount());
+            ack.acknowledge(); // Commit Kafka offset only after successful processing
+        } catch (Exception ex) {
+            log.error("Payment failed for orderId={}, routing to DLQ", event.orderId(), ex);
+            // Handle error or dead letter queue
+        }
+    }
+}
+```
 
 ---
 
@@ -252,7 +340,75 @@ sequenceDiagram
 
 ---
 
-## 9. Interview Questions & Deep-Dive Answers
+## 9. Handling Cross-Service Data: The Saga Pattern with Code
+
+When creating an order requires reserving stock in `Inventory Service` and charging money in `Payment Service`, we cannot use `@Transactional`. Instead, we use the **Saga Pattern** (Choreography or Orchestration).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant O as Order Service
+    participant I as Inventory Service
+    participant P as Payment Service
+
+    Note over O,P: Happy Path
+    O->>I: 1. Reserve Stock
+    I-->>O: Stock Reserved
+    O->>P: 2. Process Payment
+    P-->>O: Payment Successful
+    O->>O: 3. Order Status -> CONFIRMED
+
+    Note over O,P: Compensating Transaction (Failure Path)
+    O->>P: 2. Process Payment (Card Declined!)
+    P-->>O: Payment Failed
+    O->>I: 3. COMPENSATE: Release Reserved Stock
+    O->>O: 4. Order Status -> CANCELLED
+```
+
+### Orchestrator Example (Java)
+```java
+@Service
+public class OrderSagaOrchestrator {
+
+    private final InventoryClient inventoryClient;
+    private final PaymentClient paymentClient;
+    private final OrderRepository orderRepository;
+
+    public OrderSagaOrchestrator(InventoryClient ic, PaymentClient pc, OrderRepository or) {
+        this.inventoryClient = ic;
+        this.paymentClient = pc;
+        this.orderRepository = or;
+    }
+
+    public void executeOrderSaga(Order order) {
+        // Step 1: Reserve Inventory
+        boolean stockReserved = inventoryClient.reserveStock(order.getProductId(), order.getQuantity());
+        if (!stockReserved) {
+            order.setStatus(OrderStatus.REJECTED_OUT_OF_STOCK);
+            orderRepository.save(order);
+            return;
+        }
+
+        try {
+            // Step 2: Process Payment
+            paymentClient.charge(order.getId(), order.getTotalAmount());
+            order.setStatus(OrderStatus.CONFIRMED);
+            orderRepository.save(order);
+        } catch (PaymentFailedException ex) {
+            // COMPENSATING ACTION: Undo Step 1
+            log.warn("Payment failed for orderId={}. Triggering compensating inventory release", order.getId());
+            inventoryClient.releaseStock(order.getProductId(), order.getQuantity());
+            
+            order.setStatus(OrderStatus.FAILED_PAYMENT_DECLINED);
+            orderRepository.save(order);
+        }
+    }
+}
+```
+
+---
+
+## 10. Interview Questions & Deep-Dive Answers
 
 ### Q1: When should an engineering team choose a Monolith over Microservices?
 > **Answer**:  
@@ -273,7 +429,7 @@ sequenceDiagram
 
 ---
 
-## 10. Core Architectural Summary
+## 11. Core Architectural Summary
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -283,6 +439,7 @@ sequenceDiagram
 │ 2. Enforce Database-per-Service — never share transactional databases   │
 │ 3. Favor Asynchronous Messaging for state changes (Eventual Consistency)│
 │ 4. Protect Synchronous REST calls with Timeouts and Circuit Breakers    │
-│ 5. Treat Operational Tooling (CI/CD, Tracing, Gateway) as 1st-class code │
+│ 5. Use Saga Patterns with compensating transactions for distributed flow│
+│ 6. Treat Operational Tooling (CI/CD, Tracing, Gateway) as 1st-class code│
 └─────────────────────────────────────────────────────────────────────────┘
 ```
