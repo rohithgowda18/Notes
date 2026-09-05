@@ -126,7 +126,7 @@ flowchart LR
         Interface --> Proxy["Feign Dynamic Proxy (JDK Reflection)"]
     end
     
-    Proxy -->|HTTP GET /products/{id}| RemoteService["Product Service API"]
+    Proxy -->|"HTTP GET /products/:id"| RemoteService["Product Service API"]
 ```
 
 ### The Declarative Interface
