@@ -1,7 +1,7 @@
 # 📡 02 — Service-to-Service Communication
 
-> **Covers Inter-Service Synchronous Invocations**  
-> Evolution from legacy `RestTemplate` to modern Spring 6 `RestClient`, mastering declarative RPC with **Spring Cloud OpenFeign**, request interceptors, custom error decoders, and timeouts.
+> **Covers Inter-Service Synchronous Invocations & Declarative Clients**  
+> Evolution from legacy `RestTemplate` to modern Spring 6 `RestClient`, mastering declarative RPC with **Spring Cloud OpenFeign**, request interceptors, custom error decoders, timeouts, and event brokers.
 
 ---
 
@@ -14,8 +14,9 @@
 6. [Feign Customization: Interceptors, Timeouts & Error Decoders](#6-feign-customization-interceptors-timeouts--error-decoders)
 7. [Comparative Matrix: RestTemplate vs. RestClient vs. OpenFeign](#7-comparative-matrix-resttemplate-vs-restclient-vs-openfeign)
 8. [Failure Modes & Exception Handling](#8-failure-modes--exception-handling)
-9. [Interview Questions & Deep-Dive Answers](#9-interview-questions--deep-dive-answers)
-10. [Core Architectural Summary](#10-core-architectural-summary)
+9. [Event-Driven Asynchronous Integration](#9-event-driven-asynchronous-integration)
+10. [Interview Questions & Deep-Dive Answers](#10-interview-questions--deep-dive-answers)
+11. [Core Architectural Summary](#11-core-architectural-summary)
 
 ---
 
@@ -209,7 +210,7 @@ public class FeignClientConfig {
 }
 ```
 
-### B. Custom Timeout Configuration (application.yml)
+### B. Custom Timeout Configuration (`application.yml`)
 Never allow Feign calls to wait indefinitely:
 
 ```yaml
@@ -282,7 +283,15 @@ graph TD
 
 ---
 
-## 9. Interview Questions & Deep-Dive Answers
+## 9. Event-Driven Asynchronous Integration
+
+While synchronous REST / OpenFeign works well for immediate queries, event-driven communication (e.g. Apache Kafka) is used when requests can be processed in the background or distributed to multiple subscribers:
+
+![Kafka Distributed Event Streaming Architecture](images/kafka-architecture.png)
+
+---
+
+## 10. Interview Questions & Deep-Dive Answers
 
 ### Q1: What makes OpenFeign "declarative"?
 > **Answer**:  
@@ -298,7 +307,7 @@ graph TD
 
 ---
 
-## 10. Core Architectural Summary
+## 11. Core Architectural Summary
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -308,6 +317,7 @@ graph TD
 │ 2. Use Spring 6 RestClient for external, third-party API integrations   │
 │ 3. Always set connectTimeout and readTimeout on every remote client     │
 │ 4. Implement RequestInterceptor to propagate Security Tokens / Trace IDs│
-│ 5. Use ErrorDecoder to translate raw FeignExceptions into Domain Errors  │
+│ 5. Use ErrorDecoder to translate raw FeignExceptions into Domain Errors │
+│ 6. Leverage Kafka Event Streaming for high-throughput async processing  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```

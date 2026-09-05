@@ -1,7 +1,7 @@
 # 🛡️ 05 — Resilience & Fault Tolerance with Resilience4j
 
 > **Covers Cascading Outage Prevention & Stability Patterns**  
-> How distributed partial failures crash entire clusters, deep dive into **Resilience4j**, Circuit Breaker 3-state mechanics, Retry with Exponential Backoff and Jitter, Bulkhead Thread Isolation, TimeLimiter, and Fallback engineering.
+> How distributed partial failures crash entire clusters, deep dive into **Resilience4j**, Circuit Breaker 3-state mechanics, Retry with Exponential Backoff and Jitter, Bulkhead Thread Isolation, TimeLimiter, and Fallback engineering with visual state machines.
 
 ---
 
@@ -107,6 +107,8 @@ graph TD
 
 The **Circuit Breaker** monitors call failure rates over a sliding window.
 
+![Resilience4j Circuit Breaker State Machine](images/resilience4j-state-machine.jpg)
+
 ```mermaid
 stateDiagram-v2
     [*] --> CLOSED : Normal Operation
@@ -137,7 +139,7 @@ stateDiagram-v2
 2. **`OPEN`**: Unhealthy state. Requests are **blocked immediately** without hitting the network. Resilience4j invokes the configured fallback method in zero milliseconds.
 3. **`HALF_OPEN`**: Probe state. After a configured wait duration (e.g., 60 seconds), the breaker enters Half-Open and allows a small trial batch of requests (e.g., 10 requests). If they succeed, it transitions back to **`CLOSED`**; if any fail, it resets to **`OPEN`**.
 
-### Resilience4j Configuration (application.yml)
+### Resilience4j Configuration (`application.yml`)
 ```yaml
 resilience4j:
   circuitbreaker:
@@ -158,6 +160,8 @@ resilience4j:
 ## 6. Retry Pattern & Avoiding Retry Storms
 
 The **Retry** pattern automatically re-invokes an operation when it encounters a transient exception.
+
+![Retry Mechanism Pattern](images/retry-mechanism.png)
 
 ```java
 @Retry(name = "inventoryService", fallbackMethod = "inventoryFallback")

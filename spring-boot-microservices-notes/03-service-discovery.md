@@ -1,7 +1,7 @@
 # 🧭 03 — Service Discovery with Netflix Eureka
 
 > **Covers Dynamic Registration & Discovery Lifecycle**  
-> Why dynamic cloud environments require Service Registries, setting up **Eureka Server & Client**, heartbeat renewal cycles, eviction thresholds, Eureka's self-preservation mode, and client-side load balancing.
+> Why dynamic cloud environments require Service Registries, setting up **Eureka Server & Client**, heartbeat renewal cycles, eviction thresholds, Eureka's self-preservation mode, client-side load balancing, and official architectural diagrams.
 
 ---
 
@@ -9,8 +9,8 @@
 1. [Why Service Discovery is Mandatory](#1-why-service-discovery-is-mandatory)
 2. [Server-Side vs. Client-Side Service Discovery](#2-server-side-vs-client-side-service-discovery)
 3. [Netflix Eureka Architecture & Core Components](#3-netflix-eureka-architecture--core-components)
-4. [Setting Up Eureka Server](#4-setting-up-eureka-server)
-5. [Registering Eureka Clients](#5-registering-eureka-clients)
+4. [Setting Up Eureka Server with Code](#4-setting-up-eureka-server-with-code)
+5. [Registering Eureka Clients with Code](#5-registering-eureka-clients-with-code)
 6. [Dynamic Resolution via Logical Service Names](#6-dynamic-resolution-via-logical-service-names)
 7. [The Eureka Lifecycle: Heartbeats, Evictions & Caching](#7-the-eureka-lifecycle-heartbeats-evictions--caching)
 8. [Eureka Self-Preservation Mode](#8-eureka-self-preservation-mode)
@@ -76,6 +76,8 @@ graph TD
 
 Eureka is an AP (Available and Partition-tolerant according to the CAP theorem) service registry developed by Netflix.
 
+![Netflix Eureka Architecture Diagram](images/eureka_architecture.png)
+
 ```mermaid
 flowchart TD
     subgraph Registry ["Eureka Server Cluster (:8761)"]
@@ -103,7 +105,7 @@ flowchart TD
 
 ---
 
-## 4. Setting Up Eureka Server
+## 4. Setting Up Eureka Server with Code
 
 ### Step 1: Maven Dependency
 ```xml
@@ -124,7 +126,7 @@ public class DiscoveryServerApplication {
 }
 ```
 
-### Step 3: Server Configuration (application.yml)
+### Step 3: Server Configuration (`application.yml`)
 ```yaml
 server:
   port: 8761
@@ -144,7 +146,7 @@ Accessing `http://localhost:8761` opens the **Eureka Dashboard**, displaying act
 
 ---
 
-## 5. Registering Eureka Clients
+## 5. Registering Eureka Clients with Code
 
 Any microservice (e.g., `Product Service`, `Order Service`) can register itself with Eureka.
 
@@ -156,7 +158,7 @@ Any microservice (e.g., `Product Service`, `Order Service`) can register itself 
 </dependency>
 ```
 
-### Step 2: Client Configuration (application.yml)
+### Step 2: Client Configuration (`application.yml`)
 ```yaml
 spring:
   application:

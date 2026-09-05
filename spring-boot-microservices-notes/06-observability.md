@@ -1,7 +1,7 @@
 # 🔭 06 — Microservices Observability & Distributed Tracing
 
 > **Covers Full-Stack Diagnostics across Distributed Services**  
-> Navigating the 3 Pillars of Observability (**Logs, Metrics, Traces**), mastering Distributed Tracing with **Micrometer Tracing & OpenTelemetry**, `TraceId` vs `SpanId` propagation, Spring Boot Actuator, Prometheus, and Grafana dashboards.
+> Navigating the 3 Pillars of Observability (**Logs, Metrics, Traces**), mastering Distributed Tracing with **Micrometer Tracing & OpenTelemetry**, `TraceId` vs `SpanId` propagation, Spring Boot Actuator, Prometheus, and Zipkin distributed architecture diagrams.
 
 ---
 
@@ -140,7 +140,7 @@ Spring Cloud OpenFeign and `RestClient` automatically inject these headers if tr
 </dependency>
 ```
 
-### Configuration (application.yml)
+### Configuration (`application.yml`)
 ```yaml
 management:
   tracing:
@@ -157,7 +157,7 @@ management:
 
 By configuring your logging pattern, SLF4J and Logback automatically extract the active `traceId` and `spanId` from MDC and inject them into every log statement:
 
-### Logback Configuration (application.yml)
+### Logback Configuration (`application.yml`)
 ```yaml
 logging:
   pattern:
@@ -196,7 +196,7 @@ While logs and traces diagnose individual requests, **Metrics** provide the high
 </dependency>
 ```
 
-### Actuator Configuration (application.yml)
+### Actuator Configuration (`application.yml`)
 ```yaml
 management:
   endpoints:
@@ -217,6 +217,8 @@ management:
 ---
 
 ## 8. End-to-End Production Observability Architecture
+
+![Zipkin Distributed Tracing System Architecture](images/zipkin-architecture-web.png)
 
 ```mermaid
 flowchart TD

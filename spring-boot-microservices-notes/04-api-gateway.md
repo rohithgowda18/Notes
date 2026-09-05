@@ -1,7 +1,7 @@
 # 🚪 04 — Spring Cloud API Gateway
 
 > **Covers Edge Routing, Filtering & Centralized Edge Security**  
-> Why direct client-to-microservice communication fails, anatomy of **Spring Cloud Gateway**, Route Predicates, Pre/Post Gateway Filters, dynamic discovery routing, JWT edge validation, Redis Token-Bucket rate limiting, and edge cross-cutting concerns.
+> Why direct client-to-microservice communication fails, anatomy of **Spring Cloud Gateway**, Route Predicates, Pre/Post Gateway Filters, dynamic discovery routing, JWT edge validation, Redis Token-Bucket rate limiting, and edge cross-cutting concerns with visual diagrams.
 
 ---
 
@@ -46,6 +46,8 @@ graph TD
 
 An **API Gateway** serves as the **single, reverse-proxy entry point** shielding the entire internal microservices cluster from external traffic:
 
+![API Gateway Reverse Proxy Architecture](images/gateway-reverse-proxy.png)
+
 ```mermaid
 flowchart TD
     Client([External Clients / Mobile / Web]) -->|Single HTTPS Port :8080| GW[Spring Cloud API Gateway]
@@ -69,6 +71,8 @@ flowchart TD
 ## 3. Spring Cloud Gateway Architecture
 
 Unlike older gateways (such as Netflix Zuul 1.x which used blocking I/O with a thread-per-connection), **Spring Cloud Gateway** is built on top of **Spring 5, Project Reactor, and Netty**:
+
+![API Gateway Architecture and Route Mapping](images/api-gateway-architecture.png)
 
 ```mermaid
 flowchart TD

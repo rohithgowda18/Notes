@@ -1,7 +1,7 @@
 # 🏛️ 01 — Microservices Fundamentals
 
 > **Covers Foundation & Architectural Trade-offs**  
-> Understanding when to transition from a Monolith to Microservices, defining clean Domain Boundaries, adopting the **Database-per-Service** pattern, and contrasting **Synchronous vs. Asynchronous** inter-service communication with production Spring Boot code.
+> Understanding when to transition from a Monolith to Microservices, defining clean Domain Boundaries, adopting the **Database-per-Service** pattern, and contrasting **Synchronous vs. Asynchronous** inter-service communication with production Spring Boot code and architectural illustrations.
 
 ---
 
@@ -55,6 +55,8 @@ graph TD
 ## 2. Microservices Architecture: Core Principles & Trade-offs
 
 A **Microservices Architecture** structures an application as a collection of small, autonomous, loosely coupled services organized around specific **business capabilities**. Each service runs in its own process and communicates via lightweight network protocols.
+
+![Monolith vs Microservices Architecture](images/monolith-vs-microservices.png)
 
 ```mermaid
 graph LR
@@ -236,6 +238,8 @@ public class OrderController {
 
 In **Asynchronous Communication**, the producer publishes an event message to a broker (Kafka, RabbitMQ) and returns immediately. Consumers process the event independently.
 
+![Asynchronous Message Broker Architecture](images/async-message-broker.png)
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -343,6 +347,8 @@ public class PaymentEventListener {
 ## 9. Handling Cross-Service Data: The Saga Pattern with Code
 
 When creating an order requires reserving stock in `Inventory Service` and charging money in `Payment Service`, we cannot use `@Transactional`. Instead, we use the **Saga Pattern** (Choreography or Orchestration).
+
+![Saga Pattern Architecture](images/saga-pattern.png)
 
 ```mermaid
 sequenceDiagram
