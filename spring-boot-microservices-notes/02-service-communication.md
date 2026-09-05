@@ -1,7 +1,7 @@
 # 📡 02 — Service-to-Service Communication
 
 > **Covers Inter-Service Synchronous Invocations & Declarative Clients**  
-> Evolution from legacy `RestTemplate` to modern Spring 6 `RestClient`, mastering declarative RPC with **Spring Cloud OpenFeign**, request interceptors, custom error decoders, timeouts, and event brokers.
+> Evolution from legacy `RestTemplate` to modern Spring 6 `RestClient`, mastering declarative RPC with **Spring Cloud OpenFeign**, internal Feign execution lifecycle, request interceptors, custom error decoders, timeouts, and event brokers.
 
 ---
 
@@ -10,13 +10,14 @@
 2. [Legacy Synchronous Client: RestTemplate](#2-legacy-synchronous-client-resttemplate)
 3. [Modern Fluent Client: Spring 6 RestClient](#3-modern-fluent-client-spring-6-restclient)
 4. [Declarative REST Client: Spring Cloud OpenFeign](#4-declarative-rest-client-spring-cloud-openfeign)
-5. [Enabling & Configuring OpenFeign](#5-enabling--configuring-openfeign)
-6. [Feign Customization: Interceptors, Timeouts & Error Decoders](#6-feign-customization-interceptors-timeouts--error-decoders)
-7. [Comparative Matrix: RestTemplate vs. RestClient vs. OpenFeign](#7-comparative-matrix-resttemplate-vs-restclient-vs-openfeign)
-8. [Failure Modes & Exception Handling](#8-failure-modes--exception-handling)
-9. [Event-Driven Asynchronous Integration](#9-event-driven-asynchronous-integration)
-10. [Interview Questions & Deep-Dive Answers](#10-interview-questions--deep-dive-answers)
-11. [Core Architectural Summary](#11-core-architectural-summary)
+5. [OpenFeign Execution Lifecycle & Pipeline Flow](#5-openfeign-execution-lifecycle--pipeline-flow)
+6. [Enabling & Configuring OpenFeign](#6-enabling--configuring-openfeign)
+7. [Feign Customization: Interceptors, Timeouts & Error Decoders](#7-feign-customization-interceptors-timeouts--error-decoders)
+8. [Comparative Matrix: RestTemplate vs. RestClient vs. OpenFeign](#8-comparative-matrix-resttemplate-vs-restclient-vs-openfeign)
+9. [Failure Modes & Exception Handling](#9-failure-modes--exception-handling)
+10. [Event-Driven Asynchronous Integration](#10-event-driven-asynchronous-integration)
+11. [Interview Questions & Deep-Dive Answers](#11-interview-questions--deep-dive-answers)
+12. [Core Architectural Summary](#12-core-architectural-summary)
 
 ---
 
@@ -165,7 +166,27 @@ public class OrderService {
 
 ---
 
-## 5. Enabling & Configuring OpenFeign
+## 5. OpenFeign Execution Lifecycle & Pipeline Flow
+
+Understanding how Feign handles method invocations internally from interface proxy to wire serialization:
+
+![Spring Cloud OpenFeign Request Execution Lifecycle](images/flow-of-feign-hd.png)
+
+```text
+Detailed Invocation Chain:
+1. Feign Interface      → Method call: productClient.getProductById(42)
+2. Dynamic Proxy        → JDK InvocationHandler intercepts call
+3. Request Template     → Parses Spring MVC annotations into HTTP RequestTemplate
+4. Encoders & Intercept → Adds Authorization tokens, TraceIds; encodes request body
+5. HTTP Client          → Dispatches socket request via underlying client (OkHttp / Apache)
+6. Remote Microservice  → Target service processes HTTP request over network
+7. ErrorDecoder/Decoder → Deserializes JSON or maps 4xx/5xx errors to exceptions
+8. Return Response      → Returns strongly typed Java DTO to calling service
+```
+
+---
+
+## 6. Enabling & Configuring OpenFeign
 
 ### Step 1: Add Maven Dependency
 ```xml
@@ -188,7 +209,7 @@ public class OrderServiceApplication {
 
 ---
 
-## 6. Feign Customization: Interceptors, Timeouts & Error Decoders
+## 7. Feign Customization: Interceptors, Timeouts & Error Decoders
 
 In enterprise production microservices, raw HTTP calls require authentication headers, strict timeouts, and meaningful error parsing.
 
@@ -252,7 +273,7 @@ public class CustomFeignErrorDecoder implements ErrorDecoder {
 
 ---
 
-## 7. Comparative Matrix: RestTemplate vs. RestClient vs. OpenFeign
+## 8. Comparative Matrix: RestTemplate vs. RestClient vs. OpenFeign
 
 | Feature | RestTemplate | RestClient (Spring 6) | Spring Cloud OpenFeign |
 |---|---|---|---|
@@ -265,7 +286,7 @@ public class CustomFeignErrorDecoder implements ErrorDecoder {
 
 ---
 
-## 8. Failure Modes & Exception Handling
+## 9. Failure Modes & Exception Handling
 
 Remote network calls are prone to **partial failure**. A resilient microservice must account for:
 
@@ -283,7 +304,7 @@ graph TD
 
 ---
 
-## 9. Event-Driven Asynchronous Integration
+## 10. Event-Driven Asynchronous Integration
 
 While synchronous REST / OpenFeign works well for immediate queries, event-driven communication (e.g. Apache Kafka) is used when requests can be processed in the background or distributed to multiple subscribers:
 
@@ -291,7 +312,7 @@ While synchronous REST / OpenFeign works well for immediate queries, event-drive
 
 ---
 
-## 10. Interview Questions & Deep-Dive Answers
+## 11. Interview Questions & Deep-Dive Answers
 
 ### Q1: What makes OpenFeign "declarative"?
 > **Answer**:  
@@ -307,17 +328,18 @@ While synchronous REST / OpenFeign works well for immediate queries, event-drive
 
 ---
 
-## 11. Core Architectural Summary
+## 12. Core Architectural Summary
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    SERVICE COMMUNICATION BEST PRACTICES                 │
 ├─────────────────────────────────────────────────────────────────────────┤
 │ 1. Use OpenFeign for clean, maintainable microservice-to-microservice RPC│
-│ 2. Use Spring 6 RestClient for external, third-party API integrations   │
-│ 3. Always set connectTimeout and readTimeout on every remote client     │
-│ 4. Implement RequestInterceptor to propagate Security Tokens / Trace IDs│
-│ 5. Use ErrorDecoder to translate raw FeignExceptions into Domain Errors │
-│ 6. Leverage Kafka Event Streaming for high-throughput async processing  │
+│ 2. Understand Feign's pipeline: Proxy -> Template -> Interceptor -> HTTP│
+│ 3. Use Spring 6 RestClient for external, third-party API integrations   │
+│ 4. Always set connectTimeout and readTimeout on every remote client     │
+│ 5. Implement RequestInterceptor to propagate Security Tokens / Trace IDs│
+│ 6. Use ErrorDecoder to translate raw FeignExceptions into Domain Errors │
+│ 7. Leverage Kafka Event Streaming for high-throughput async processing  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
