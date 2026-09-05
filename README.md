@@ -122,4 +122,18 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 - 🤖 [Video-Mind AI (YT_ChatBot) — RAG YouTube Intelligence](./09-Projects/YT_ChatBot%20-%20RAG%20Video-Mind%20AI%20Revision.md)
   - Retrieval-Augmented Generation (RAG) platform using React, FastAPI, LangChain, HuggingFace MiniLM, FAISS, and Gemini 2.5 Flash. Covers transcript ingestion, vector similarity search, grounded prompt engineering, and timestamped citations.
 
+---
 
+## 10. Spring Boot Microservices Master Notes
+📁 **Directory:** [spring-boot-microservices-notes/](./spring-boot-microservices-notes/) | 📖 [Module Guide](./spring-boot-microservices-notes/README.md)
+
+An interview-ready technical master suite covering cloud-native architecture in the Java & Spring Boot ecosystem:
+
+| # | Topic | Key Focus Areas |
+|:---:|:---|:---|
+| 01 | [**Fundamentals**](./spring-boot-microservices-notes/01-fundamentals.md) | Monolith vs Microservices trade-offs, Database-per-service, Service boundaries, Sync vs Async |
+| 02 | [**Service Communication**](./spring-boot-microservices-notes/02-service-communication.md) | RestTemplate vs RestClient vs OpenFeign, Request Interceptors, ErrorDecoders, Timeouts |
+| 03 | [**Service Discovery**](./spring-boot-microservices-notes/03-service-discovery.md) | Netflix Eureka Server/Client, Heartbeat & Eviction timers, Self-preservation, Client load balancing |
+| 04 | [**API Gateway**](./spring-boot-microservices-notes/04-api-gateway.md) | Spring Cloud Gateway, Route Predicates, Pre/Post Filters, Dynamic lb:// routing, Edge security |
+| 05 | [**Resilience & Fault Tolerance**](./spring-boot-microservices-notes/05-resilience-fault-tolerance.md) | Resilience4j Circuit Breaker (3 states), Retry with Backoff, Bulkhead isolation, TimeLimiter, Fallbacks |
+| 06 | [**Distributed Observability**](./spring-boot-microservices-notes/06-observability.md) | Logs vs Metrics vs Traces, TraceId & SpanId propagation, Micrometer Tracing, Prometheus, Actuator |
