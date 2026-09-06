@@ -309,23 +309,39 @@ sequenceDiagram
 
 Instead, Eureka clients maintain an internal **Local Registry Cache**:
 
+To avoid confusion, the system separates **Background Cache Synchronization** from **Live Request Execution**:
+
+### A. Background Cache Synchronization Flow (Every 30 Seconds)
 ```mermaid
-flowchart TD
-    subgraph Client ["Order Service JVM"]
-        Cache["Local Registry Cache<br>(Updated every 30s)"]
-        Worker["Application Worker Thread"]
-        DeltaProc["Background Delta Processor"]
-    end
+sequenceDiagram
+    autonumber
+    participant DeltaProc as Background Delta Processor (Order Service)
+    participant ES as Eureka Server (:8761)
+    participant Cache as Local Registry Cache (In-Memory)
 
-    subgraph Server ["Eureka Server (:8761)"]
-        InMem[(In-Memory Registry)]
+    loop Every 30 Seconds (Default Interval)
+        DeltaProc->>ES: HTTP GET /eureka/apps (Fetch Delta Changes)
+        ES-->>DeltaProc: Return Delta (New / Terminated Instance IPs)
+        DeltaProc->>Cache: Update Local Cache Map
     end
+```
 
-    DeltaProc -- "Periodic HTTP GET /eureka/apps (Delta Update every 30s)" --> InMem
-    InMem -- "Return updated instance hash delta" --> DeltaProc
-    DeltaProc -->|Update local cache| Cache
-    Worker -->|"Read from local cache (0ms latency)"| Cache
-    Worker ==>|Direct HTTP RPC| Target[Inventory Service Node]
+### B. Live Inter-Service Request Execution (0ms Discovery Overhead)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Customer
+    participant OS as Order Service Controller & Worker
+    participant Cache as Local Registry Cache (In-Memory)
+    participant IS as Inventory Service Instance (:8081)
+
+    Customer->>OS: Place Order (POST /orders)
+    Note over OS,Cache: Zero Network Hop to Eureka!
+    OS->>Cache: 1. Lookup live IP for "ecom-inventory-service"
+    Cache-->>OS: 2. Return cached instance: http://10.0.1.10:8081
+    OS->>IS: 3. Direct HTTP RPC (GET /api/v1/inventory/SKU-1)
+    IS-->>OS: 4. Return Inventory DTO
+    OS-->>Customer: 201 Created (Order Placed)
 ```
 
 ### How the Local Cache Works:
