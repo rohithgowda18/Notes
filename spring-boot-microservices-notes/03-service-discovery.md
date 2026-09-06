@@ -1,62 +1,96 @@
-# 🧭 03 — Service Discovery with Netflix Eureka
+# 🧭 03 — Service Discovery with Netflix Eureka: Architecture & Deep Internals
 
-> **Covers Dynamic Registration & Discovery Lifecycle**  
-> Why dynamic cloud environments require Service Registries, setting up **Eureka Server & Client**, heartbeat renewal cycles, eviction thresholds, Eureka's self-preservation mode, client-side load balancing, and official architectural diagrams.
+> **Covers Dynamic Registration, Discovery Lifecycle & Internal Engine Architecture**  
+> Why dynamic cloud environments require Service Registries, setting up **Eureka Server & Client**, DiscoveryClient programmatic lookup, startup registration flow, in-memory registry, local cache & delta fetch scheduler, heartbeat renewal & eviction lifecycles, graceful unregistration, self-preservation mode, and how Feign integrates with `FeignBlockingLoadBalancerClient` and Round-Robin load balancing.
 
 ---
 
 ## 📑 Table of Contents
-1. [Why Service Discovery is Mandatory](#1-why-service-discovery-is-mandatory)
-2. [Server-Side vs. Client-Side Service Discovery](#2-server-side-vs-client-side-service-discovery)
-3. [Netflix Eureka Architecture & Core Components](#3-netflix-eureka-architecture--core-components)
-4. [Setting Up Eureka Server with Code](#4-setting-up-eureka-server-with-code)
-5. [Registering Eureka Clients with Code](#5-registering-eureka-clients-with-code)
-6. [Dynamic Resolution via Logical Service Names](#6-dynamic-resolution-via-logical-service-names)
-7. [The Eureka Lifecycle: Heartbeats, Evictions & Caching](#7-the-eureka-lifecycle-heartbeats-evictions--caching)
-8. [Eureka Self-Preservation Mode](#8-eureka-self-preservation-mode)
-9. [Service Discovery vs. Load Balancing](#9-service-discovery-vs-load-balancing)
-10. [Interview Questions & Deep-Dive Answers](#10-interview-questions--deep-dive-answers)
-11. [Core Architectural Summary](#11-core-architectural-summary)
+1. [The Fundamental Problem: Hardcoded URLs & Dynamic Scaling](#1-the-fundamental-problem-hardcoded-urls--dynamic-scaling)
+2. [What is Service Discovery? (The Dynamic Phonebook)](#2-what-is-service-discovery-the-dynamic-phonebook)
+3. [Server-Side vs. Client-Side Service Discovery](#3-server-side-vs-client-side-service-discovery)
+4. [Netflix Eureka Architecture & Core Components](#4-netflix-eureka-architecture--core-components)
+5. [Setting Up Eureka Server with Code](#5-setting-up-eureka-server-with-code)
+6. [Registering Eureka Clients with Code](#6-registering-eureka-clients-with-code)
+7. [Programmatic Instance Discovery via DiscoveryClient](#7-programmatic-instance-discovery-via-discoveryclient)
+8. [Under the Hood: What Happens at Application Startup?](#8-under-the-hood-what-happens-at-application-startup)
+9. [Service Registry In-Memory Storage & Local Cache Engine](#9-service-registry-in-memory-storage--local-cache-engine)
+10. [Heartbeats, Lease Renewals & Graceful Deregistration](#10-heartbeats-lease-renewals--graceful-deregistration)
+11. [Eureka Self-Preservation Mode](#11-eureka-self-preservation-mode)
+12. [How OpenFeign Automatically Resolves Service Names (Load Balancer Internals)](#12-how-openfeign-automatically-resolves-service-names-load-balancer-internals)
+13. [Service Discovery vs. Load Balancing](#13-service-discovery-vs-load-balancing)
+14. [Interview Questions & Deep-Dive Answers](#14-interview-questions--deep-dive-answers)
+15. [Core Architectural Summary](#15-core-architectural-summary)
 
 ---
 
-## 1. Why Service Discovery is Mandatory
+## 1. The Fundamental Problem: Hardcoded URLs & Dynamic Scaling
 
-In traditional monolithic deployments, services lived on fixed, static servers with well-known IP addresses (`192.168.1.50:8080`).
+In traditional monolithic architectures, applications ran on fixed servers with static IP addresses (`192.168.1.50:8080`). In a microservices architecture, services communicate over HTTP network calls:
 
-In modern cloud environments (Docker, Kubernetes, AWS Auto-scaling):
-- **Dynamic IP Allocation**: Containers restart and receive new random IP addresses.
-- **Auto-Scaling**: Under traffic spikes, instance count jumps from 2 to 10 instances, then scales back down.
-- **Ephemeral Lifecycles**: Instances are terminated, upgraded, or migrated across host nodes continuously.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant OS as Order Service (:8082)
+    participant IS as Inventory Service (:8081)
+
+    OS->>IS: HTTP GET http://localhost:8081/api/v1/inventory/SKU-100
+    IS-->>OS: 200 OK { inStock: true, quantity: 20 }
+```
+
+### Why Hardcoded URLs Break in Production:
+1. **Port / Host Reallocation**: If `Inventory Service` changes its port from `8081` to `8082`, `Order Service` continues hitting `8081` and immediately fails with connection refused.
+2. **Tight Coupling**: Any infrastructure change in one service forces configuration updates and redeployments of every caller service.
+3. **Dynamic Autoscaling**: Under high traffic (e.g., flash sales), the cloud infrastructure spins up 5 new instances of `Inventory Service` with dynamically assigned IPs. `Order Service` has no way of knowing these new URLs exist or routing traffic to them.
+4. **Multi-Environment Maintenance**: Maintaining separate hardcoded URL lists across `dev`, `stage`, and `prod` configurations creates massive operational overhead.
 
 ```text
 ❌ Hardcoded Configuration Nightmare:
-order.service.payment-url=http://10.0.1.25:8083,http://10.0.1.26:8083
-```
-*Problem*: If instance `10.0.1.25` crashes or changes IP, every calling service requires configuration updates and redeployment.
-
-```text
-✅ Dynamic Service Discovery:
-Caller queries registry: "Give me the live IPs for 'payment-service'"
-Registry returns: ["10.0.3.12:8083", "10.0.3.14:8083"]
+order.service.inventory-url=http://10.0.1.25:8081,http://10.0.1.26:8081
 ```
 
 ---
 
-## 2. Server-Side vs. Client-Side Service Discovery
+## 2. What is Service Discovery? (The Dynamic Phonebook)
 
-There are two primary paradigms for discovering services:
+**Service Discovery** acts as an intelligent, automated registry (like a dynamic phonebook). Instead of services knowing each other's physical IP addresses, they only know logical service names (e.g., `ecom-inventory-service`).
+
+```mermaid
+flowchart TD
+    subgraph Registry ["Service Discovery Server (Netflix Eureka :8761)"]
+        Table["Logical Name Mappings:<br><b>ecom-inventory-service</b> → [10.0.1.10:8081, 10.0.1.11:8081]<br><b>ecom-order-service</b> → [10.0.1.20:8082]"]
+    end
+
+    subgraph Producers ["Instances"]
+        IS1["Inventory Instance 1 (:8081)"] -->|1. Self-Register| Registry
+        IS2["Inventory Instance 2 (:8081)"] -->|1. Self-Register| Registry
+    end
+
+    subgraph Consumers ["Callers"]
+        OS["Order Service (:8082)"] -->|2. Query 'ecom-inventory-service'| Registry
+        OS ==>|3. Direct Load-Balanced Call| IS1
+    end
+```
+
+### How It Works:
+1. **Registration**: When a microservice starts up, it announces itself to the discovery server: *"I am `ecom-inventory-service` running at `10.0.1.10:8081`."*
+2. **Dynamic Updates**: If an instance scales down or crashes, it is removed from the registry.
+3. **Discovery**: When `Order Service` needs to call `Inventory Service`, it asks Eureka for active instances and routes the call directly to an available node.
+
+---
+
+## 3. Server-Side vs. Client-Side Service Discovery
 
 ```mermaid
 graph TD
-    subgraph ServerSide ["1. Server-Side Discovery (e.g., AWS ALB / Kubernetes ClusterIP)"]
+    subgraph ServerSide ["1. Server-Side Discovery (AWS ALB / Kubernetes ClusterIP)"]
         C1[Client Service] --> LB[Hardware / Cloud Load Balancer]
         LB --> R1[(Central Registry)]
         LB --> S1[Instance A]
         LB --> S2[Instance B]
     end
 
-    subgraph ClientSide ["2. Client-Side Discovery (e.g., Spring Cloud Eureka + LoadBalancer)"]
+    subgraph ClientSide ["2. Client-Side Discovery (Spring Cloud Eureka + LoadBalancer)"]
         C2[Client Service] -.->|1. Query live nodes| E[(Eureka Registry)]
         C2 -->|2. Direct Load-Balanced Request| S3[Instance A]
         C2 -.->|Alternative Route| S4[Instance B]
@@ -72,7 +106,7 @@ graph TD
 
 ---
 
-## 3. Netflix Eureka Architecture & Core Components
+## 4. Netflix Eureka Architecture & Core Components
 
 Eureka is an AP (Available and Partition-tolerant according to the CAP theorem) service registry developed by Netflix.
 
@@ -81,31 +115,31 @@ Eureka is an AP (Available and Partition-tolerant according to the CAP theorem) 
 ```mermaid
 flowchart TD
     subgraph Registry ["Eureka Server Cluster (:8761)"]
-        ES[Eureka Registry Database]
+        ES[In-Memory Service Registry Map]
     end
 
     subgraph Producers ["Microservice Instances"]
-        P1["Product-Service (Instance 1: :8081)"]
-        P2["Product-Service (Instance 2: :8082)"]
+        P1["Inventory-Service (Instance 1: :8081)"]
+        P2["Inventory-Service (Instance 2: :8082)"]
     end
 
     subgraph Consumers ["Calling Microservices"]
-        O1["Order-Service (:8080)"]
+        O1["Order-Service (:8082)"]
     end
 
-    P1 -- "1. Register & Send Heartbeat (30s)" --> ES
-    P2 -- "1. Register & Send Heartbeat (30s)" --> ES
-    O1 -- "2. Fetch Registry Cache (30s)" --> ES
-    O1 == "3. Direct Load-Balanced Call" ==> P1
+    P1 -- "1. Register & Send Heartbeats (30s)" --> ES
+    P2 -- "1. Register & Send Heartbeats (30s)" --> ES
+    O1 -- "2. Fetch Registry Delta (30s)" --> ES
+    O1 == "3. Direct Load-Balanced RPC Call" ==> P1
 ```
 
-### Key Components
-1. **Eureka Server**: The centralized registry repository where services register their network locations (`hostname`, `ip`, `port`, `healthCheckUrl`).
-2. **Eureka Client**: A background agent running inside each microservice that handles self-registration, periodic heartbeat pings, and local registry cache synchronization.
+### Key Components:
+1. **Eureka Server**: Central standalone Spring Boot application acting as the registry phonebook. Stores active service instance metadata **in-memory** (no SQL/NoSQL database required).
+2. **Eureka Client**: Embedded background agent inside microservices handling automated registration, periodic heartbeat renewal pings, and local registry cache synchronization.
 
 ---
 
-## 4. Setting Up Eureka Server with Code
+## 5. Setting Up Eureka Server with Code
 
 ### Step 1: Maven Dependency
 ```xml
@@ -115,13 +149,19 @@ flowchart TD
 </dependency>
 ```
 
-### Step 2: Enable Eureka Server
+### Step 2: Enable Eureka Server on Main Class
 ```java
+package com.codesnippet.eurekaserver;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer;
+
 @SpringBootApplication
-@EnableEurekaServer
-public class DiscoveryServerApplication {
+@EnableEurekaServer // Initializes Eureka Server beans & REST endpoints
+public class EurekaServerApplication {
     public static void main(String[] args) {
-        SpringApplication.run(DiscoveryServerApplication.class, args);
+        SpringApplication.run(EurekaServerApplication.class, args);
     }
 }
 ```
@@ -129,26 +169,30 @@ public class DiscoveryServerApplication {
 ### Step 3: Server Configuration (`application.yml`)
 ```yaml
 server:
-  port: 8761
+  port: 8761 # Default standard Eureka port
+
+spring:
+  application:
+    name: eureka-server
 
 eureka:
   instance:
     hostname: localhost
   client:
-    # Eureka server does not need to register with itself
+    # A standalone Eureka server does not need to register with itself or fetch its own registry
     register-with-eureka: false
     fetch-registry: false
     service-url:
       defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
 ```
 
-Accessing `http://localhost:8761` opens the **Eureka Dashboard**, displaying active registered instances, memory stats, and replica statuses.
+Accessing `http://localhost:8761` in the browser opens the **Eureka Dashboard**, displaying registered application names, IPs, ports, and health statuses.
 
 ---
 
-## 5. Registering Eureka Clients with Code
+## 6. Registering Eureka Clients with Code
 
-Any microservice (e.g., `Product Service`, `Order Service`) can register itself with Eureka.
+Both `Inventory Service` and `Order Service` register themselves as Eureka clients.
 
 ### Step 1: Maven Dependency
 ```xml
@@ -160,156 +204,311 @@ Any microservice (e.g., `Product Service`, `Order Service`) can register itself 
 
 ### Step 2: Client Configuration (`application.yml`)
 ```yaml
-spring:
-  application:
-    name: product-service  # Logical Service ID registered in Eureka
-
 server:
   port: 8081
 
+spring:
+  application:
+    name: ecom-inventory-service # Logical name registered in Eureka
+
 eureka:
   client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
     register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/ # Eureka server address
   instance:
-    prefer-ip-address: true # Registers container IP rather than hostname
+    prefer-ip-address: true # Registers container/host IP rather than hostname
 ```
 
 > [!NOTE]
-> In modern Spring Boot versions, simply including the `spring-cloud-starter-netflix-eureka-client` dependency on the classpath automatically enables discovery. The `@EnableEurekaClient` annotation is optional.
+> If `eureka.client.service-url.defaultZone` is omitted, Eureka clients automatically default to `http://localhost:8761/eureka/`. In production, you specify the exact cluster zone URL per environment (`dev`, `stage`, `prod`).
 
 ---
 
-## 6. Dynamic Resolution via Logical Service Names
+## 7. Programmatic Instance Discovery via DiscoveryClient
 
-Once services are registered under their logical names (`PRODUCT-SERVICE`, `ORDER-SERVICE`), Feign and RestClient can invoke them without knowing IP addresses or ports:
+Before using declarative tools like OpenFeign, Spring Cloud provides the **`DiscoveryClient`** bean for programmatic access to the service registry:
 
 ```java
-// Spring Cloud dynamically looks up "product-service" in Eureka
-@FeignClient(name = "product-service")
-public interface ProductClient {
+@Service
+public class OrderService {
 
-    @GetMapping("/api/v1/products/{id}")
-    ProductDTO getProduct(@PathVariable("id") Long id);
+    private final DiscoveryClient discoveryClient;
+    private final RestClient restClient;
+
+    public OrderService(DiscoveryClient discoveryClient, RestClient.Builder restClientBuilder) {
+        this.discoveryClient = discoveryClient;
+        this.restClient = restClientBuilder.build();
+    }
+
+    public InventoryDTO checkInventoryManual(String sku) {
+        // 1. Query Eureka registry for all live instances of "ecom-inventory-service"
+        List<ServiceInstance> instances = discoveryClient.getInstances("ecom-inventory-service");
+
+        if (instances == null || instances.isEmpty()) {
+            throw new IllegalStateException("No active instances available for ecom-inventory-service");
+        }
+
+        // 2. Pick an instance (Manual selection: e.g., index 0)
+        ServiceInstance targetInstance = instances.get(0);
+        URI uri = targetInstance.getUri(); // Resolves to e.g., http://10.0.1.10:8081
+
+        // 3. Make HTTP call using the resolved dynamic URI
+        return restClient.get()
+                .uri(uri + "/api/v1/inventory/{sku}", sku)
+                .retrieve()
+                .body(InventoryDTO.class);
+    }
 }
 ```
 
-If 3 instances of `product-service` are running, Spring Cloud LoadBalancer automatically balances traffic across them (e.g., Round Robin).
+### Limitations of Manual DiscoveryClient:
+- Selecting `instances.get(0)` does not distribute load across multiple nodes.
+- Requires manual load-balancing logic, round-robin algorithms, and boilerplate code.
 
 ---
 
-## 7. The Eureka Lifecycle: Heartbeats, Evictions & Caching
+## 8. Under the Hood: What Happens at Application Startup?
 
-The coordination between Eureka Server and Clients follows a strict timing lifecycle:
+When a Spring Boot microservice starts up with Eureka client on its classpath, the internal startup registration sequence executes:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant EC as Eureka Client (Order Service)
-    participant ES as Eureka Server Registry
+    participant App as Spring Boot Main
+    participant DC as DiscoveryClient
+    participant II as InstanceInfo Object
+    participant ES as Eureka Server (ApplicationResource)
 
-    Note over EC,ES: 1. Application Startup
-    EC->>ES: POST /eureka/apps/ORDER-SERVICE (Register instance)
-    ES-->>EC: 204 No Content (Registered)
-
-    loop Every 30 Seconds (Renewal Cycle)
-        EC->>ES: PUT /eureka/apps/ORDER-SERVICE/{instanceId} (Heartbeat ping)
-        ES-->>EC: 200 OK (Renewed)
-    end
-
-    Note over ES: If no heartbeat received within 90s:
-    ES->>ES: Evict instance from registry
-
-    Note over EC,ES: 2. Local Registry Cache Synchronization
-    loop Every 30 Seconds (Cache Refresh)
-        EC->>ES: GET /eureka/apps (Fetch delta changes)
-        ES-->>EC: 200 OK (Updated service registry delta)
-    end
+    App->>DC: 1. Spring Context starts & initializes DiscoveryClient
+    DC->>II: 2. Construct InstanceInfo (appName, IP, Port, HealthURL, Status: UP)
+    DC->>ES: 3. HTTP POST http://localhost:8761/eureka/apps/ECOM-ORDER-SERVICE
+    Note over ES: 4. ApplicationResource.addInstance() invoked
+    ES->>ES: 5. Store InstanceInfo in-memory (ConcurrentHashMap)
+    ES-->>DC: 6. HTTP 204 No Content (Registration Successful)
+    Note over DC: 7. Start Heartbeat Scheduler & Cache Refresh Scheduler
 ```
 
-### Critical Timers
-- **Renewal Interval (`eureka.instance.lease-renewal-interval-in-seconds`)**: Defaults to **30 seconds**. How frequently the client sends heartbeats to Eureka.
-- **Expiration Duration (`eureka.instance.lease-expiration-duration-in-seconds`)**: Defaults to **90 seconds**. If Eureka receives no heartbeat for 90s, it marks the instance dead and evicts it.
-- **Client Cache Refresh (`eureka.client.registry-fetch-interval-seconds`)**: Defaults to **30 seconds**. Clients cache the registry locally so they don't query Eureka on every HTTP call.
+### Detailed Breakdown:
+1. **`DiscoveryClient` Initialization**: Spring Boot creates the `DiscoveryClient` bean during application context startup.
+2. **`InstanceInfo` Construction**: Gathers runtime metadata: `appName` (`ECOM-ORDER-SERVICE`), IP address, port, `healthCheckUrl`, actuator info URL, and initial status (`UP`).
+3. **HTTP Registration**: Sends an HTTP `POST` request to `/eureka/apps/{appName}` on the Eureka server.
+4. **In-Memory Registry Persistence**: Eureka's `ApplicationResource.addInstance()` accepts the payload and registers the instance inside its in-memory map.
+5. **Background Schedulers Triggered**: The client immediately boots two background daemon schedulers:
+   - **Heartbeat Scheduler** (Lease renewal pings)
+   - **Cache Refresh Scheduler** (Registry delta synchronization)
 
 ---
 
-## 8. Eureka Self-Preservation Mode
+## 9. Service Registry In-Memory Storage & Local Cache Engine
+
+> [!IMPORTANT]
+> **Does `Order Service` query Eureka on every single HTTP request?**  
+> **NO.** If every microservice called Eureka for every single request, Eureka would become a massive latency bottleneck and single point of failure.
+
+Instead, Eureka clients maintain an internal **Local Registry Cache**:
+
+```mermaid
+flowchart TD
+    subgraph Client ["Order Service JVM"]
+        Cache["Local Registry Cache<br>(Updated every 30s)"]
+        Worker["Application Worker Thread"]
+        DeltaProc["Background Delta Processor"]
+    end
+
+    subgraph Server ["Eureka Server (:8761)"]
+        InMem[(In-Memory Registry)]
+    end
+
+    DeltaProc -- "Periodic HTTP GET /eureka/apps (Delta Update every 30s)" --> InMem
+    InMem -- "Return updated instance hash delta" --> DeltaProc
+    DeltaProc -->|Update local cache| Cache
+    Worker -->|Read from local cache (0ms latency)| Cache
+    Worker ==>|Direct HTTP RPC| Target[Inventory Service Node]
+```
+
+### How the Local Cache Works:
+- **Zero-Latency In-Memory Reads**: When calling `Inventory Service`, the client reads instance IPs directly from its in-memory local cache (nanoseconds).
+- **Periodic Delta Fetching (`eureka.client.registry-fetch-interval-seconds`)**: Defaults to **30 seconds**. The client queries Eureka only for *deltas* (changes/new instances) and updates its local cache.
+- **Resilience to Eureka Outages**: If the Eureka Server goes down completely, existing microservices continue communicating seamlessly using their local caches.
+
+### Tuning the Cache Fetch Interval:
+```yaml
+eureka:
+  client:
+    registry-fetch-interval-seconds: 30 # Default 30s (can be tuned lower for rapid local dev)
+```
+
+---
+
+## 10. Heartbeats, Lease Renewals & Graceful Deregistration
+
+To keep the registry clean from stale or crashed instances, Eureka uses **Lease Renewals (Heartbeats)**.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Microservice (Order Service)
+    participant Eureka as Eureka Server
+
+    loop Every 30 Seconds (Heartbeat Cycle)
+        Client->>Eureka: HTTP PUT /eureka/apps/ECOM-ORDER-SERVICE/{instanceId} (Status: UP)
+        Eureka-->>Client: 200 OK (Lease Renewed)
+    end
+
+    alt Graceful Shutdown (kill -15 / Context Close)
+        Note over Client: DiscoveryClient.shutdown() invoked
+        Client->>Eureka: HTTP DELETE /eureka/apps/ECOM-ORDER-SERVICE/{instanceId}
+        Eureka-->>Client: 200 OK (Immediately evicted from registry)
+    else Abrupt Crash (kill -9 / Power Outage / Network Cut)
+        Note over Eureka: No heartbeat received for 90 seconds (Lease Expiration)
+        Eureka->>Eureka: Evict dead instance from registry
+    end
+```
+
+### Critical Lease Configuration Settings:
+```yaml
+eureka:
+  instance:
+    # How often client sends "I am alive" heartbeats to Eureka
+    lease-renewal-interval-in-seconds: 30 # Default: 30s
+    # How long Eureka waits without a heartbeat before evicting the node
+    lease-expiration-duration-in-seconds: 90 # Default: 90s
+```
+
+### Graceful vs. Abrupt Shutdown:
+- **Graceful Shutdown**: When Spring Boot terminates cleanly, the `DiscoveryClient` unregisters itself via an HTTP `DELETE` call. Eureka removes the instance **immediately**.
+- **Abrupt Crash**: If a server crashes without running shutdown hooks, Eureka waits for the `lease-expiration-duration-in-seconds` (90s) before evicting the dead instance.
+
+---
+
+## 11. Eureka Self-Preservation Mode
 
 > [!WARNING]
 > **What is Eureka Self-Preservation?**  
-> If a network partition occurs between Eureka Server and several client instances, Eureka may stop receiving heartbeats from 50% of the nodes. Evicting all those nodes would be catastrophic because the services are actually healthy—only the network link to Eureka is broken!
+> If a sudden network partition occurs between Eureka Server and several client instances, Eureka may stop receiving heartbeats from 50% of the cluster. Evicting all those instances would be catastrophic because the services are actually running fine—only the network link to Eureka is broken!
 
-When Eureka observes that renewals drop below a defined renewal percent threshold (default: **85% of expected renewals** within 15 minutes), it enters **Self-Preservation Mode**:
+When Eureka observes that renewals drop below a defined threshold (default: **85% of expected renewals within 15 minutes**), it activates **Self-Preservation Mode**:
 
 ```text
 EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY'RE NOT.
 RENEWALS ARE LESSER THAN THE THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.
 ```
 
-### Self-Preservation Behavior
-- Eureka **stops evicting** any instances from its registry, even if heartbeats stop arriving.
+### Self-Preservation Behavior:
+- Eureka **freezes eviction** and stops removing instances from its registry, even if heartbeats stop arriving.
 - Clients continue using their locally cached instance lists.
-- This protects availability at the risk of clients occasionally calling an instance that genuinely crashed.
+- This protects cluster availability at the risk of clients occasionally attempting calls to an instance that genuinely crashed (which is why client-side **Circuit Breakers and Retries** are required).
 
 ---
 
-## 9. Service Discovery vs. Load Balancing
+## 12. How OpenFeign Automatically Resolves Service Names (Load Balancer Internals)
+
+When using Spring Cloud OpenFeign without hardcoded URLs:
+
+```java
+@FeignClient(name = "ecom-inventory-service")
+public interface InventoryClient {
+
+    @GetMapping("/api/v1/inventory/{sku}")
+    InventoryDTO checkInventory(@PathVariable("sku") String sku);
+}
+```
+
+How does Feign magically resolve `ecom-inventory-service` into `http://10.0.1.10:8081`?
+
+```mermaid
+flowchart TD
+    MethodCall["inventoryClient.checkInventory('SKU-1')"] --> Handler["SynchronousMethodHandler"]
+    Handler --> LBClient["FeignBlockingLoadBalancerClient.execute()"]
+    
+    subgraph ResolutionEngine ["Spring Cloud LoadBalancer Pipeline"]
+        Extract["1. Extract Hostname: 'ecom-inventory-service'"]
+        Choose["2. RoundRobinLoadBalancer.choose()"]
+        Supplier["3. DiscoveryClientServiceInstanceListSupplier"]
+        LocalCache["4. Read from Local Eureka Registry Cache"]
+    end
+
+    LBClient --> Extract
+    Extract --> Choose
+    Choose --> Supplier
+    Supplier --> LocalCache
+    LocalCache -->|Return instance list| Choose
+    Choose -->|Selected Node: 10.0.1.10:8081| LBClient
+    LBClient -->|Replaced URI: http://10.0.1.10:8081/api/v1/inventory/SKU-1| HTTP["Dispatches HTTP Request over Network"]
+```
+
+### Internal Execution Sequence:
+1. **Method Invocation**: The application calls `inventoryClient.checkInventory("SKU-1")`.
+2. **`FeignBlockingLoadBalancerClient` Interception**: Intercepts the request and extracts the host string (`ecom-inventory-service`).
+3. **`RoundRobinLoadBalancer.choose()`**: Evaluates available instances.
+4. **`DiscoveryClientServiceInstanceListSupplier`**: Fetches the list of active instances directly from the local Eureka client cache.
+5. **URL Replacement**: Replaces the logical service name with the chosen instance's physical IP and port (`http://10.0.1.10:8081/api/v1/inventory/SKU-1`).
+6. **Network Dispatch**: Dispatches the HTTP request to the target server.
+
+---
+
+## 13. Service Discovery vs. Load Balancing
 
 Interviewers frequently probe this distinction:
 
 ```mermaid
 flowchart LR
-    subgraph Discovery ["Service Discovery (Eureka)"]
+    subgraph Discovery ["Service Discovery (Netflix Eureka)"]
         D["Maintains database of live endpoints:
-        - product-service-1: 10.0.1.5:8081
-        - product-service-2: 10.0.1.6:8081
-        - product-service-3: 10.0.1.7:8081"]
+        - inventory-service-1: 10.0.1.10:8081
+        - inventory-service-2: 10.0.1.11:8081
+        - inventory-service-3: 10.0.1.12:8081"]
     end
 
-    subgraph LoadBalancer ["Load Balancing (Spring Cloud LoadBalancer)"]
+    subgraph LoadBalancer ["Client-Side Load Balancing (Spring Cloud LoadBalancer)"]
         LB["Selects ONE specific node for the next call
-        Algorithm: Round-Robin / Random / Weighted"]
+        Algorithm: Round-Robin / Weighted / Random"]
     end
 
-    Discovery -->|Registry Data| LoadBalancer
+    Discovery -->|Registry Data Cache| LoadBalancer
     LoadBalancer -->|Route Request| Target[Target Microservice Node]
 ```
 
-- **Service Discovery** answers: *"Where are all the available instances right now?"*
+- **Service Discovery** answers: *"Where are all the available instances located right now?"*
 - **Load Balancing** answers: *"Which single instance among the available options should receive this specific request?"*
 
 ---
 
-## 10. Interview Questions & Deep-Dive Answers
+## 14. Interview Questions & Deep-Dive Answers
 
 ### Q1: Does every inter-service request go through the Eureka Server?
 > **Answer**:  
-> **No, absolutely not.** Eureka is strictly a control-plane service registry, not a data-plane proxy. Clients download and cache the registry locally every 30 seconds. When `Order Service` calls `Product Service`, it uses its local cache and executes a direct point-to-point HTTP request to the chosen instance. If Eureka crashes, existing services can still talk to each other using their local registry caches!
+> **No, absolutely not.** Eureka is strictly a control-plane service registry, not a data-plane proxy. Clients download and cache the registry locally every 30 seconds. When `Order Service` calls `Inventory Service`, it resolves the IP from its local cache and executes a direct point-to-point HTTP request to the chosen instance. If Eureka crashes, existing services can still talk to each other using their local registry caches.
 
-### Q2: What happens if an instance crashes abruptly?
+### Q2: What happens when an application shuts down gracefully vs abruptly?
 > **Answer**:  
-> If an instance crashes without sending an unregister shutdown hook, Eureka waits for the lease expiration duration (default 90 seconds) before evicting it. Because clients refresh their cache every 30 seconds, a caller might attempt to call the dead instance during this window. This is why client-side **Circuit Breakers and Retries (Resilience4j)** are mandatory.
+> - **Graceful Shutdown**: The client sends an HTTP `DELETE` unregister event during context shutdown, and Eureka evicts it immediately.
+> - **Abrupt Crash**: Eureka stops receiving heartbeats and waits for the lease expiration duration (default 90 seconds) before evicting the dead instance.
 
-### Q3: Why does Netflix Eureka favor Availability over Consistency (AP in CAP theorem)?
+### Q3: Why does Netflix Eureka store registry data in-memory without a database?
 > **Answer**:  
-> In distributed microservices, it is far better for a caller to receive an outdated IP and attempt a call (which can fallback gracefully) than for the entire registry to lock up and reject requests during a network partition. Eureka prioritizes high availability of service lookup data.
+> Microservice instance locations are ephemeral and constantly fluctuating. Storing registrations in an in-memory `ConcurrentHashMap` provides nanosecond lookup performance, eliminates database schema coupling, and ensures high availability (AP in CAP theorem).
+
+### Q4: How does OpenFeign know which instance to call when multiple instances exist?
+> **Answer**:  
+> OpenFeign integrates with `FeignBlockingLoadBalancerClient` and Spring Cloud LoadBalancer. It queries the local discovery cache via `DiscoveryClientServiceInstanceListSupplier` and applies client-side **Round-Robin** load balancing to pick an instance for each request.
 
 ---
 
-## 11. Core Architectural Summary
+## 15. Core Architectural Summary
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                      EUREKA DISCOVERY CHEAT SHEET                       │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ 1. Eureka Server acts as dynamic phonebook; Clients self-register       │
-│ 2. Heartbeats sent every 30s; Leases expire after 90s without pings     │
-│ 3. Clients cache the registry locally to eliminate single-point bottleneck│
-│ 4. Feign resolves logical names ('product-service') via local cache     │
-│ 5. Self-Preservation prevents mass-eviction during network partitions   │
-│ 6. Pair with Resilience4j to handle stale-cache eviction lag            │
+│ 1. Eureka Server is an In-Memory Service Registry (no DB required)      │
+│ 2. Clients self-register on startup via DiscoveryClient & InstanceInfo  │
+│ 3. Clients cache the registry locally (updated via delta fetch every 30s)│
+│ 4. Heartbeats sent every 30s; leases expire after 90s without pings     │
+│ 5. Graceful shutdown sends unregister event for immediate eviction      │
+│ 6. Self-Preservation prevents mass-eviction during network partitions   │
+│ 7. OpenFeign + LoadBalancer resolves logical names via local cache      │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
