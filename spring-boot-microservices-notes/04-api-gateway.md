@@ -28,10 +28,10 @@ In a naive microservices setup, external mobile apps, SPAs, and third-party part
 ```mermaid
 graph TD
     Client[Web App / iOS / Android]
-    Client -->|Direct Call :8081| US[User Service]
-    Client -->|Direct Call :8082| OS[Order Service]
-    Client -->|Direct Call :8083| PS[Payment Service]
-    Client -->|Direct Call :8084| IS[Inventory Service]
+    Client -->|"Direct Call :8081"| US[User Service]
+    Client -->|"Direct Call :8082"| OS[Order Service]
+    Client -->|"Direct Call :8083"| PS[Payment Service]
+    Client -->|"Direct Call :8084"| IS[Inventory Service]
 ```
 
 ### Severe Vulnerabilities of Direct Client Access
@@ -50,12 +50,12 @@ An **API Gateway** serves as the **single, reverse-proxy entry point** shielding
 
 ```mermaid
 flowchart TD
-    Client([External Clients / Mobile / Web]) -->|Single HTTPS Port :8080| GW[Spring Cloud API Gateway]
+    Client([External Clients / Mobile / Web]) -->|"Single HTTPS Port :8080"| GW[Spring Cloud API Gateway]
 
     subgraph InternalDMZ ["Secure Internal VPC (Private IPs)"]
-        GW -->|Route /api/v1/users/**| US[User Service :8081]
-        GW -->|Route /api/v1/orders/**| OS[Order Service :8082]
-        GW -->|Route /api/v1/payments/**| PS[Payment Service :8083]
+        GW -->|"Route /api/v1/users/**"| US[User Service :8081]
+        GW -->|"Route /api/v1/orders/**"| OS[Order Service :8082]
+        GW -->|"Route /api/v1/payments/**"| PS[Payment Service :8083]
     end
 ```
 

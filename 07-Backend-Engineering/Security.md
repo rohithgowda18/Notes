@@ -54,12 +54,12 @@ $$\text{Password Hash} = \mathbf{\text{Argon2id}} \text{ or } \mathbf{\text{Bcry
 ```mermaid
 flowchart TD
     subgraph SessionAuth [Stateful Session Auth]
-        C1[Client] -->|Cookie: session_id=abc| S1[Server]
-        S1 <-->|Lookup session_id in RAM/Redis| Redis[(Redis Session Store)]
+        C1[Client] -->|"Cookie: session_id=abc"| S1[Server]
+        S1 <-->|"Lookup session_id in RAM/Redis"| Redis[(Redis Session Store)]
     end
     subgraph JWTAuth [Stateless JWT Auth]
-        C2[Client] -->|Header: Bearer eyJhbGciOi...| S2[Server]
-        S2 -->|Verify Cryptographic HMAC/RSA Signature locally| S2
+        C2[Client] -->|"Header: Bearer eyJhbGciOi..."| S2[Server]
+        S2 -->|"Verify Cryptographic HMAC/RSA Signature locally"| S2
     end
 ```
 

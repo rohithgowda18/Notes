@@ -246,9 +246,9 @@ flowchart TD
     S1 --> Actuator & MDC & OtelBridge
     S2 --> Actuator & MDC & OtelBridge
 
-    Actuator -->|Scrape /actuator/prometheus| Prom
-    MDC -->|Ship JSON Logs (Promtail/Fluentbit)| Loki
-    OtelBridge -->|Export Spans (HTTP/gRPC)| Zipkin
+    Actuator -->|"Scrape /actuator/prometheus"| Prom
+    MDC -->|"Ship JSON Logs (Promtail/Fluentbit)"| Loki
+    OtelBridge -->|"Export Spans (HTTP/gRPC)"| Zipkin
 
     Prom --> Grafana
     Loki --> Grafana

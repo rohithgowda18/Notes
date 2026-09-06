@@ -282,7 +282,7 @@ To bridge servers, instances publish events to a centralized message bus:
 ```mermaid
 flowchart TD
     Alice([User Alice]) -->|1. Send Message| S1[Server A]
-    S1 -->|2. Publish to 'channel:room1'| Bus[(Message Broker: Redis / Kafka)]
+    S1 -->|"2. Publish to 'channel:room1'"| Bus[(Message Broker: Redis / Kafka)]
     Bus -->|3. Broadcast| S1
     Bus -->|4. Broadcast| S2[Server B]
     S2 -->|5. Push frame to local socket| Bob([User Bob])

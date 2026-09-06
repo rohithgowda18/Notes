@@ -66,7 +66,7 @@ flowchart TD
     Service --> Async
     Repo --> RC_Coll
     Repo --> Hist_Coll
-    Metrics -.->|Exposes /actuator/prometheus| Prometheus[(Prometheus Monitoring)]
+    Metrics -.->|"Exposes /actuator/prometheus"| Prometheus[(Prometheus Monitoring)]
 ```
 
 ### Technology Matrix:

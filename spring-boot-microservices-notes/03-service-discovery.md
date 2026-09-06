@@ -324,7 +324,7 @@ flowchart TD
     DeltaProc -- "Periodic HTTP GET /eureka/apps (Delta Update every 30s)" --> InMem
     InMem -- "Return updated instance hash delta" --> DeltaProc
     DeltaProc -->|Update local cache| Cache
-    Worker -->|Read from local cache (0ms latency)| Cache
+    Worker -->|"Read from local cache (0ms latency)"| Cache
     Worker ==>|Direct HTTP RPC| Target[Inventory Service Node]
 ```
 
@@ -435,8 +435,8 @@ flowchart TD
     Choose --> Supplier
     Supplier --> LocalCache
     LocalCache -->|Return instance list| Choose
-    Choose -->|Selected Node: 10.0.1.10:8081| LBClient
-    LBClient -->|Replaced URI: http://10.0.1.10:8081/api/v1/inventory/SKU-1| HTTP["Dispatches HTTP Request over Network"]
+    Choose -->|"Selected Node: 10.0.1.10:8081"| LBClient
+    LBClient -->|"Replaced URI: http://10.0.1.10:8081/api/v1/inventory/SKU-1"| HTTP["Dispatches HTTP Request over Network"]
 ```
 
 ### Internal Execution Sequence:

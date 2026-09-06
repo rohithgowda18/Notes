@@ -363,7 +363,7 @@ A **`RequestInterceptor`** intercepts every outgoing HTTP request template *befo
 ```mermaid
 flowchart LR
     Caller[Service Method Call] --> Interceptor[RequestInterceptor Bean]
-    Interceptor -->|Inject 'X-Correlation-Id: UUID' & 'Authorization: Bearer'| Wire[Outgoing HTTP Request]
+    Interceptor -->|"Inject 'X-Correlation-Id: UUID' & 'Authorization: Bearer'"| Wire[Outgoing HTTP Request]
 ```
 
 ### Implementing `RequestInterceptor`

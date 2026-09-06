@@ -65,11 +65,11 @@ Most web applications have a **read-heavy workload** ($90\%$ reads, $10\%$ write
 
 ```mermaid
 flowchart TD
-    App[Application Tier] -->|Writes: INSERT, UPDATE, DELETE| Primary[(Primary DB: Master)]
+    App[Application Tier] -->|"Writes: INSERT, UPDATE, DELETE"| Primary[(Primary DB: Master)]
     Primary -->|Async Binary Log Replication| R1[(Read Replica 1)]
     Primary -->|Async Binary Log Replication| R2[(Read Replica 2)]
-    App -->|Reads: SELECT| R1
-    App -->|Reads: SELECT| R2
+    App -->|"Reads: SELECT"| R1
+    App -->|"Reads: SELECT"| R2
 ```
 
 ### The Replication Lag Problem:
