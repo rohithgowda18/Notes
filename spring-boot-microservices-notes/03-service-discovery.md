@@ -57,7 +57,7 @@ graph TD
     end
 
     subgraph ClientSide ["2. Client-Side Discovery (e.g., Spring Cloud Eureka + LoadBalancer)"]
-        C2[Client Service] -. 1. Query live nodes .-> E[(Eureka Registry)]
+        C2[Client Service] -.->|1. Query live nodes| E[(Eureka Registry)]
         C2 -->|2. Direct Load-Balanced Request| S3[Instance A]
         C2 -.->|Alternative Route| S4[Instance B]
     end

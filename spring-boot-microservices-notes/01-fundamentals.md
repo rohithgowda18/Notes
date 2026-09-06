@@ -134,7 +134,7 @@ graph TD
     subgraph Recommended ["✅ Recommended: Database per Service"]
         O1[Order Service] --> ODB[(Order Database)]
         I1[Inventory Service] --> IDB[(Inventory Database)]
-        O1 -. "REST / Feign / Kafka" .-> I1
+        O1 -.->|"REST / Feign / Kafka"| I1
     end
 ```
 
@@ -184,16 +184,16 @@ flowchart TD
     end
 
     subgraph EventStream ["Asynchronous Event Broker"]
-        OS -. "OrderCreatedEvent" .-> Kafka[(Apache Kafka)]
+        OS -.->|"OrderCreatedEvent"| Kafka[(Apache Kafka)]
         Kafka -.-> PS
         Kafka -.-> NS[Notification Service :8085]
     end
 
-    US -. Register & Heartbeat .-> Eureka
-    OS -. Register & Heartbeat .-> Eureka
-    PS -. Register & Heartbeat .-> Eureka
-    IS -. Register & Heartbeat .-> Eureka
-    Gateway -. Fetch Registry .-> Eureka
+    US -.->|Register & Heartbeat| Eureka
+    OS -.->|Register & Heartbeat| Eureka
+    PS -.->|Register & Heartbeat| Eureka
+    IS -.->|Register & Heartbeat| Eureka
+    Gateway -.->|Fetch Registry| Eureka
 ```
 
 ---

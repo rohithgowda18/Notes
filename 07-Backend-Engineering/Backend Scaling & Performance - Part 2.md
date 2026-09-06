@@ -117,8 +117,8 @@ When data volume exceeds the storage capacity of a single machine or write throu
 flowchart LR
     UserUS[User in USA] -->|5ms Latency| CDN_US[Edge CDN Point of Presence]
     UserEU[User in Europe] -->|8ms Latency| CDN_EU[Edge CDN Point of Presence]
-    CDN_US -. Cache Miss .-> Origin[(Origin Server in India, 250ms)]
-    CDN_EU -. Cache Miss .-> Origin
+    CDN_US -.->|Cache Miss| Origin[(Origin Server in India, 250ms)]
+    CDN_EU -.->|Cache Miss| Origin
 ```
 
 - **CDN (Content Delivery Network)**: Geographically distributed cache for static assets (images, CSS, JS, videos).

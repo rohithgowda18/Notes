@@ -67,7 +67,7 @@ flowchart LR
     Q -->|2. Dequeue Task| W2
     Q -->|2. Dequeue Task| W3
     W1 -->|3. ACK on Success| Q
-    W2 -. Failed after 5 retries .-> DLQ
+    W2 -.->|Failed after 5 retries| DLQ
 ```
 
 ### Core Components:

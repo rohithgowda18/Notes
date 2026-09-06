@@ -89,7 +89,7 @@ flowchart TD
     Loop -->|Register async callback with OS epoll| OS[Kernel / Background I/O]
     Req2[Request B: Cache Read] --> Loop
     Loop -->|Handle instantly in RAM| RespB[Return Response B]
-    OS -. DB Query Complete .-> Queue[Event Queue]
+    OS -.->|DB Query Complete| Queue[Event Queue]
     Queue --> Loop
     Loop --> RespA[Resume & Return Response A]
 ```
