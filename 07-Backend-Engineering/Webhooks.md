@@ -21,7 +21,7 @@
 14. [Building Your Own Webhook Sender: The Transactional Outbox](#14-building-your-own-webhook-sender-the-transactional-outbox)
 15. [When Webhooks Are the WRONG Choice (The Syncing Trap)](#15-when-webhooks-are-the-wrong-choice-the-syncing-trap)
 16. [The Event Log: The Right Way to Sync Data](#16-the-event-log-the-right-way-to-sync-data)
-17. [Interview Quick-Reference Summary](#17-interview-quick-reference-summary)
+17. [Interview Quick-Reference Summary & Official References](#17-interview-quick-reference-summary--official-references)
 18. [*(Optional Deep Dive)* Java Spring Boot Code Reference](#18-optional-deep-dive-java-spring-boot-code-reference)
 
 ---
@@ -43,9 +43,7 @@ flowchart LR
     YourServer -- "HTTP 200 OK: Got it, thanks!" --> Stripe
 ```
 
-<div align="center">
-  <img src="https://images.ctfassets.net/23aumh6u8us0/5w3G7gQkG6k4gqE6q6E6q6/c48c5c7d0d0f0c0a0c0a0c0a0c0a0c0a/webhook-vs-api.png" width="700" alt="Webhook vs API Flow" onerror="this.style.display='none'"/>
-</div>
+> 📖 **Verified Reference**: For a real webhook request example, see [GitHub's official Webhook Events and Payloads documentation](https://docs.github.com/en/webhooks/webhook-events-and-payloads). It shows an actual HTTP POST, delivery ID, event header, signature header, and JSON payload.
 
 ### Why can't the user's browser just tell our backend?
 Suppose a customer buys a subscription on your site. The payment happens on Stripe's checkout. Why can't the user's browser simply tell our server *"Hey, I paid!"*?
@@ -120,7 +118,6 @@ X-Hub-Signature-256: sha256=d57c68d10b93d8650aedb3fdd58daec5ffab406f680ce907620a
 
 ### Provider Response Timeouts (You Must Be Fast!)
 If your server takes too long to answer, the provider assumes your server crashed and cancels the connection:
-
 * **GitHub**: 10 seconds max
 * **Shopify**: 5 seconds max
 * **Slack**: 3 seconds max
@@ -169,6 +166,8 @@ If your server blindly trusts this, the hacker gets free access!
 
 ## 7. The HMAC Signature & The "Raw Body" Rule
 
+> 📖 **Verified Reference**: [GitHub — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries). GitHub documents HMAC-SHA256, `X-Hub-Signature-256`, raw-payload verification, and constant-time comparison.
+
 ### How HMAC Works:
 1. When you register your webhook, you and the provider share a secret password (e.g. `whsec_secret123`).
 2. The provider calculates a cryptographic hash (HMAC-SHA256) of the message using this secret and puts it in the header.
@@ -186,10 +185,10 @@ flowchart TD
 Never parse the JSON into an object *before* checking the signature!
 
 ```
-Incoming:   {"amount":100,"currency":"usd"}   --> Hash = 0xABC123
-Parsed & Re-saved: {"amount": 100, "currency": "usd"} --> Hash = 0xXYZ999 (FAILED!)
+Incoming:          {"amount":100,"currency":"usd"}         --> Hash = 0xABC123
+Parsed & Re-saved: {"amount": 100, "currency": "usd"}       --> Hash = 0xXYZ999 (FAILED!)
 ```
-Even an extra space or changed order will change the entire hash. **Always verify the exact raw bytes first!**
+Even an extra space or changed key order will change the entire hash. **Always verify the exact raw bytes first!**
 
 ---
 
@@ -273,11 +272,13 @@ Events can arrive out of order due to retries:
 
 ## 12. Automatic Retries, Exponential Backoff & Jitter
 
+> 📖 **Verified Reference**: [Stripe — Webhooks Documentation](https://docs.stripe.com/webhooks). Provider retry schedules vary, so the exact delays below should be treated as a conceptual example unless tied to a specific provider's current documentation.
+
 When your server is down or returning errors, providers retry with **Exponential Backoff**:
-* Attempt 1: Wait 5 seconds
-* Attempt 2: Wait 25 seconds
-* Attempt 3: Wait 2 minutes
-* Attempt 4: Wait 15 minutes
+* **Attempt 1**: Wait 5 seconds
+* **Attempt 2**: Wait 25 seconds
+* **Attempt 3**: Wait 2 minutes
+* **Attempt 4**: Wait 15 minutes
 
 ```mermaid
 gantt
@@ -297,6 +298,8 @@ gantt
 ---
 
 ## 13. The "Thin Receiver" Pattern (Handling Huge Traffic Spikes)
+
+> 📖 **Verified Reference**: [Stripe — Webhooks Documentation](https://docs.stripe.com/webhooks). Stripe documents returning a successful 2xx response quickly and handling webhook work asynchronously when appropriate.
 
 On the 1st of every month, Stripe renews millions of subscriptions at once.  
 If your webhook controller verifies signatures, runs 5 heavy database queries, and sends emails synchronously, your server will freeze and time out!
@@ -318,6 +321,8 @@ flowchart LR
 ---
 
 ## 14. Building Your Own Webhook Sender: The Transactional Outbox
+
+> 📖 **Verified Reference**: [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html). AWS provides official architecture diagrams and explains the dual-write problem, outbox table, and asynchronous event processing.
 
 If you want to send webhooks to your customers when they move a task:  
 ❌ **Don't do this**: Send the HTTP POST directly inside your web controller. If the customer's server is slow, your app freezes.
@@ -374,7 +379,7 @@ sequenceDiagram
 
 ---
 
-## 17. Interview Quick-Reference Summary
+## 17. Interview Quick-Reference Summary & Official References
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -391,6 +396,13 @@ sequenceDiagram
 | Data Sync Rule         | Don't sync raw DBs with webhooks alone; use Webhook + Event Log API       |
 +----------------------------------------------------------------------------------------------------+
 ```
+
+### Verified Official References:
+These are the external sources used to validate the important webhook concepts in this guide. Prefer these sources over unverified diagrams when revising for placements:
+* [GitHub — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries) — HMAC-SHA256, raw body, signature validation, constant-time comparison.
+* [GitHub — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads) — Real webhook POST structure, headers, delivery IDs, and payloads.
+* [Stripe — Webhooks Documentation](https://docs.stripe.com/webhooks) — Receiving webhooks, fast 2xx responses, and provider-specific delivery behavior.
+* [AWS — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html) — Official transactional-outbox architecture and implementation guidance.
 
 ---
 
@@ -460,7 +472,7 @@ public class TaskService {
         taskRepo.save(task);
 
         // 2. Save event in Outbox table (Same transaction!)
-        OutboxEvent event = new OutboxEvent("task.completed", "{\"taskId\":" + taskId + "}");
+        OutboxEvent event = new OutboxEvent("task.completed", "{"taskId":" + taskId + "}");
         outboxRepo.save(event);
     }
 }
