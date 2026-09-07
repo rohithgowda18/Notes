@@ -1,4 +1,4 @@
-# 🪝 Complete Beginner-Friendly Guide to Webhooks
+# 🪝 Complete Beginner-Friendly Guide to Webhooks  -->  (Notifications basically)
 
 > **Learning Goal**: Understand what Webhooks are, why they are used, how they work in real applications (like Stripe and GitHub), and the fundamental concepts you need to know for interviews and practical development — explained in plain, simple terms with diagrams and illustrations!
 
