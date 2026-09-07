@@ -339,8 +339,8 @@ flowchart TD
     ClientReq2["2nd Request: POST /inventory"] --> Gateway
 
     subgraph LoadBalancer ["Spring Cloud LoadBalancer (Round Robin)"]
-        Gateway -->|Instance 1 (Port 8082)| Inv1["Inventory Service Node 1 (:8082)"]
-        Gateway -->|Instance 2 (Port 8083)| Inv2["Inventory Service Node 2 (:8083)"]
+        Gateway -->|"Instance 1 (Port 8082)"| Inv1["Inventory Service Node 1 (:8082)"]
+        Gateway -->|"Instance 2 (Port 8083)"| Inv2["Inventory Service Node 2 (:8083)"]
     end
 ```
 
