@@ -1,226 +1,445 @@
 # 🚪 04 — Spring Cloud API Gateway
 
-> **Covers Edge Routing, Filtering & Centralized Edge Security**  
-> Why direct client-to-microservice communication fails, anatomy of **Spring Cloud Gateway**, Route Predicates, Pre/Post Gateway Filters, dynamic discovery routing, JWT edge validation, Redis Token-Bucket rate limiting, and edge cross-cutting concerns with visual diagrams.
+> **Mastering API Gateway Architecture for Interviews & System Design**  
+> Covers The Problems in Direct Client Setups, Spring WebFlux Non-Blocking Reactive Foundation, Static Routing vs Dynamic Routing with Netflix Eureka (`lb://`), The 30s Cache Latency Mechanism, Client-Side Load Balancing with Multiple Instances, Pre/Post Gateway Filters, Edge Authentication, Centralized CORS, and Placement Interview Questions.
 
 ---
 
 ## 📑 Table of Contents
-1. [The Edge Problem: Why Direct Client Access Fails](#1-the-edge-problem-why-direct-client-access-fails)
-2. [What is an API Gateway?](#2-what-is-an-api-gateway)
-3. [Spring Cloud Gateway Architecture](#3-spring-cloud-gateway-architecture)
-4. [Route Predicates & Filters Explained](#4-route-predicates--filters-explained)
-5. [Configuring Routes: Static vs. Dynamic Discovery](#5-configuring-routes-static-vs-dynamic-discovery)
-6. [Writing Custom Gateway Filters (Pre & Post) with Code](#6-writing-custom-gateway-filters-pre--post-with-code)
-7. [JWT Edge Authentication Filter with Code](#7-jwt-edge-authentication-filter-with-code)
-8. [Redis Token Bucket Rate Limiting with Code](#8-redis-token-bucket-rate-limiting-with-code)
-9. [Cross-Cutting Concerns at the Edge](#9-cross-cutting-concerns-at-the-edge)
-10. [Anti-Pattern: The Gateway as a Business Dump](#10-anti-pattern-the-gateway-as-a-business-dump)
-11. [Interview Questions & Deep-Dive Answers](#11-interview-questions--deep-dive-answers)
-12. [Core Architectural Summary](#12-core-architectural-summary)
+1. [The Problem with Direct Client-to-Microservice Communication](#1-the-problem-with-direct-client-to-microservice-communication)
+2. [What is an API Gateway? (The Single Entry Point)](#2-what-is-an-api-gateway-the-single-entry-point)
+3. [Spring Cloud Gateway Internal Architecture (WebFlux & Netty)](#3-spring-cloud-gateway-internal-architecture-webflux--netty)
+4. [Setting Up Spring Cloud Gateway (Dependencies & Configuration)](#4-setting-up-spring-cloud-gateway-dependencies--configuration)
+5. [Static Routing vs. Dynamic Routing with Netflix Eureka](#5-static-routing-vs-dynamic-routing-with-netflix-eureka)
+6. [Why Changes Take Up to 30 Seconds (The Discovery Cache Window)](#6-why-changes-take-up-to-30-seconds-the-discovery-cache-window)
+7. [Client-Side Load Balancing Across Multiple Instances (`lb://`)](#7-client-side-load-balancing-across-multiple-instances-lb)
+8. [Gateway Filters (Pre-Filters, Post-Filters & Transformations)](#8-gateway-filters-pre-filters-post-filters--transformations)
+9. [Centralized Cross-Cutting Concerns (Auth, Rate Limiting & CORS)](#9-centralized-cross-cutting-concerns-auth-rate-limiting--cors)
+10. [Anti-Patterns: What NEVER to Put in an API Gateway](#10-anti-patterns-what-never-to-put-in-an-api-gateway)
+11. [Placement & Interview Questions (With Concrete Answers)](#11-placement--interview-questions-with-concrete-answers)
 
 ---
 
-## 1. The Edge Problem: Why Direct Client Access Fails
+## 1. The Problem with Direct Client-to-Microservice Communication
 
-In a naive microservices setup, external mobile apps, SPAs, and third-party partners communicate directly with individual backend microservices:
+Suppose you build a microservices-based e-commerce application with an **Order Service**, **Inventory Service**, **Payment Service**, and **Notification Service**.
 
-```mermaid
-graph TD
-    Client[Web App / iOS / Android]
-    Client -->|"Direct Call :8081"| US[User Service]
-    Client -->|"Direct Call :8082"| OS[Order Service]
-    Client -->|"Direct Call :8083"| PS[Payment Service]
-    Client -->|"Direct Call :8084"| IS[Inventory Service]
-```
-
-### Severe Vulnerabilities of Direct Client Access
-1. **Massive Attack Surface**: Every backend service must be exposed to the public Internet with public IPs and open firewall ports.
-2. **Duplicated Cross-Cutting Logic**: Every microservice must independently implement JWT token validation, SSL termination, CORS policies, rate limiting, and request logging.
-3. **High Chatty Network Latency**: Rendering a single mobile screen (e.g., Order Detail) requires the phone to fire 5 separate cellular HTTP calls to 5 services.
-4. **Client-Backend Coupling**: If the backend team refactors and splits `Order Service` into `Order Service` and `Fulfillment Service`, client apps break immediately.
-
----
-
-## 2. What is an API Gateway?
-
-An **API Gateway** serves as the **single, reverse-proxy entry point** shielding the entire internal microservices cluster from external traffic:
-
-![API Gateway Reverse Proxy Architecture](images/gateway-reverse-proxy.png)
+Without an API Gateway, your frontend (React, Vue, iOS/Android mobile apps) talks directly to each individual microservice:
 
 ```mermaid
 flowchart TD
-    Client([External Clients / Mobile / Web]) -->|"Single HTTPS Port :8080"| GW[Spring Cloud API Gateway]
-
-    subgraph InternalDMZ ["Secure Internal VPC (Private IPs)"]
-        GW -->|"Route /api/v1/users/**"| US[User Service :8081]
-        GW -->|"Route /api/v1/orders/**"| OS[Order Service :8082]
-        GW -->|"Route /api/v1/payments/**"| PS[Payment Service :8083]
-    end
-```
-
-### Primary Edge Responsibilities
-- **Intelligent Routing**: Forwarding inbound URLs to appropriate downstream microservices.
-- **Security & Authentication**: Validating JWT Bearer tokens and terminating SSL.
-- **Traffic Control & Rate Limiting**: Throttling abusive IP addresses or client IDs.
-- **CORS Handling**: Managing Cross-Origin Resource Sharing centrally for all SPAs.
-- **Protocol Translation & Header Enrichment**: Sanitizing headers and appending internal user identity headers (`X-User-Id`, `X-User-Role`).
-
----
-
-## 3. Spring Cloud Gateway Architecture
-
-Unlike older gateways (such as Netflix Zuul 1.x which used blocking I/O with a thread-per-connection), **Spring Cloud Gateway** is built on top of **Spring 5, Project Reactor, and Netty**:
-
-![API Gateway Architecture and Route Mapping](images/api-gateway-architecture.png)
-
-```mermaid
-flowchart TD
-    Client([Inbound Request]) --> Dispatcher[Gateway Handler Mapping]
-    Dispatcher --> Handler[Gateway Web Handler]
+    Client["📱 Client / Frontend (React App :5173)"]
     
-    subgraph FilterPipeline ["Filter Execution Chain"]
-        direction TB
-        F1["Pre-Filter 1 (Log & Validate JWT)"] --> F2["Pre-Filter 2 (Rate Limiter)"]
-        F2 --> Routing["Routing Filter (Proxy to Microservice)"]
-        Routing --> P1["Post-Filter 1 (Add Security Headers)"]
-        P1 --> P2["Post-Filter 2 (Latency Metric Timer)"]
+    subgraph DirectAccess ["❌ Flawed Direct Client Access Model"]
+        Order["📦 Order Service (:8080)"]
+        Inv["🏭 Inventory Service (:8081)"]
+        Pay["💳 Payment Service (:8082)"]
+        Notif["🔔 Notification Service (:8083)"]
     end
 
-    Handler --> FilterPipeline
-    FilterPipeline --> Downstream[Internal Microservice]
+    Client -->|"Calls http://localhost:8080/order"| Order
+    Client -->|"Calls http://localhost:8081/inventory"| Inv
+    Client -->|"Calls http://localhost:8082/payment"| Pay
+    Client -->|"Calls http://localhost:8083/notify"| Notif
 ```
 
-### Core Concepts
-1. **Route**: The basic building block of the gateway. Defined by an **ID**, a **destination URI**, a collection of **Predicates**, and a collection of **Filters**.
-2. **Predicate**: A Java 8 `Predicate` matching HTTP request attributes (Path, Method, Headers, Cookies, Query Params).
-3. **Filter**: Spring Framework `GatewayFilter` instances that intercept, inspect, or modify the request before routing and/or modify the response before returning.
+### Why Direct Client Access Breaks in Production:
+
+```
++---------------------------------------------------------------------------------------------------+
+|                        5 CRITICAL PROBLEMS WITHOUT AN API GATEWAY                                 |
++---------------------------------------------------------------------------------------------------+
+| 1. Multiple Microservice URLs: Client must manage ports, domains, and route mappings for 20+ APIs.|
+| 2. Tight Coupling to Topology: If Order Service moves from :8080 to :8090, client code breaks!   |
+| 3. Security Duplication     : JWT parsing, token validation, and OAuth code duplicated in all 20+ apps.|
+| 4. Cross-Cutting Overhead    : Logging, CORS, rate limiting, and metrics must be repeated in every repo.|
+| 5. Security & Attack Surface : Exposing internal microservice IP addresses directly to the public web.|
++---------------------------------------------------------------------------------------------------+
+```
+
+### "Why Can't the React Client Just Query Eureka Server Directly?"
+> 💡 **Classic Interview Question**: Why not let the React app query Eureka at `:8761` to discover service URLs dynamically?  
+> **Answer**:  
+> 1. **Boundary Violation**: Eureka is an **internal server-side service registry**. It is not meant to be exposed to public web browsers.
+> 2. **Client Complexity**: Frontends should strictly handle UI/UX state, not complex client-side service registry caching, heartbeat renewal, and load-balancing algorithms.
+> 3. **Security Vulnerability**: Exposing Eureka to browsers leaks your entire internal network topology, IPs, and port configurations to potential attackers.
 
 ---
 
-## 4. Route Predicates & Filters Explained
+## 2. What is an API Gateway? (The Single Entry Point)
 
-### Common Built-in Route Predicates
-Predicates determine *if* a request matches a route:
-- `Path=/api/v1/orders/**`: Matches incoming URI paths.
-- `Method=GET,POST`: Matches specific HTTP verbs.
-- `Header=X-Request-Id, \d+`: Matches if a header is present and satisfies regex.
-- `After=2026-01-01T00:00:00+00:00[UTC]`: Matches requests that occur after a given timestamp (useful for scheduled feature rollouts).
+An **API Gateway** is an architectural pattern and server that acts as the **single front door / reverse proxy** into your microservices ecosystem:
 
-### Common Built-in Gateway Filters
-Filters modify the request or response:
-- `RewritePath=/api/v1/(?<segment>.*), /$\{segment}`: Rewrites `/api/v1/orders` to `/orders`.
-- `AddRequestHeader=X-Gateway-Origin, SpringCloudGateway`: Injects custom headers to downstream services.
-- `AddResponseHeader=X-Frame-Options, DENY`: Enhances security headers on egress.
-- `RequestRateLimiter`: Leverages Redis token-bucket to throttle requests.
+```mermaid
+flowchart LR
+    Client["📱 React Frontend (:5173)"] -->|Single Base URL: http://localhost:9090| Gateway["🚪 API Gateway (:9090)<br>(Spring Cloud Gateway)"]
+
+    subgraph BackendServices ["Internal Microservice Network"]
+        Eureka["🧭 Eureka Server (:8761)"]
+        Order["📦 Order Service (:8080)"]
+        Inv["🏭 Inventory Service (:8081)"]
+        Pay["💳 Payment Service (:8082)"]
+    end
+
+    Gateway -.->|Dynamic Route Lookup| Eureka
+    Gateway -->|/order/**| Order
+    Gateway -->|/inventory/**| Inv
+    Gateway -->|/payment/**| Pay
+```
+
+### Core Responsibilities of an API Gateway:
+1. **Single Entry Point**: Clients only know one URL (e.g. `https://api.mycompany.com`).
+2. **Dynamic Request Routing**: Directs `/order/**` to Order Service and `/inventory/**` to Inventory Service.
+3. **Centralized Authentication & Authorization**: Validates JWT tokens once at the edge before requests reach downstream services.
+4. **Service Discovery Integration**: Queries Eureka to find live instances automatically.
+5. **Client-Side Load Balancing**: Distributes traffic across healthy service instances using Round-Robin.
+6. **Centralized Cross-Cutting Concerns**: Rate limiting, request/response logging, header transformations, and global CORS management.
 
 ---
 
-## 5. Configuring Routes: Static vs. Dynamic Discovery
+## 3. Spring Cloud Gateway Internal Architecture (WebFlux & Netty)
 
-### Approach A: Static URI Routing (application.yml)
-Routes configured with fixed backend IP/domain:
+Spring Cloud Gateway is built on **Spring WebFlux (Project Reactor)** and runs on an embedded **Netty** server.
 
-```yaml
-spring:
-  cloud:
-    gateway:
-      routes:
-        - id: user-service-route
-          uri: http://localhost:8081
-          predicates:
-            - Path=/api/v1/users/**
-          filters:
-            - StripPrefix=1
+```mermaid
+flowchart TD
+    ClientReq["Inbound Client Request"] --> Netty["Embedded Netty Non-Blocking Reactor"]
+    Netty --> HandlerMapping["Gateway Handler Mapping<br>(Evaluates Route Predicates)"]
+    HandlerMapping --> WebHandler["Gateway Web Handler<br>(Builds Filter Chain)"]
+    
+    subgraph FilterPipeline ["Gateway Filter Chain"]
+        direction TB
+        Pre1["Pre-Filter 1: JWT Auth Verification"] --> Pre2["Pre-Filter 2: Rate Limiting Bucket Check"]
+        Pre2 --> Pre3["Pre-Filter 3: Add X-User-Id Request Header"]
+        Pre3 --> RouteDownstream["Forward Request to Microservice via Netty Client"]
+        RouteDownstream --> Post1["Post-Filter 1: Capture Response Latency"]
+        Post1 --> Post2["Post-Filter 2: Inject Security Headers"]
+    end
+
+    WebHandler --> FilterPipeline
+    FilterPipeline --> ClientResp["Outbound HTTP Response to Client"]
 ```
 
-### Approach B: Dynamic Discovery Routing via Eureka (`lb://`)
-Instead of hardcoded URLs, the gateway uses **logical service names** resolved dynamically from Netflix Eureka with client-side load balancing:
+### The 3 Core Building Blocks:
+* **Route**: The basic building block consisting of an **ID**, a **Destination URI**, a collection of **Predicates**, and a collection of **Filters**.
+* **Predicate**: A Java 8 `Predicate` matching HTTP request attributes (e.g., `Path=/order/**`, `Method=GET`, `Header=X-Role,admin`).
+* **Filter**: Modifies requests before forwarding downstream (**Pre-Filter**) or responses before returning to clients (**Post-Filter**).
 
-```yaml
-spring:
-  cloud:
-    gateway:
-      routes:
-        - id: order-service-route
-          uri: lb://ORDER-SERVICE      # Dynamic lookup in Eureka + Load Balancing
-          predicates:
-            - Path=/api/v1/orders/**
-          filters:
-            - RewritePath=/api/v1/(?<segment>.*), /$\{segment}
-            - AddRequestHeader=X-Forwarded-By, API-Gateway
-
-        - id: payment-service-route
-          uri: lb://PAYMENT-SERVICE
-          predicates:
-            - Path=/api/v1/payments/**
-```
+### Threading Model: Non-Blocking vs Blocking (Why WebFlux?)
+| Dimension | Old Netflix Zuul 1.x / Spring MVC | Spring Cloud Gateway / WebFlux |
+| :--- | :--- | :--- |
+| **Engine** | Blocking Tomcat Servlet (`1 Thread per Request`) | Non-blocking Event Loop (**Netty Reactor**) |
+| **Throughput** | Degrades under slow downstream microservices | Handles **tens of thousands of concurrent connections** with low memory |
+| **Memory Footprint** | High (500 threads $	imes$ 1MB stack = 500MB RAM) | Minimal (small fixed thread pool = CPU core count) |
 
 ---
 
-## 6. Writing Custom Gateway Filters (Pre & Post) with Code
+## 4. Setting Up Spring Cloud Gateway (Dependencies & Configuration)
 
-You can write custom global or route-specific filters using reactive `Mono`:
+To build an API Gateway in Spring Boot, use `spring-cloud-starter-gateway` (which transitively includes Spring WebFlux and Netty):
 
+### 1. `pom.xml`
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.3</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.codesnippet</groupId>
+    <artifactId>api-gateway</artifactId>
+    <version>1.0.0</version>
+
+    <properties>
+        <java.version>17</java.version>
+        <spring-cloud.version>2023.0.0</spring-cloud.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <!-- 1. Spring Cloud Gateway (Reactive WebFlux Engine) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+
+        <!-- 2. Netflix Eureka Client (For Dynamic Service Discovery) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+        </dependency>
+
+        <!-- 3. Actuator (For Route Health & Metrics) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+### 2. Main Application Class
 ```java
-@Component
-public class LoggingAndTimingGlobalFilter implements GlobalFilter, Ordered {
+package com.codesnippet.gateway;
 
-    private static final Logger log = LoggerFactory.getLogger(LoggingAndTimingGlobalFilter.class);
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        ServerHttpRequest request = exchange.getRequest();
-        long startTime = System.currentTimeMillis();
-
-        // --- PRE-FILTER LOGIC ---
-        log.info("[GATEWAY PRE] Inbound {} {} from IP={}", 
-                request.getMethod(), request.getURI(), request.getRemoteAddress());
-
-        // --- DELEGATE TO DOWNSTREAM & RUN POST-FILTER ---
-        return chain.filter(exchange).then(Mono.fromRunnable(() -> {
-            // --- POST-FILTER LOGIC ---
-            long duration = System.currentTimeMillis() - startTime;
-            HttpStatusCode statusCode = exchange.getResponse().getStatusCode();
-            log.info("[GATEWAY POST] Completed {} with status {} in {}ms",
-                    request.getURI(), statusCode, duration);
-        }));
-    }
-
-    @Override
-    public int getOrder() {
-        return -1; // Highest priority in filter order
+@SpringBootApplication
+@EnableDiscoveryClient
+public class ApiGatewayApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(ApiGatewayApplication.class, args);
     }
 }
 ```
 
 ---
 
-## 7. JWT Edge Authentication Filter with Code
+## 5. Static Routing vs. Dynamic Routing with Netflix Eureka
 
-Centralizing JWT authentication at the API Gateway prevents unauthorized traffic from penetrating the internal VPC:
+### A. Static Routing (Hardcoded URLs — Not Recommended for Scalable Cloud)
+In static routing, we hardcode the target host and port of downstream microservices directly in `application.yml`:
+
+```yaml
+server:
+  port: 9090
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: ecom-order-service
+          uri: http://localhost:8080
+          predicates:
+            - Path=/order/**
+
+        - id: ecom-inventory-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/inventory/**
+```
+
+❌ **Flaw**: If Inventory Service auto-scales to 5 instances or changes its port dynamically, you must manually rewrite and redeploy the Gateway!
+
+---
+
+### B. Dynamic Routing with Netflix Eureka (`lb://` Protocol)
+By replacing hardcoded `http://localhost:8080` with the `lb://` (Load Balancer) protocol followed by the **Eureka Application Name**, Spring Cloud Gateway resolves instances dynamically:
+
+```yaml
+server:
+  port: 9090
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 1. Dynamic Order Route
+        - id: ecom-order-service
+          uri: lb://ecom-order-service
+          predicates:
+            - Path=/order/**
+
+        # 2. Dynamic Inventory Route
+        - id: ecom-inventory-service
+          uri: lb://ecom-inventory-service
+          predicates:
+            - Path=/inventory/**
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client / Postman
+    participant Gateway as API Gateway (:9090)
+    participant Eureka as Eureka Server (:8761)
+    participant OrderSrv as Order Service (:8080 / :8081)
+
+    Client->>Gateway: POST http://localhost:9090/order/1
+    Gateway->>Gateway: Matches Predicate (Path = /order/**)
+    Gateway->>Eureka: Query live instances for 'ecom-order-service'
+    Eureka-->>Gateway: Returns [192.168.1.10:8080, 192.168.1.10:8081]
+    Gateway->>Gateway: Client-side Load Balancer picks Instance 1 (:8080)
+    Gateway->>OrderSrv: Forward POST to http://192.168.1.10:8080/order/1
+    OrderSrv-->>Gateway: HTTP 200 OK (Order Placed)
+    Gateway-->>Client: HTTP 200 OK (Order Placed)
+```
+
+---
+
+## 6. Why Changes Take Up to 30 Seconds (The Discovery Cache Window)
+
+### The Scenario:
+You restart Inventory Service from port `8081` to port `8082`. Immediately, hitting the Gateway returns:
+```
+HTTP 500 / 503: Connection refused -> http://localhost:8081
+```
+After waiting ~30 seconds, hitting the same URL succeeds!
+
+### Why Did This Happen?
+API Gateway does **NOT** make an HTTP network request to Eureka Server for every incoming user request (which would turn Eureka into a massive latency bottleneck).
+
+Instead, the Gateway maintains an **In-Memory Local Registry Cache**:
+1. Every **30 seconds** (`registry-fetch-interval-seconds: 30`), a background worker fetches updated instance delta lists from Eureka.
+2. If an instance changes its port at $T=0$, the Gateway's local cache still holds the old IP:Port until the next 30-second fetch cycle completes.
+
+```yaml
+# For local development testing, you can reduce this interval:
+eureka:
+  client:
+    registry-fetch-interval-seconds: 5 # Default is 30 seconds
+```
+
+---
+
+## 7. Client-Side Load Balancing Across Multiple Instances (`lb://`)
+
+When you spin up multiple instances of the same service (e.g. `ecom-inventory-service` running on `:8082` and `:8083`), Eureka registers both under the same application name:
+
+```mermaid
+flowchart TD
+    ClientReq1["1st Request: POST /inventory"] --> Gateway["API Gateway (:9090)"]
+    ClientReq2["2nd Request: POST /inventory"] --> Gateway
+
+    subgraph LoadBalancer ["Spring Cloud LoadBalancer (Round Robin)"]
+        Gateway -->|Instance 1 (Port 8082)| Inv1["Inventory Service Node 1 (:8082)"]
+        Gateway -->|Instance 2 (Port 8083)| Inv2["Inventory Service Node 2 (:8083)"]
+    end
+```
+
+### How to Run Multiple Instances in Terminal:
+```bash
+# Instance 1
+mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8082"
+
+# Instance 2
+mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8083"
+```
+When requests arrive at `http://localhost:9090/inventory`, Spring Cloud Gateway automatically alternates between `:8082` and `:8083` in **Round-Robin** fashion!
+
+---
+
+## 8. Gateway Filters (Pre-Filters, Post-Filters & Transformations)
+
+### Custom Global Logging Filter (Measuring Latency)
+```java
+package com.codesnippet.gateway.filter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cloud.gateway.filter.GatewayFilterChain;
+import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.core.Ordered;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+@Component
+public class LoggingGlobalFilter implements GlobalFilter, Ordered {
+
+    private static final Logger log = LoggerFactory.getLogger(LoggingGlobalFilter.class);
+
+    @Override
+    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        long startTime = System.currentTimeMillis();
+        String path = exchange.getRequest().getURI().getPath();
+        String method = exchange.getRequest().getMethod().name();
+
+        log.info("[GATEWAY PRE-FILTER] Incoming Request -> {} {}", method, path);
+
+        return chain.filter(exchange).then(Mono.fromRunnable(() -> {
+            long duration = System.currentTimeMillis() - startTime;
+            int statusCode = exchange.getResponse().getStatusCode() != null 
+                    ? exchange.getResponse().getStatusCode().value() 
+                    : 500;
+            log.info("[GATEWAY POST-FILTER] Completed -> {} {} | Status: {} | Duration: {}ms",
+                    method, path, statusCode, duration);
+        }));
+    }
+
+    @Override
+    public int getOrder() {
+        return -1; // Highest priority execution
+    }
+}
+```
+
+---
+
+## 9. Centralized Cross-Cutting Concerns (Auth, Rate Limiting & CORS)
+
+### A. Centralized Edge Authentication Filter
+Instead of configuring JWT security in 20 different microservices, validate tokens once at the Gateway. If valid, extract user claims and inject them into headers (`X-User-Id`, `X-User-Role`) for downstream microservices:
 
 ```java
+package com.codesnippet.gateway.filter;
+
+import org.springframework.cloud.gateway.filter.GatewayFilter;
+import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
 @Component
-public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAuthenticationFilter.Config> {
+public class AuthenticationFilter extends AbstractGatewayFilterFactory<AuthenticationFilter.Config> {
 
-    private final JwtTokenValidator jwtValidator;
-
-    public JwtAuthenticationFilter(JwtTokenValidator jwtValidator) {
+    public AuthenticationFilter() {
         super(Config.class);
-        this.jwtValidator = jwtValidator;
     }
 
-    public static class Config {
-        // Configuration properties if needed
-    }
+    public static class Config {}
 
     @Override
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             ServerHttpRequest request = exchange.getRequest();
 
-            // 1. Check for Authorization header
+            // 1. Bypass public auth endpoints
+            if (request.getURI().getPath().startsWith("/api/auth")) {
+                return chain.filter(exchange);
+            }
+
+            // 2. Validate Authorization Header
             if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
                 return onError(exchange, "Missing Authorization Header", HttpStatus.UNAUTHORIZED);
             }
@@ -232,108 +451,37 @@ public class JwtAuthenticationFilter extends AbstractGatewayFilterFactory<JwtAut
 
             String token = authHeader.substring(7);
 
-            // 2. Validate Token Signature & Expiration
-            try {
-                Claims claims = jwtValidator.validateAndExtractClaims(token);
-                
-                // 3. Mutate Request: Add authenticated user identity headers for downstream services
-                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                        .header("X-User-Id", claims.getSubject())
-                        .header("X-User-Role", claims.get("role", String.class))
-                        .build();
-
-                return chain.filter(exchange.mutate().request(mutatedRequest).build());
-
-            } catch (Exception ex) {
-                return onError(exchange, "JWT Token Expired or Invalid", HttpStatus.UNAUTHORIZED);
+            // 3. Verify JWT & extract claims (mocked validation)
+            if (!isValidJwt(token)) {
+                return onError(exchange, "Invalid or Expired JWT", HttpStatus.UNAUTHORIZED);
             }
+
+            // 4. Mutate request: Inject trusted user claims downstream
+            ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
+                    .header("X-User-Id", "user_999")
+                    .header("X-User-Role", "ADMIN")
+                    .build();
+
+            return chain.filter(exchange.mutate().request(mutatedRequest).build());
         };
     }
 
-    private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {
-        ServerHttpResponse response = exchange.getResponse();
-        response.setStatusCode(httpStatus);
-        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        String jsonError = String.format("{\"error\": \"%s\", \"status\": %d}", err, httpStatus.value());
-        DataBuffer buffer = response.bufferFactory().wrap(jsonError.getBytes(StandardCharsets.UTF_8));
-        return response.writeWith(Mono.just(buffer));
+    private boolean isValidJwt(String token) {
+        return token != null && !token.isBlank();
+    }
+
+    private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus status) {
+        exchange.getResponse().setStatusCode(status);
+        return exchange.getResponse().setComplete();
     }
 }
 ```
 
 ---
 
-## 8. Redis Token Bucket Rate Limiting with Code
+### B. Global Centralized CORS Configuration
+Eliminate messy individual service CORS filters by managing CORS globally in the Gateway:
 
-Spring Cloud Gateway integrates out-of-the-box with Redis using the **Token Bucket Algorithm**.
-
-### Step 1: Add Redis Reactive Dependency
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
-</dependency>
-```
-
-### Step 2: Define KeyResolver Bean (Resolve by User ID or IP)
-```java
-@Configuration
-public class RateLimiterConfig {
-
-    @Bean
-    public KeyResolver userKeyResolver() {
-        // Rate limit based on authenticated User ID header, fallback to IP address
-        return exchange -> {
-            String userId = exchange.getRequest().getHeaders().getFirst("X-User-Id");
-            if (userId != null) {
-                return Mono.just(userId);
-            }
-            return Mono.just(exchange.getRequest().getRemoteAddress().getAddress().getHostAddress());
-        };
-    }
-}
-```
-
-### Step 3: Configure Token Bucket in `application.yml`
-```yaml
-spring:
-  cloud:
-    gateway:
-      routes:
-        - id: order-service-route
-          uri: lb://ORDER-SERVICE
-          predicates:
-            - Path=/api/v1/orders/**
-          filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10   # 10 tokens replenished per second
-                redis-rate-limiter.burstCapacity: 20   # Maximum burst limit of 20 tokens
-                key-resolver: "#{@userKeyResolver}"
-```
-
-If an IP/User exceeds the limit, the Gateway automatically rejects calls with `HTTP 429 Too Many Requests`.
-
----
-
-## 9. Cross-Cutting Concerns at the Edge
-
-```mermaid
-graph TD
-    Client[Client Request] --> Gateway[API Gateway Edge]
-    
-    subgraph Concerns ["Gateway Cross-Cutting Capabilities"]
-        Gateway --> C1[JWT Signature & Expiry Check]
-        Gateway --> C2[Redis Token Bucket Rate Limiting]
-        Gateway --> C3[Global CORS Preflight Handling]
-        Gateway --> C4[Centralized Access Logs & Zipkin Spans]
-        Gateway --> C5[SSL / TLS Termination]
-    end
-
-    Concerns --> Services[Protected Backend Microservices]
-```
-
-### Handling Centralized CORS in `application.yml`
 ```yaml
 spring:
   cloud:
@@ -341,7 +489,9 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "https://myfrontend.com"
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "https://myproductionapp.com"
             allowedMethods:
               - GET
               - POST
@@ -355,55 +505,58 @@ spring:
 
 ---
 
-## 10. Anti-Pattern: The Gateway as a Business Dump
+## 10. Anti-Patterns: What NEVER to Put in an API Gateway
 
-> [!CAUTION]
-> **Do not write Domain Business Logic in the API Gateway.**
-
-```text
-❌ CRITICAL ANTI-PATTERNS IN GATEWAY:
-├── Calculating discounts or order taxes
-├── Performing complex database JOIN queries
-├── Orchestrating domain entities directly
-└── Storing relational domain tables
 ```
-
-### Why this breaks architecture:
-- Turns the gateway into a **monolithic bottleneck**.
-- High CPU computation in the gateway blocks the non-blocking Netty event loop, slowing down routing for all other services.
-- Violates domain separation of concerns.
-
-The Gateway should focus strictly on **Transport, Routing, Edge Security, and Protocol Governance**.
++---------------------------------------------------------------------------------------------------+
+|                               API GATEWAY ARCHITECTURAL ANTI-PATTERNS                             |
++---------------------------------------------------------------------------------------------------+
+| ❌ Business Domain Logic   : Never write checkout or tax calculations in the Gateway.             |
+| ❌ Direct Database Access  : Never connect the Gateway directly to PostgreSQL/MySQL/MongoDB.     |
+| ❌ Heavy Data Aggregations : Avoid complex fan-out join queries (use Backend-for-Frontend / BFF). |
+| ❌ Blocking Thread Calls   : Never use Thread.sleep() or RestTemplate (blocks Netty Event Loop!). |
++---------------------------------------------------------------------------------------------------+
+```
 
 ---
 
-## 11. Interview Questions & Deep-Dive Answers
+## 11. Placement & Interview Questions (With Concrete Answers)
 
-### Q1: What is the underlying runtime difference between Netflix Zuul 1.x and Spring Cloud Gateway?
+### Q1: What is the difference between Netflix Zuul 1.x and Spring Cloud Gateway?
 > **Answer**:  
-> Netflix Zuul 1.x was built on standard Java Servlet APIs using synchronous blocking I/O (one dedicated thread per incoming request). When downstream services became slow, threads backed up quickly, causing thread pool starvation. Spring Cloud Gateway is built on **Spring WebFlux and Netty**, utilizing an asynchronous, non-blocking event-driven loop. A small fixed number of threads handles tens of thousands of concurrent connections efficiently.
+> * **Netflix Zuul 1.x** is built on the blocking Java Servlet API (`Tomcat`) where each incoming request occupies a dedicated OS worker thread. If downstream services hang, threads get exhausted, causing gateway-wide thread starvation.  
+> * **Spring Cloud Gateway** is built on non-blocking **Spring WebFlux / Project Reactor** running on **Netty**. A small number of event loop threads handle thousands of concurrent requests asynchronously without thread exhaustion.
 
-### Q2: What does the `lb://` prefix mean in route configuration?
+### Q2: How does the `lb://` protocol work in Spring Cloud Gateway?
 > **Answer**:  
-> `lb://` stands for **Load Balanced**. When configured (e.g., `uri: lb://ORDER-SERVICE`), the gateway does not interpret `ORDER-SERVICE` as a DNS hostname. Instead, it instructs Spring Cloud LoadBalancer to look up the available registered IP/port instances in the Eureka registry and balance incoming traffic across them.
+> The `lb://` prefix instructs Spring Cloud Gateway to activate **Spring Cloud LoadBalancer**. Instead of resolving the target URL through DNS, it looks up the service name in the local **Eureka service registry cache** and distributes requests across live instance IP addresses using Round-Robin.
 
-### Q3: How do you pass authenticated user details from Gateway to downstream services?
+### Q3: Why does restarting a microservice on a new port cause 500 errors for ~30 seconds?
 > **Answer**:  
-> The Gateway authenticates the external JWT token at the edge. Once verified, custom Gateway Pre-Filters extract user claims (such as `userId`, `username`, `roles`) and mutate the outbound request by adding internal headers like `X-User-Id: 1042` and `X-User-Role: ADMIN`. Downstream services simply inspect these headers without needing to re-parse the JWT token.
+> The Gateway does not query Eureka Server synchronously on every request. It caches the service registry locally and updates it on a background polling interval (default: 30 seconds via `registry-fetch-interval-seconds`). Until the next cache refresh runs, the Gateway routes to the old cached port.
+
+### Q4: How do you pass authenticated user details from the Gateway to downstream microservices?
+> **Answer**:  
+> The Gateway validates the JWT token at the edge, extracts claims (e.g. `userId`, `roles`), and mutates the incoming request headers before forwarding:
+> ```java
+> exchange.getRequest().mutate().header("X-User-Id", userId).build();
+> ```
+> Downstream microservices read `@RequestHeader("X-User-Id")` directly, avoiding duplicate JWT decoding across all internal services.
 
 ---
 
 ## 12. Core Architectural Summary
 
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                      API GATEWAY CHEAT SHEET                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│ 1. Acts as the single perimeter shield for all backend microservices    │
-│ 2. Route = Predicates (matching conditions) + Filters (transformations) │
-│ 3. Use 'lb://SERVICE-NAME' for dynamic Eureka integration               │
-│ 4. Offload Edge concerns: JWT Auth, Rate Limiting, CORS, SSL, Logging   │
-│ 5. Use Redis Token-Bucket (RequestRateLimiter) to throttle abuse        │
-│ 6. NEVER put business domain rules or database logic in the Gateway     │
-└─────────────────────────────────────────────────────────────────────────┘
+```
++----------------------------------------------------------------------------------------------------+
+|                               API GATEWAY CHEAT SHEET FOR INTERVIEWS                               |
++----------------------------------------------------------------------------------------------------+
+| 1. Purpose             | Single public entry point into microservices ecosystem                   |
+| 2. Runtime Engine      | Spring WebFlux + Netty (Reactive Non-Blocking Event Loop)                 |
+| 3. Building Blocks     | Routes = ID + Target URI + Predicates (Matching) + Filters (Mutation)      |
+| 4. Dynamic Routing     | uri: lb://SERVICE-NAME (resolves instances via Eureka + Load Balancing)   |
+| 5. Caching Interval    | 30 seconds default Eureka local registry refresh cycle                     |
+| 6. Edge Security       | Validate JWT once at Gateway -> inject X-User-Id header downstream        |
+| 7. Cross-Cutting       | Global CORS, Request Latency Logging, Redis Token Bucket Rate Limiting    |
++----------------------------------------------------------------------------------------------------+
 ```
