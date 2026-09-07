@@ -44,7 +44,7 @@ flowchart LR
     YourServer -- "HTTP 200 OK: Got it, thanks!" --> Stripe
 ```
 
-> **Source:** [GitHub — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
+> **Source:** [GitHub Docs — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
 
 ### Why can't the user's browser just tell our backend?
 Suppose a customer buys a subscription on your site. The payment happens on Stripe's checkout. Why can't the user's browser simply tell our server *"Hey, I paid!"*?
@@ -327,7 +327,7 @@ When you need to emit webhooks to customers:
 ❌ **Don't do this**: Send the HTTP POST directly inside your web controller. If the customer's server is slow, your app freezes.
 
 ✅ **The Transactional Outbox Pattern**:
-1. Update the business table (e.g. Flight/Task) AND insert a row into a `webhook_outbox` table in the **same atomic database transaction**.
+1. Update the business table (e.g. Flight/Task) AND insert a row into an `outbox` table in the **same atomic database transaction**.
 2. A separate background event processing service reads from the outbox table and dispatches messages to an SQS queue or customer endpoint.
 
 ![AWS Transactional Outbox Pattern architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
@@ -403,16 +403,17 @@ sequenceDiagram
 
 ## 18. Image Sources & Official Documentation
 
-The diagrams and concepts in this guide are directly backed by official technical documentation from industry standard providers:
+### AWS — Transactional Outbox Pattern
+* **Documentation Title**: *Transactional outbox pattern - AWS Prescriptive Guidance*
+* **Documentation URL**: [https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+* **Direct Image URL**: [https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
 
-1. **AWS Architecture Documentation**:
-   - [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
-   - *Diagram Asset*: [AWS Transactional Outbox relational database architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
-2. **GitHub Webhooks Documentation**:
-   - [GitHub Docs — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
-   - [GitHub Docs — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
-3. **Stripe Webhooks Documentation**:
-   - [Stripe — Webhooks Developer Guide](https://docs.stripe.com/webhooks)
+### GitHub — Webhooks Documentation
+* **Validating Webhook Deliveries**: [https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
+* **Webhook Events and Payloads**: [https://docs.github.com/en/webhooks/webhook-events-and-payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
+
+### Stripe — Webhooks Documentation
+* **Stripe Webhooks Overview**: [https://docs.stripe.com/webhooks](https://docs.stripe.com/webhooks)
 
 ---
 
