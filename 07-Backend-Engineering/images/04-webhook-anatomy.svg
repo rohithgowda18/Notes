@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 440" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="475" y="38" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">Anatomy of an Inbound Webhook HTTP Request</text>
+
+  <!-- Request Box Container -->
+  <rect x="50" y="65" width="850" height="345" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+
+  <!-- HTTP Line -->
+  <rect x="70" y="85" width="810" height="35" rx="5" fill="#0f172a"/>
+  <text x="90" y="108" font-family="Consolas, monospace" font-size="14" font-weight="bold" fill="#38bdf8">POST</text>
+  <text x="140" y="108" font-family="Consolas, monospace" font-size="14" fill="#ffffff">/hooks/github HTTP/1.1</text>
+  <text x="750" y="108" font-family="Arial, sans-serif" font-size="11" fill="#94a3b8">HTTP Ingress Endpoint</text>
+
+  <!-- Headers Section -->
+  <rect x="70" y="130" width="810" height="135" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1"/>
+  <text x="85" y="152" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#475569">HTTP HEADERS (Metadata &amp; Cryptography):</text>
+  
+  <text x="95" y="177" font-family="Consolas, monospace" font-size="12" fill="#0f172a">Host: api.mysite.com</text>
+  <text x="95" y="197" font-family="Consolas, monospace" font-size="12" fill="#0f172a">Content-Type: application/json</text>
+  <text x="95" y="217" font-family="Consolas, monospace" font-size="12" fill="#7e22ce" font-weight="bold">X-GitHub-Event: push</text>
+  <text x="350" y="217" font-family="Arial, sans-serif" font-size="11" fill="#6b21a8">← Event Type</text>
+  <text x="95" y="237" font-family="Consolas, monospace" font-size="12" fill="#0369a1" font-weight="bold">X-GitHub-Delivery: 72d3162e-cc78-11e3-81ab-4c9367dc0958</text>
+  <text x="550" y="237" font-family="Arial, sans-serif" font-size="11" fill="#0284c7">← Unique Delivery ID (Idempotency Key)</text>
+  <text x="95" y="257" font-family="Consolas, monospace" font-size="11" fill="#b91c1c" font-weight="bold">X-Hub-Signature-256: sha256=d57c68d10b93d8650aedb3fdd58daec5...</text>
+  <text x="600" y="257" font-family="Arial, sans-serif" font-size="11" fill="#dc2626">← HMAC Signature (Proof of Identity)</text>
+
+  <!-- Body Section -->
+  <rect x="70" y="275" width="810" height="120" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+  <text x="85" y="295" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#475569">PAYLOAD (Raw JSON Body):</text>
+  <text x="95" y="318" font-family="Consolas, monospace" font-size="11" fill="#334155">{</text>
+  <text x="115" y="338" font-family="Consolas, monospace" font-size="11" fill="#334155">  "repository": { "name": "super-project", "owner": "octocat" },</text>
+  <text x="115" y="358" font-family="Consolas, monospace" font-size="11" fill="#334155">  "pusher": { "name": "octocat", "email": "octocat@github.com" },</text>
+  <text x="115" y="378" font-family="Consolas, monospace" font-size="11" fill="#334155">  "commits": [ { "id": "b5a932...", "message": "docs: update guide" } ]</text>
+  <text x="95" y="392" font-family="Consolas, monospace" font-size="11" fill="#334155">}</text>
+</svg>

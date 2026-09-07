@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 400" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="475" y="40" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">Webhook Architecture &amp; Service-to-Service Delivery</text>
+  
+  <!-- Sender Side -->
+  <rect x="50" y="85" width="360" height="270" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="230" y="115" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#7e22ce" text-anchor="middle">Event Source / Provider (e.g. Stripe, GitHub)</text>
+  
+  <rect x="80" y="140" width="300" height="45" rx="6" fill="#f3e8ff" stroke="#9333ea" stroke-width="1.5"/>
+  <text x="230" y="168" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#6b21a8" text-anchor="middle">1. Domain Event Occurs (e.g. Payment Succeeded)</text>
+  
+  <rect x="80" y="200" width="300" height="45" rx="6" fill="#f3e8ff" stroke="#9333ea" stroke-width="1.5"/>
+  <text x="230" y="228" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#6b21a8" text-anchor="middle">2. Look up Consumer Webhook Subscription URL</text>
+
+  <rect x="80" y="260" width="300" height="70" rx="6" fill="#ffffff" stroke="#9333ea" stroke-width="1.5"/>
+  <text x="230" y="285" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#334155" text-anchor="middle">3. Sign Payload with Shared Secret</text>
+  <text x="230" y="310" font-family="Consolas, monospace" font-size="11" fill="#7e22ce" text-anchor="middle">HMAC_SHA256(timestamp + body, secret)</text>
+
+  <!-- Middle Transmission Arrows -->
+  <line x1="410" y1="180" x2="530" y2="180" stroke="#0284c7" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="470" y="165" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#0284c7" text-anchor="middle">HTTP POST</text>
+  <text x="470" y="195" font-family="Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">(JSON Body + Sig)</text>
+
+  <line x1="530" y1="240" x2="410" y2="240" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="470" y="232" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#16a34a" text-anchor="middle">HTTP 200/202</text>
+  <text x="470" y="258" font-family="Arial, sans-serif" font-size="10" fill="#64748b" text-anchor="middle">Acknowledged</text>
+
+  <!-- Receiver Side -->
+  <rect x="540" y="85" width="360" height="270" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="720" y="115" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#0369a1" text-anchor="middle">Consumer Application (Our Server)</text>
+
+  <rect x="570" y="140" width="300" height="45" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="720" y="168" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#0369a1" text-anchor="middle">Ingress Route: POST /hooks/stripe</text>
+
+  <rect x="570" y="200" width="300" height="45" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="720" y="228" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#0369a1" text-anchor="middle">Verify Signature &amp; Deduplicate Event ID</text>
+
+  <rect x="570" y="260" width="300" height="70" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+  <text x="720" y="285" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#15803d" text-anchor="middle">Async Processing</text>
+  <text x="720" y="310" font-family="Arial, sans-serif" font-size="11" fill="#16a34a" text-anchor="middle">Unlock User Plan / Fulfill Order</text>
+
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#0284c7"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#16a34a"/>
+    </marker>
+  </defs>
+</svg>

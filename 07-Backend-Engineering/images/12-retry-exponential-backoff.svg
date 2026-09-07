@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 420" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="475" y="38" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">Webhook Retry Schedule: Exponential Backoff + Jitter</text>
+
+  <!-- Timeline Axis -->
+  <line x1="60" y1="200" x2="890" y2="200" stroke="#94a3b8" stroke-width="3"/>
+  <polygon points="890,195 905,200 890,205" fill="#94a3b8"/>
+  <text x="890" y="225" font-family="Arial, sans-serif" font-size="12" fill="#64748b">Time</text>
+
+  <!-- Attempt 1 -->
+  <circle cx="100" cy="200" r="14" fill="#dc2626"/>
+  <text x="100" y="205" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="100" y="160" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#dc2626" text-anchor="middle">Initial Attempt</text>
+  <text x="100" y="178" font-family="Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">HTTP 500 Fail</text>
+
+  <!-- Gap 1 -->
+  <rect x="130" y="125" width="90" height="30" rx="5" fill="#fef3c7" stroke="#d97706" stroke-width="1"/>
+  <text x="175" y="145" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#b45309" text-anchor="middle">Wait ~5s + Jitter</text>
+
+  <!-- Attempt 2 -->
+  <circle cx="240" cy="200" r="14" fill="#dc2626"/>
+  <text x="240" y="205" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="240" y="240" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#dc2626" text-anchor="middle">Retry #1 (5s)</text>
+  <text x="240" y="258" font-family="Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">Timeout Fail</text>
+
+  <!-- Gap 2 -->
+  <rect x="275" y="125" width="140" height="30" rx="5" fill="#fef3c7" stroke="#d97706" stroke-width="1"/>
+  <text x="345" y="145" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#b45309" text-anchor="middle">Wait ~25s + Jitter</text>
+
+  <!-- Attempt 3 -->
+  <circle cx="440" cy="200" r="14" fill="#dc2626"/>
+  <text x="440" y="205" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="440" y="240" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#dc2626" text-anchor="middle">Retry #2 (25s)</text>
+  <text x="440" y="258" font-family="Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">HTTP 502 Fail</text>
+
+  <!-- Gap 3 -->
+  <rect x="480" y="125" width="200" height="30" rx="5" fill="#fef3c7" stroke="#d97706" stroke-width="1"/>
+  <text x="580" y="145" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#b45309" text-anchor="middle">Wait ~2 mins + Jitter</text>
+
+  <!-- Attempt 4 (Success) -->
+  <circle cx="710" cy="200" r="14" fill="#16a34a"/>
+  <text x="710" y="205" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="710" y="240" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#16a34a" text-anchor="middle">Retry #3 (2m)</text>
+  <text x="710" y="258" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#15803d" text-anchor="middle">HTTP 200 OK (Done)</text>
+
+  <!-- Callout Bottom -->
+  <rect x="60" y="310" width="830" height="85" rx="8" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="80" y="335" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#1e293b">Why Jitter is Essential:</text>
+  <text x="80" y="358" font-family="Arial, sans-serif" font-size="12" fill="#475569">Formula: Delay = min(MaxDelay, BaseDelay * 2^attempt) + Random_Jitter</text>
+  <text x="80" y="378" font-family="Arial, sans-serif" font-size="12" fill="#0369a1">Prevents 10,000 servers from retrying at the exact same millisecond after a recovery (Avoids Thundering Herd problem).</text>
+</svg>

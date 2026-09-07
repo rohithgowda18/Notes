@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 460" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="475" y="38" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">API Short Polling (Pull) vs Webhook Push</text>
+
+  <!-- Left Side: Polling -->
+  <rect x="40" y="70" width="410" height="360" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="245" y="100" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#dc2626" text-anchor="middle">Traditional Polling (Pull)</text>
+  
+  <rect x="65" y="125" width="110" height="40" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="120" y="150" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#0369a1" text-anchor="middle">Our Backend</text>
+
+  <rect x="315" y="125" width="110" height="40" rx="6" fill="#f3e8ff" stroke="#9333ea" stroke-width="1.5"/>
+  <text x="370" y="150" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7e22ce" text-anchor="middle">Stripe API</text>
+
+  <line x1="175" y1="190" x2="315" y2="190" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr-gray)"/>
+  <text x="245" y="183" font-family="Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">GET /v1/payments (Is it done?)</text>
+  <line x1="315" y1="215" x2="175" y2="215" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3" marker-end="url(#arr-red)"/>
+  <text x="245" y="230" font-family="Arial, sans-serif" font-size="10" fill="#dc2626" text-anchor="middle">"status: pending" (Wasted CPU &amp; I/O)</text>
+
+  <line x1="175" y1="260" x2="315" y2="260" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr-gray)"/>
+  <text x="245" y="253" font-family="Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">GET /v1/payments (Is it done?)</text>
+  <line x1="315" y1="285" x2="175" y2="285" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3" marker-end="url(#arr-red)"/>
+  <text x="245" y="300" font-family="Arial, sans-serif" font-size="10" fill="#dc2626" text-anchor="middle">"status: pending" (Wasted CPU &amp; I/O)</text>
+
+  <line x1="175" y1="330" x2="315" y2="330" stroke="#64748b" stroke-width="1.5" marker-end="url(#arr-gray)"/>
+  <text x="245" y="323" font-family="Arial, sans-serif" font-size="11" fill="#475569" text-anchor="middle">GET /v1/payments (Is it done?)</text>
+  <line x1="315" y1="355" x2="175" y2="355" stroke="#16a34a" stroke-width="2" marker-end="url(#arr-green)"/>
+  <text x="245" y="370" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#16a34a" text-anchor="middle">"status: succeeded" (Delayed by T/2)</text>
+
+  <text x="245" y="410" font-family="Arial, sans-serif" font-size="11" fill="#991b1b" text-anchor="middle">❌ High latency, wasted bandwidth, severe rate limits</text>
+
+  <!-- Right Side: Webhooks -->
+  <rect x="500" y="70" width="410" height="360" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="705" y="100" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#16a34a" text-anchor="middle">Webhook Architecture (Push)</text>
+
+  <rect x="525" y="125" width="110" height="40" rx="6" fill="#f3e8ff" stroke="#9333ea" stroke-width="1.5"/>
+  <text x="580" y="150" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#7e22ce" text-anchor="middle">Stripe Engine</text>
+
+  <rect x="775" y="125" width="110" height="40" rx="6" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="830" y="150" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#0369a1" text-anchor="middle">Our Backend</text>
+
+  <rect x="525" y="210" width="130" height="50" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"/>
+  <text x="590" y="232" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#92400e" text-anchor="middle">Event Occurs</text>
+  <text x="590" y="248" font-family="Arial, sans-serif" font-size="10" fill="#b45309" text-anchor="middle">payment.succeeded</text>
+
+  <line x1="655" y1="235" x2="775" y2="235" stroke="#16a34a" stroke-width="3" marker-end="url(#arr-green-lg)"/>
+  <text x="715" y="225" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#16a34a" text-anchor="middle">POST /hooks/stripe</text>
+  <text x="715" y="250" font-family="Arial, sans-serif" font-size="10" fill="#475569" text-anchor="middle">(Instant Push)</text>
+
+  <line x1="775" y1="310" x2="635" y2="310" stroke="#0284c7" stroke-width="2" marker-end="url(#arr-blue)"/>
+  <text x="705" y="300" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#0284c7" text-anchor="middle">HTTP 200 OK (Acknowledged)</text>
+
+  <text x="705" y="410" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#15803d" text-anchor="middle">✅ 0ms average latency, zero wasted polling calls</text>
+
+  <defs>
+    <marker id="arr-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"/>
+    </marker>
+    <marker id="arr-red" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444"/>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arr-green-lg" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#16a34a"/>
+    </marker>
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#0284c7"/>
+    </marker>
+  </defs>
+</svg>

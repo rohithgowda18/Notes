@@ -38,12 +38,7 @@ Client (Browser/App)  <---[ "Here is data" ]----  Server
 
 A **Webhook** flips this completely. It is **Server-to-Server communication** where an external service calls *your* server directly when an event occurs:
 
-```mermaid
-flowchart LR
-    Stripe["💳 Stripe Payment Engine"] -- "HTTP POST: Payment was Successful!" --> YourServer["🏢 Your Backend Server (/hooks/stripe)"]
-    YourServer -- "HTTP 200 OK: Got it, thanks!" --> Stripe
-```
-
+![Webhook Architecture Overview](images/01-webhook-architecture.svg)
 > **Source:** [GitHub Docs — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
 
 ### Why can't the user's browser just tell our backend?
@@ -60,18 +55,8 @@ Suppose a customer buys a subscription on your site. The payment happens on Stri
 
 What if we didn't have webhooks? Our backend would have to repeatedly ask Stripe: *"Is payment done yet? Is it done now? What about now?"* (This is called **Polling**).
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Our Backend
-    participant Stripe as Stripe API
-
-    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
-    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
-    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
-    Note over Stripe: User completes payment!
-    App->>Stripe: Is pay_123 successful? -> "Yes, succeeded!" (Finally!)
-```
+![API Short Polling vs Webhook Push](images/02-polling-vs-webhook.svg)
+> **Source:** [Stripe Webhooks Documentation](https://docs.stripe.com/webhooks)
 
 ### Why Polling Fails at Scale:
 * **Annoying Latency**: If you check every 30 seconds, the user waits an average of 15 seconds after paying before their account unlocks.
@@ -101,6 +86,9 @@ We give Stripe our URL once. Stripe calls us **immediately** the moment payment 
 ## 4. Anatomy of a Webhook (What Does It Look Like?)
 
 A webhook is nothing more than a standard **HTTP POST request** with a JSON body and special headers:
+
+![Anatomy of an Inbound Webhook HTTP Request](images/04-webhook-anatomy.svg)
+> **Source:** [GitHub Docs — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
 
 ```http
 POST /hooks/github HTTP/1.1
@@ -167,20 +155,13 @@ If your server blindly trusts this, the hacker gets free access!
 
 ## 7. The HMAC Signature & The "Raw Body" Rule
 
+![HMAC-SHA256 Signature Verification](images/07-hmac-verification.svg)
 > **Source:** [GitHub Docs — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
 
 ### How HMAC Works:
 1. When you register your webhook, you and the provider share a secret password (e.g. `whsec_secret123`).
 2. The provider calculates a cryptographic hash (HMAC-SHA256) of the message using this secret and puts it in the header.
 3. Your server calculates the exact same hash using the secret and checks if they match.
-
-```mermaid
-flowchart TD
-    Raw["Raw Incoming JSON Bytes"] --> HashCalc["HMAC-SHA256(Raw Bytes, Secret)"]
-    HashCalc --> Comp{"Does Computed Hash == Header Hash?"}
-    Comp -- "YES" --> OK["Valid! Process Payment"]
-    Comp -- "NO" --> Reject["Fake! Return 401 Unauthorized"]
-```
 
 ### 🚨 The "Raw Body" Trap (Common Beginner Bug!)
 Never parse the JSON into an object *before* checking the signature!
@@ -230,31 +211,15 @@ If your server blindly calls this, the hacker could steal your AWS passwords!
 
 In cloud networking, acknowledgments can drop:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Stripe as Stripe
-    participant App as Our Backend
-    participant DB as Database
-
-    Stripe->>App: POST /hooks/stripe (Event #101)
-    App->>DB: Add $50 credit to user account
-    App--xStripe: 200 OK (Connection Drops in network!)
-    Note over Stripe: Stripe didn't get the 200 OK. It will retry!
-    Stripe->>App: POST /hooks/stripe (Event #101 Retry)
-    Note over App: Without check, user gets another $50 credit for free!
-```
+![Duplicate Delivery & Database Idempotency Flow](images/10-idempotency-flow.svg)
+> **Source:** [Stripe Webhooks Documentation](https://docs.stripe.com/webhooks)
 
 ### The Solution: Idempotency (Save the Event ID)
 Store the unique `event_id` in your database in the **same transaction** as your work:
 
-```mermaid
-flowchart TD
-    Webhook["Inbound Webhook (Event ID: evt_999)"] --> Check{"Is evt_999 in DB?"}
-    Check -- "YES (Already Done)" --> Done["Skip Work & Return 200 OK"]
-    Check -- "NO (New Event)" --> Work["Save ID + Update User Balance in 1 Transaction"]
-    Work --> Success["Return 200 OK"]
-```
+1. **Check if event ID exists** in `processed_events` table.
+2. If **Already Exists**: Skip execution and return `200 OK` immediately.
+3. If **New Event**: Save `event_id` and execute business mutations within the **same ACID database transaction**.
 
 ---
 
@@ -273,6 +238,7 @@ Events can arrive out of order due to retries:
 
 ## 12. Automatic Retries, Exponential Backoff & Jitter
 
+![Webhook Retry Schedule with Exponential Backoff and Jitter](images/12-retry-exponential-backoff.svg)
 > **Source:** [Stripe Webhooks documentation](https://docs.stripe.com/webhooks)
 
 When your server is down or returning errors, providers retry with **Exponential Backoff**:
@@ -281,25 +247,13 @@ When your server is down or returning errors, providers retry with **Exponential
 * **Attempt 3**: Wait 2 minutes
 * **Attempt 4**: Wait 15 minutes
 
-```mermaid
-gantt
-    title Exponential Backoff Schedule
-    dateFormat X
-    axisFormat %s sec
-    section Retry Delays
-    Attempt 1 (Fails)     :crit, 0, 1
-    Wait 5s + Jitter      :active, 1, 6
-    Attempt 2 (Fails)     :crit, 6, 7
-    Wait 25s + Jitter     :active, 7, 32
-    Attempt 3 (Succeeds)  :done, 32, 33
-```
-
 > 💡 **What is Jitter?** Jitter means adding a few random seconds (e.g. 5s + 1.4s random). This prevents 10,000 failed retries from hitting your server at the exact same millisecond when your server comes back online.
 
 ---
 
 ## 13. The "Thin Receiver" Pattern (Handling Huge Traffic Spikes)
 
+![Thin Receiver Ingress Architecture](images/13-thin-receiver-queue.svg)
 > **Source:** [Stripe Webhooks documentation](https://docs.stripe.com/webhooks)
 
 On the 1st of every month, Stripe renews millions of subscriptions at once.  
@@ -310,14 +264,6 @@ If your webhook controller verifies signatures, runs 5 heavy database queries, a
 2. Save the raw event into a background queue (RabbitMQ / Kafka / Redis) or Inbox table.
 3. Return `202 Accepted` immediately (in $<50$ms).
 4. Background worker processes the actual heavy logic at its own pace.
-
-```mermaid
-flowchart LR
-    Inbound["POST /hooks/stripe"] --> Ingress["⚡ Thin Controller<br>(Verify HMAC -> Push to Queue)"]
-    Ingress -- "Return 202 in 20ms" --> Stripe["Stripe (Happy)"]
-    Ingress --> Queue[(Message Queue / Redis)]
-    Queue --> Worker["👷 Background Worker<br>(Sends Email, Updates DB)"]
-```
 
 ---
 
@@ -333,17 +279,7 @@ When you need to emit webhooks to customers:
 ![AWS Transactional Outbox Pattern architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
 > **Source:** [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
 
-```mermaid
-flowchart TD
-    User["User moves task"] --> Tx["BEGIN TRANSACTION"]
-    Tx --> UpdateTask["1. UPDATE tasks SET status='DONE'"]
-    Tx --> Outbox["2. INSERT INTO webhook_outbox"]
-    Outbox --> Commit["COMMIT"]
-    Commit --> Done["Return 200 to User instantly!"]
-
-    Outbox -.-> Dispatcher["👷 Background Dispatcher Worker"]
-    Dispatcher --> HTTP["HTTP POST to Customer URL with Backoff"]
-```
+![Transactional Outbox Architecture Diagram](images/14-transactional-outbox-aws.svg)
 
 ---
 
@@ -406,7 +342,7 @@ sequenceDiagram
 ### AWS — Transactional Outbox Pattern
 * **Documentation Title**: *Transactional outbox pattern - AWS Prescriptive Guidance*
 * **Documentation URL**: [https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
-* **Direct Image URL**: [https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
+* **Direct Image Asset**: [https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
 
 ### GitHub — Webhooks Documentation
 * **Validating Webhook Deliveries**: [https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
