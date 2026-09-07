@@ -59,18 +59,7 @@ Suppose a customer buys a subscription on your site. The payment happens on Stri
 
 What if we didn't have webhooks? Our backend would have to repeatedly ask Stripe: *"Is payment done yet? Is it done now? What about now?"* (This is called **Polling**).
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant App as Our Backend
-    participant Stripe as Stripe API
-
-    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
-    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
-    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
-    Note over Stripe: User completes payment!
-    App->>Stripe: Is pay_123 successful? -> "Yes, succeeded!" (Finally!)
-```
+![API Polling vs Webhooks](images/polling-vs-webhook.svg)
 
 ### Why Polling Fails at Scale:
 * **Annoying Latency**: If you check every 30 seconds, the user waits an average of 15 seconds after paying before their account unlocks.
@@ -168,18 +157,12 @@ If your server blindly trusts this, the hacker gets free access!
 
 > 📖 **Verified Reference**: [GitHub — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries). GitHub documents HMAC-SHA256, `X-Hub-Signature-256`, raw-payload verification, and constant-time comparison.
 
+![HMAC Verification Flow](images/hmac-verification-flow.svg)
+
 ### How HMAC Works:
 1. When you register your webhook, you and the provider share a secret password (e.g. `whsec_secret123`).
 2. The provider calculates a cryptographic hash (HMAC-SHA256) of the message using this secret and puts it in the header.
 3. Your server calculates the exact same hash using the secret and checks if they match.
-
-```mermaid
-flowchart TD
-    Raw["Raw Incoming JSON Bytes"] --> HashCalc["HMAC-SHA256(Raw Bytes, Secret)"]
-    HashCalc --> Comp{"Does Computed Hash == Header Hash?"}
-    Comp -- "YES" --> OK["Valid! Process Payment"]
-    Comp -- "NO" --> Reject["Fake! Return 401 Unauthorized"]
-```
 
 ### 🚨 The "Raw Body" Trap (Common Beginner Bug!)
 Never parse the JSON into an object *before* checking the signature!
@@ -301,6 +284,8 @@ gantt
 
 > 📖 **Verified Reference**: [Stripe — Webhooks Documentation](https://docs.stripe.com/webhooks). Stripe documents returning a successful 2xx response quickly and handling webhook work asynchronously when appropriate.
 
+![Thin Receiver Pattern](images/thin-receiver-pattern.svg)
+
 On the 1st of every month, Stripe renews millions of subscriptions at once.  
 If your webhook controller verifies signatures, runs 5 heavy database queries, and sends emails synchronously, your server will freeze and time out!
 
@@ -310,19 +295,13 @@ If your webhook controller verifies signatures, runs 5 heavy database queries, a
 3. Return `202 Accepted` immediately (in $<50$ms).
 4. Background worker processes the actual heavy logic at its own pace.
 
-```mermaid
-flowchart LR
-    Inbound["POST /hooks/stripe"] --> Ingress["⚡ Thin Controller<br>(Verify HMAC -> Push to Queue)"]
-    Ingress -- "Return 202 in 20ms" --> Stripe["Stripe (Happy)"]
-    Ingress --> Queue[(Message Queue / Redis)]
-    Queue --> Worker["👷 Background Worker<br>(Sends Email, Updates DB)"]
-```
-
 ---
 
 ## 14. Building Your Own Webhook Sender: The Transactional Outbox
 
 > 📖 **Verified Reference**: [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html). AWS provides official architecture diagrams and explains the dual-write problem, outbox table, and asynchronous event processing.
+
+![Transactional Outbox Pattern](images/transactional-outbox-flow.svg)
 
 If you want to send webhooks to your customers when they move a task:  
 ❌ **Don't do this**: Send the HTTP POST directly inside your web controller. If the customer's server is slow, your app freezes.
@@ -330,18 +309,6 @@ If you want to send webhooks to your customers when they move a task:
 ✅ **The Transactional Outbox Pattern**:
 1. Update the task in your DB AND insert a row into a `webhook_outbox` table in the **same database transaction**.
 2. A separate background dispatcher worker reads from `webhook_outbox` and sends the HTTP POST requests.
-
-```mermaid
-flowchart TD
-    User["User moves task"] --> Tx["BEGIN TRANSACTION"]
-    Tx --> UpdateTask["1. UPDATE tasks SET status='DONE'"]
-    Tx --> Outbox["2. INSERT INTO webhook_outbox"]
-    Outbox --> Commit["COMMIT"]
-    Commit --> Done["Return 200 to User instantly!"]
-
-    Outbox -.-> Dispatcher["👷 Background Dispatcher Worker"]
-    Dispatcher --> HTTP["HTTP POST to Customer URL with Backoff"]
-```
 
 ---
 
