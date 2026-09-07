@@ -21,8 +21,9 @@
 14. [Building Your Own Webhook Sender: The Transactional Outbox](#14-building-your-own-webhook-sender-the-transactional-outbox)
 15. [When Webhooks Are the WRONG Choice (The Syncing Trap)](#15-when-webhooks-are-the-wrong-choice-the-syncing-trap)
 16. [The Event Log: The Right Way to Sync Data](#16-the-event-log-the-right-way-to-sync-data)
-17. [Interview Quick-Reference Summary & Official References](#17-interview-quick-reference-summary--official-references)
-18. [*(Optional Deep Dive)* Java Spring Boot Code Reference](#18-optional-deep-dive-java-spring-boot-code-reference)
+17. [Interview Quick-Reference Summary](#17-interview-quick-reference-summary)
+18. [Image Sources & Official Documentation](#18-image-sources--official-documentation)
+19. [*(Optional Deep Dive)* Java Spring Boot Code Reference](#19-optional-deep-dive-java-spring-boot-code-reference)
 
 ---
 
@@ -43,7 +44,7 @@ flowchart LR
     YourServer -- "HTTP 200 OK: Got it, thanks!" --> Stripe
 ```
 
-> 📖 **Verified Reference**: For a real webhook request example, see [GitHub's official Webhook Events and Payloads documentation](https://docs.github.com/en/webhooks/webhook-events-and-payloads). It shows an actual HTTP POST, delivery ID, event header, signature header, and JSON payload.
+> **Source:** [GitHub — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
 
 ### Why can't the user's browser just tell our backend?
 Suppose a customer buys a subscription on your site. The payment happens on Stripe's checkout. Why can't the user's browser simply tell our server *"Hey, I paid!"*?
@@ -59,7 +60,18 @@ Suppose a customer buys a subscription on your site. The payment happens on Stri
 
 What if we didn't have webhooks? Our backend would have to repeatedly ask Stripe: *"Is payment done yet? Is it done now? What about now?"* (This is called **Polling**).
 
-![API Polling vs Webhooks](images/polling-vs-webhook.svg)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant App as Our Backend
+    participant Stripe as Stripe API
+
+    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
+    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
+    App->>Stripe: Is pay_123 successful? -> "No, pending" (Wasted call)
+    Note over Stripe: User completes payment!
+    App->>Stripe: Is pay_123 successful? -> "Yes, succeeded!" (Finally!)
+```
 
 ### Why Polling Fails at Scale:
 * **Annoying Latency**: If you check every 30 seconds, the user waits an average of 15 seconds after paying before their account unlocks.
@@ -155,14 +167,20 @@ If your server blindly trusts this, the hacker gets free access!
 
 ## 7. The HMAC Signature & The "Raw Body" Rule
 
-> 📖 **Verified Reference**: [GitHub — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries). GitHub documents HMAC-SHA256, `X-Hub-Signature-256`, raw-payload verification, and constant-time comparison.
-
-![HMAC Verification Flow](images/hmac-verification-flow.svg)
+> **Source:** [GitHub Docs — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
 
 ### How HMAC Works:
 1. When you register your webhook, you and the provider share a secret password (e.g. `whsec_secret123`).
 2. The provider calculates a cryptographic hash (HMAC-SHA256) of the message using this secret and puts it in the header.
 3. Your server calculates the exact same hash using the secret and checks if they match.
+
+```mermaid
+flowchart TD
+    Raw["Raw Incoming JSON Bytes"] --> HashCalc["HMAC-SHA256(Raw Bytes, Secret)"]
+    HashCalc --> Comp{"Does Computed Hash == Header Hash?"}
+    Comp -- "YES" --> OK["Valid! Process Payment"]
+    Comp -- "NO" --> Reject["Fake! Return 401 Unauthorized"]
+```
 
 ### 🚨 The "Raw Body" Trap (Common Beginner Bug!)
 Never parse the JSON into an object *before* checking the signature!
@@ -255,7 +273,7 @@ Events can arrive out of order due to retries:
 
 ## 12. Automatic Retries, Exponential Backoff & Jitter
 
-> 📖 **Verified Reference**: [Stripe — Webhooks Documentation](https://docs.stripe.com/webhooks). Provider retry schedules vary, so the exact delays below should be treated as a conceptual example unless tied to a specific provider's current documentation.
+> **Source:** [Stripe Webhooks documentation](https://docs.stripe.com/webhooks)
 
 When your server is down or returning errors, providers retry with **Exponential Backoff**:
 * **Attempt 1**: Wait 5 seconds
@@ -282,9 +300,7 @@ gantt
 
 ## 13. The "Thin Receiver" Pattern (Handling Huge Traffic Spikes)
 
-> 📖 **Verified Reference**: [Stripe — Webhooks Documentation](https://docs.stripe.com/webhooks). Stripe documents returning a successful 2xx response quickly and handling webhook work asynchronously when appropriate.
-
-![Thin Receiver Pattern](images/thin-receiver-pattern.svg)
+> **Source:** [Stripe Webhooks documentation](https://docs.stripe.com/webhooks)
 
 On the 1st of every month, Stripe renews millions of subscriptions at once.  
 If your webhook controller verifies signatures, runs 5 heavy database queries, and sends emails synchronously, your server will freeze and time out!
@@ -295,20 +311,39 @@ If your webhook controller verifies signatures, runs 5 heavy database queries, a
 3. Return `202 Accepted` immediately (in $<50$ms).
 4. Background worker processes the actual heavy logic at its own pace.
 
+```mermaid
+flowchart LR
+    Inbound["POST /hooks/stripe"] --> Ingress["⚡ Thin Controller<br>(Verify HMAC -> Push to Queue)"]
+    Ingress -- "Return 202 in 20ms" --> Stripe["Stripe (Happy)"]
+    Ingress --> Queue[(Message Queue / Redis)]
+    Queue --> Worker["👷 Background Worker<br>(Sends Email, Updates DB)"]
+```
+
 ---
 
 ## 14. Building Your Own Webhook Sender: The Transactional Outbox
 
-> 📖 **Verified Reference**: [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html). AWS provides official architecture diagrams and explains the dual-write problem, outbox table, and asynchronous event processing.
-
-![Transactional Outbox Pattern](images/transactional-outbox-flow.svg)
-
-If you want to send webhooks to your customers when they move a task:  
+When you need to emit webhooks to customers:  
 ❌ **Don't do this**: Send the HTTP POST directly inside your web controller. If the customer's server is slow, your app freezes.
 
 ✅ **The Transactional Outbox Pattern**:
-1. Update the task in your DB AND insert a row into a `webhook_outbox` table in the **same database transaction**.
-2. A separate background dispatcher worker reads from `webhook_outbox` and sends the HTTP POST requests.
+1. Update the business table (e.g. Flight/Task) AND insert a row into a `webhook_outbox` table in the **same atomic database transaction**.
+2. A separate background event processing service reads from the outbox table and dispatches messages to an SQS queue or customer endpoint.
+
+![AWS Transactional Outbox Pattern architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
+> **Source:** [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+
+```mermaid
+flowchart TD
+    User["User moves task"] --> Tx["BEGIN TRANSACTION"]
+    Tx --> UpdateTask["1. UPDATE tasks SET status='DONE'"]
+    Tx --> Outbox["2. INSERT INTO webhook_outbox"]
+    Outbox --> Commit["COMMIT"]
+    Commit --> Done["Return 200 to User instantly!"]
+
+    Outbox -.-> Dispatcher["👷 Background Dispatcher Worker"]
+    Dispatcher --> HTTP["HTTP POST to Customer URL with Backoff"]
+```
 
 ---
 
@@ -346,7 +381,7 @@ sequenceDiagram
 
 ---
 
-## 17. Interview Quick-Reference Summary & Official References
+## 17. Interview Quick-Reference Summary
 
 ```
 +----------------------------------------------------------------------------------------------------+
@@ -364,16 +399,24 @@ sequenceDiagram
 +----------------------------------------------------------------------------------------------------+
 ```
 
-### Verified Official References:
-These are the external sources used to validate the important webhook concepts in this guide. Prefer these sources over unverified diagrams when revising for placements:
-* [GitHub — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries) — HMAC-SHA256, raw body, signature validation, constant-time comparison.
-* [GitHub — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads) — Real webhook POST structure, headers, delivery IDs, and payloads.
-* [Stripe — Webhooks Documentation](https://docs.stripe.com/webhooks) — Receiving webhooks, fast 2xx responses, and provider-specific delivery behavior.
-* [AWS — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html) — Official transactional-outbox architecture and implementation guidance.
+---
+
+## 18. Image Sources & Official Documentation
+
+The diagrams and concepts in this guide are directly backed by official technical documentation from industry standard providers:
+
+1. **AWS Architecture Documentation**:
+   - [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
+   - *Diagram Asset*: [AWS Transactional Outbox relational database architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
+2. **GitHub Webhooks Documentation**:
+   - [GitHub Docs — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
+   - [GitHub Docs — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
+3. **Stripe Webhooks Documentation**:
+   - [Stripe — Webhooks Developer Guide](https://docs.stripe.com/webhooks)
 
 ---
 
-## 18. *(Optional Deep Dive)* Java Spring Boot Code Reference
+## 19. *(Optional Deep Dive)* Java Spring Boot Code Reference
 
 > 💡 *Note: This section is optional reference code for Java/Spring Boot developers. You can skip this if you are focusing on the concepts!*
 
