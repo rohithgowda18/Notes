@@ -8,7 +8,7 @@
 - [1. Sorting Classification & Properties Overview](#1-sorting-classification--properties-overview)
 - [2. Selection Sort (Find Minimum & Place at Front)](#2-selection-sort-find-minimum--place-at-front)
 - [3. Bubble Sort (Adjacent Compare & Swap)](#3-bubble-sort-adjacent-compare--swap)
-- [4. Insertion Sort (Card Deck Shift & Insert)](#4-insertion-sort-card-deck-shift--insert)
+- [4. Insertion Sort (Adjacent Swap into Sorted Prefix)](#4-insertion-sort-adjacent-swap-into-sorted-prefix)
 - [5. Merge Sort (Divide, Conquer & Merge) ⭐](#5-merge-sort-divide-conquer--merge-)
 - [6. Quick Sort (Pivot Selection & Lomuto Partition) ⭐](#6-quick-sort-pivot-selection--lomuto-partition-)
 - [7. Comprehensive Complexity Matrix & Mental Anchors](#7-comprehensive-complexity-matrix--mental-anchors)
@@ -40,38 +40,34 @@ Before diving into specific algorithms, understand the **2 fundamental propertie
 ## 2. Selection Sort (Find Minimum & Place at Front)
 
 ### 💡 Core Idea
-Divide the array into a sorted prefix and an unsorted suffix. In each pass, scan the unsorted suffix to find the absolute minimum element, then swap it with the first unsorted element.
+Divide the array into a sorted prefix and an unsorted suffix. In each pass, scan the unsorted suffix (`i` to `n-1`) to find the absolute minimum element (`mini`), then swap it with the element at index `i`.
 
 ### 🖼️ Visual Execution
 ![Selection Sort Flow](images/selection-sort-flow.svg)
 
 ### 🔍 Trace Walkthrough `[5, 3, 8, 1]`
-- **Pass 1**: Scan `[5, 3, 8, 1]` $\rightarrow$ Min is 1 at index 3. Swap `arr[0]` (5) with `arr[3]` (1) $\rightarrow [1, 3, 8, 5]$ *(1 is locked at index 0)*
-- **Pass 2**: Scan `[3, 8, 5]` $\rightarrow$ Min is 3 at index 1. Swap `arr[1]` with `arr[1]` $\rightarrow [1, 3, 8, 5]$ *(3 is locked at index 1)*
-- **Pass 3**: Scan `[8, 5]` $\rightarrow$ Min is 5 at index 3. Swap `arr[2]` (8) with `arr[3]` (5) $\rightarrow [1, 3, 5, 8]$ *(Sorted!)*
+- **Pass 1 (`i = 0`)**: Scan index 0 to 3 $\rightarrow$ Min is 1 at index 3. Swap `arr[3]` (1) with `arr[0]` (5) $\rightarrow [1, 3, 8, 5]$ *(1 is locked at index 0)*
+- **Pass 2 (`i = 1`)**: Scan index 1 to 3 $\rightarrow$ Min is 3 at index 1. Swap `arr[1]` with `arr[1]` $\rightarrow [1, 3, 8, 5]$ *(3 is locked at index 1)*
+- **Pass 3 (`i = 2`)**: Scan index 2 to 3 $\rightarrow$ Min is 5 at index 3. Swap `arr[3]` (5) with `arr[2]` (8) $\rightarrow [1, 3, 5, 8]$ *(Sorted!)*
 
-### ☕ Java Implementation (with `swap()`)
+### ☕ Java Implementation
 ```java
 public class SelectionSort {
 
-    public static void selectionSort(int[] arr) {
-        if (arr == null || arr.length <= 1) return;
+    public static void selectionSort(int[] arr, int n) {
+        if (arr == null || n <= 1) return;
 
-        int n = arr.length;
-        for (int i = 0; i < n - 1; i++) {
-            int minIndex = i;
+        for (int i = 0; i <= n - 2; i++) {
+            int mini = i;
 
-            // Find index of minimum element in unsorted subarray
-            for (int j = i + 1; j < n; j++) {
-                if (arr[j] < arr[minIndex]) {
-                    minIndex = j;
+            for (int j = i; j <= n - 1; j++) {
+                if (arr[j] < arr[mini]) {
+                    mini = j;
                 }
             }
 
             // Swap the found minimum element with element at index i
-            if (minIndex != i) {
-                swap(arr, i, minIndex);
-            }
+            swap(arr, mini, i);
         }
     }
 
@@ -85,54 +81,54 @@ public class SelectionSort {
 
 ### ⏱️ Complexity
 - **Time Complexity**:
-  - **Best Case**: $\mathcal{O}(n^2)$ *(Always scans entire unsorted suffix)*
+  - **Best Case**: $\mathcal{O}(n^2)$ *(Always scans entire unsorted suffix to find minimum)*
   - **Average Case**: $\mathcal{O}(n^2)$
   - **Worst Case**: $\mathcal{O}(n^2)$
 - **Auxiliary Space**: $\mathcal{O}(1)$ *(In-place)*
-- **Stable**: **No** (❌) *(Long-distance swaps jump over equal elements, e.g. `[4a, 4b, 1]` $\rightarrow$ 1 swaps with 4a, putting 4a behind 4b)*
+- **Stable**: **No** (❌) *(Long-distance swaps jump over duplicate elements, e.g. `[4a, 4b, 1]` $\rightarrow$ 1 swaps with 4a, placing 4a behind 4b)*
 
 ---
 
 ## 3. Bubble Sort (Adjacent Compare & Swap)
 
 ### 💡 Core Idea
-Repeatedly compare adjacent elements (`arr[j]`, `arr[j+1]`) and swap them if they are out of order (`arr[j] > arr[j+1]`). After each full pass, the largest unsorted element "bubbles up" to the end of the array.
+Repeatedly compare adjacent elements (`arr[j]`, `arr[j+1]`) from `j = 0` to `i - 1` and swap them if they are out of order (`arr[j] > arr[j+1]`). After each pass `i`, the largest unsorted element "bubbles up" to index `i`. If no swaps occur in a full pass, the array is already sorted and we can stop early.
 
 ### 🖼️ Visual Execution
 ![Bubble Sort Flow](images/bubble-sort-flow.svg)
 
 ### 🔍 Trace Walkthrough `[5, 3, 8, 1]`
-- **Pass 1**:
-  - Compare (5, 3) $\rightarrow 5 > 3 \rightarrow$ Swap $\rightarrow [3, 5, 8, 1]$
-  - Compare (5, 8) $\rightarrow 5 < 8 \rightarrow$ No swap $\rightarrow [3, 5, 8, 1]$
-  - Compare (8, 1) $\rightarrow 8 > 1 \rightarrow$ Swap $\rightarrow [3, 5, 1, 8]$ *(8 is locked at index 3)*
-- **Pass 2**:
-  - Compare (3, 5) $\rightarrow$ No swap $\rightarrow [3, 5, 1, 8]$
-  - Compare (5, 1) $\rightarrow 5 > 1 \rightarrow$ Swap $\rightarrow [3, 1, 5, 8]$ *(5 is locked at index 2)*
-- **Pass 3**:
-  - Compare (3, 1) $\rightarrow 3 > 1 \rightarrow$ Swap $\rightarrow [1, 3, 5, 8]$ *(Array is sorted!)*
+- **Pass 1 (`i = 3`)**:
+  - `j = 0`: Compare (5, 3) $\rightarrow 5 > 3 \rightarrow$ Swap $\rightarrow [3, 5, 8, 1]$
+  - `j = 1`: Compare (5, 8) $\rightarrow 5 < 8 \rightarrow$ No swap $\rightarrow [3, 5, 8, 1]$
+  - `j = 2`: Compare (8, 1) $\rightarrow 8 > 1 \rightarrow$ Swap $\rightarrow [3, 5, 1, 8]$ *(8 locked at index 3)*
+- **Pass 2 (`i = 2`)**:
+  - `j = 0`: Compare (3, 5) $\rightarrow$ No swap $\rightarrow [3, 5, 1, 8]$
+  - `j = 1`: Compare (5, 1) $\rightarrow 5 > 1 \rightarrow$ Swap $\rightarrow [3, 1, 5, 8]$ *(5 locked at index 2)*
+- **Pass 3 (`i = 1`)**:
+  - `j = 0`: Compare (3, 1) $\rightarrow 3 > 1 \rightarrow$ Swap $\rightarrow [1, 3, 5, 8]$ *(Array is sorted!)*
 
-### ☕ Optimized Java Implementation (Early Stopping with `swap()`)
+### ☕ Java Implementation (with Early Stopping & `swap()`)
 ```java
 public class BubbleSort {
 
-    public static void bubbleSort(int[] arr) {
-        if (arr == null || arr.length <= 1) return;
+    public static void bubbleSort(int[] arr, int n) {
+        if (arr == null || n <= 1) return;
 
-        int n = arr.length;
-        for (int i = 0; i < n - 1; i++) {
-            boolean swapped = false;
+        for (int i = n - 1; i >= 1; i--) {
+            boolean didSwap = false;
 
-            // Last i elements are already in place
-            for (int j = 0; j < n - i - 1; j++) {
+            for (int j = 0; j < i; j++) {
                 if (arr[j] > arr[j + 1]) {
                     swap(arr, j, j + 1);
-                    swapped = true;
+                    didSwap = true;
                 }
             }
 
-            // If no elements were swapped in inner loop, array is already sorted!
-            if (!swapped) break;
+            // If no elements were swapped during this pass, array is already sorted!
+            if (!didSwap) {
+                break;
+            }
         }
     }
 
@@ -146,7 +142,7 @@ public class BubbleSort {
 
 ### ⏱️ Complexity
 - **Time Complexity**:
-  - **Best Case**: $\mathcal{O}(n)$ *(Array already sorted, breaks out on 1st pass)*
+  - **Best Case**: $\mathcal{O}(n)$ *(Array already sorted, breaks out immediately after 1st pass when `didSwap == false`)*
   - **Average Case**: $\mathcal{O}(n^2)$
   - **Worst Case**: $\mathcal{O}(n^2)$ *(Reverse sorted array)*
 - **Auxiliary Space**: $\mathcal{O}(1)$ *(In-place)*
@@ -154,46 +150,51 @@ public class BubbleSort {
 
 ---
 
-## 4. Insertion Sort (Card Deck Shift & Insert)
+## 4. Insertion Sort (Adjacent Swap into Sorted Prefix)
 
 ### 💡 Core Idea
-Build the sorted array one element at a time, exactly like sorting playing cards in your hand. Pick the next element (`key`), compare it with elements in the sorted subarray to its left, shift all larger elements one position to the right, and insert the `key` into its correct position.
+Iterate from `i = 0` to `n - 1`. For each element at index `i`, continuously swap it with its left neighbour (`j - 1`) as long as `arr[j - 1] > arr[j]` until it settles into its correct sorted position in the left prefix.
 
 ### 🖼️ Visual Execution
 ![Insertion Sort Flow](images/insertion-sort-flow.svg)
 
 ### 🔍 Trace Walkthrough `[5, 3, 8, 1]`
-- **Initial State**: `[5 | 3, 8, 1]` *(First element 5 is trivially sorted)*
-- **Insert 3**: Compare with 5 $\rightarrow 5 > 3 \rightarrow$ Shift 5 right $\rightarrow$ Place 3 $\rightarrow [3, 5 \mid 8, 1]$
-- **Insert 8**: Compare with 5 $\rightarrow 8 > 5 \rightarrow$ No shift $\rightarrow [3, 5, 8 \mid 1]$
-- **Insert 1**: Compare with 8, 5, 3 $\rightarrow$ Shift 8, 5, 3 right $\rightarrow$ Place 1 $\rightarrow [1, 3, 5, 8]$
+- **`i = 0`**: `[5 | 3, 8, 1]` *(Trivially sorted)*
+- **`i = 1` (`j = 1`)**: `arr[0] (5) > arr[1] (3)` $\rightarrow$ Swap(0, 1) $\rightarrow [3, 5 \mid 8, 1]$
+- **`i = 2` (`j = 2`)**: `arr[1] (5) < arr[2] (8)` $\rightarrow$ Condition fails, no swap $\rightarrow [3, 5, 8 \mid 1]$
+- **`i = 3` (`j = 3`)**:
+  - `j = 3`: `arr[2] (8) > arr[3] (1)` $\rightarrow$ Swap(2, 3) $\rightarrow [3, 5, 1, 8]$
+  - `j = 2`: `arr[1] (5) > arr[2] (1)` $\rightarrow$ Swap(1, 2) $\rightarrow [3, 1, 5, 8]$
+  - `j = 1`: `arr[0] (3) > arr[1] (1)` $\rightarrow$ Swap(0, 1) $\rightarrow [1, 3, 5, 8]$
 
-### ☕ Java Implementation
+### ☕ Java Implementation (with `swap()`)
 ```java
 public class InsertionSort {
 
-    public static void insertionSort(int[] arr) {
-        if (arr == null || arr.length <= 1) return;
+    public static void insertionSort(int[] arr, int n) {
+        if (arr == null || n <= 1) return;
 
-        int n = arr.length;
-        for (int i = 1; i < n; i++) {
-            int key = arr[i];
-            int j = i - 1;
+        for (int i = 0; i <= n - 1; i++) {
+            int j = i;
 
-            // Shift elements of arr[0..i-1] that are greater than key to one position ahead
-            while (j >= 0 && arr[j] > key) {
-                arr[j + 1] = arr[j];
+            while (j > 0 && arr[j - 1] > arr[j]) {
+                swap(arr, j - 1, j);
                 j--;
             }
-            arr[j + 1] = key;
         }
+    }
+
+    private static void swap(int[] arr, int i, int j) {
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
     }
 }
 ```
 
 ### ⏱️ Complexity
 - **Time Complexity**:
-  - **Best Case**: $\mathcal{O}(n)$ *(Array already sorted; inner while condition `arr[j] > key` fails immediately on first check)*
+  - **Best Case**: $\mathcal{O}(n)$ *(Array already sorted; inner condition `arr[j - 1] > arr[j]` fails on first check)*
   - **Average Case**: $\mathcal{O}(n^2)$
   - **Worst Case**: $\mathcal{O}(n^2)$ *(Reverse sorted array)*
 - **Auxiliary Space**: $\mathcal{O}(1)$ *(In-place)*
@@ -342,7 +343,7 @@ public class QuickSort {
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
 | **Selection Sort** | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ❌ No | ✅ Yes | Find min & swap to front |
 | **Bubble Sort** | $\mathcal{O}(n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ✅ Yes | ✅ Yes | Adjacent compare & swap |
-| **Insertion Sort** | $\mathcal{O}(n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ✅ Yes | ✅ Yes | Shift & insert into sorted prefix |
+| **Insertion Sort** | $\mathcal{O}(n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ✅ Yes | ✅ Yes | Adjacent swap into sorted prefix |
 | **Merge Sort** | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n)$ | ✅ Yes | ❌ No | Divide, Conquer & Merge |
 | **Quick Sort** | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(\log n)^*$ | ❌ No | ✅ Yes | Pivot selection & Partitioning |
 
