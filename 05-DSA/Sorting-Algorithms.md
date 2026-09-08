@@ -52,29 +52,21 @@ Divide the array into a sorted prefix and an unsorted suffix. In each pass, scan
 
 ### ☕ Java Implementation
 ```java
-public class SelectionSort {
 
-    public static void selectionSort(int[] arr, int n) {
-        if (arr == null || n <= 1) return;
+public static void selectionSort(int[] arr, int n) {
+    if (arr == null || n <= 1) return;
 
-        for (int i = 0; i <= n - 2; i++) {
-            int mini = i;
+    for (int i = 0; i <= n - 2; i++) {
+        int mini = i;
 
-            for (int j = i; j <= n - 1; j++) {
-                if (arr[j] < arr[mini]) {
-                    mini = j;
-                }
+        for (int j = i; j <= n - 1; j++) {
+            if (arr[j] < arr[mini]) {
+                mini = j;
             }
-
-            // Swap the found minimum element with element at index i
-            swap(arr, mini, i);
         }
-    }
 
-    private static void swap(int[] arr, int i, int j) {
-        int temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
+        // Swap the found minimum element with element at index i
+        swap(arr, mini, i);
     }
 }
 ```
@@ -110,34 +102,26 @@ Repeatedly compare adjacent elements (`arr[j]`, `arr[j+1]`) from `j = 0` to `i -
 
 ### ☕ Java Implementation (with Early Stopping & `swap()`)
 ```java
-public class BubbleSort {
+public static void bubbleSort(int[] arr, int n) {
+    if (arr == null || n <= 1) return;
 
-    public static void bubbleSort(int[] arr, int n) {
-        if (arr == null || n <= 1) return;
+    for (int i = n - 1; i >= 1; i--) {
+        boolean didSwap = false;
 
-        for (int i = n - 1; i >= 1; i--) {
-            boolean didSwap = false;
-
-            for (int j = 0; j < i; j++) {
-                if (arr[j] > arr[j + 1]) {
-                    swap(arr, j, j + 1);
-                    didSwap = true;
-                }
-            }
-
-            // If no elements were swapped during this pass, array is already sorted!
-            if (!didSwap) {
-                break;
+        for (int j = 0; j < i; j++) {
+            if (arr[j] > arr[j + 1]) {
+                swap(arr, j, j + 1);
+                didSwap = true;
             }
         }
-    }
 
-    private static void swap(int[] arr, int i, int j) {
-        int temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
+        // If no elements were swapped in this pass, array is already sorted!
+        if (!didSwap) {
+            break;
+        }
     }
 }
+
 ```
 
 ### ⏱️ Complexity
@@ -169,25 +153,16 @@ Iterate from `i = 0` to `n - 1`. For each element at index `i`, continuously swa
 
 ### ☕ Java Implementation (with `swap()`)
 ```java
-public class InsertionSort {
+public static void insertionSort(int[] arr, int n) {
+    if (arr == null || n <= 1) return;
 
-    public static void insertionSort(int[] arr, int n) {
-        if (arr == null || n <= 1) return;
+    for (int i = 0; i <= n - 1; i++) {
+        int j = i;
 
-        for (int i = 0; i <= n - 1; i++) {
-            int j = i;
-
-            while (j > 0 && arr[j - 1] > arr[j]) {
-                swap(arr, j - 1, j);
-                j--;
-            }
+        while (j > 0 && arr[j - 1] > arr[j]) {
+            swap(arr, j - 1, j);
+            j--;
         }
-    }
-
-    private static void swap(int[] arr, int i, int j) {
-        int temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
     }
 }
 ```
@@ -217,50 +192,42 @@ Follow the classic **Divide and Conquer** paradigm:
 
 ### ☕ Java Implementation
 ```java
-public class MergeSort {
+private static void mergeSort(int[] arr, int left, int right) {
+    if (left >= right) return;
 
-    public static void sort(int[] arr) {
-        if (arr == null || arr.length <= 1) return;
-        mergeSort(arr, 0, arr.length - 1);
-    }
+    int mid = left + (right - left) / 2; // Prevents integer overflow
+    mergeSort(arr, left, mid);
+    mergeSort(arr, mid + 1, right);
+    merge(arr, left, mid, right);
+}
 
-    private static void mergeSort(int[] arr, int left, int right) {
-        if (left >= right) return;
+private static void merge(int[] arr, int left, int mid, int right) {
+    int[] temp = new int[right - left + 1];
+    int i = left;      // Pointer for left sorted subarray [left..mid]
+    int j = mid + 1;   // Pointer for right sorted subarray [mid+1..right]
+    int k = 0;         // Pointer for temp array
 
-        int mid = left + (right - left) / 2; // Prevents integer overflow
-        mergeSort(arr, left, mid);
-        mergeSort(arr, mid + 1, right);
-        merge(arr, left, mid, right);
-    }
-
-    private static void merge(int[] arr, int left, int mid, int right) {
-        int[] temp = new int[right - left + 1];
-        int i = left;      // Pointer for left sorted subarray [left..mid]
-        int j = mid + 1;   // Pointer for right sorted subarray [mid+1..right]
-        int k = 0;         // Pointer for temp array
-
-        while (i <= mid && j <= right) {
-            if (arr[i] <= arr[j]) { // '<=' guarantees stability
-                temp[k++] = arr[i++];
-            } else {
-                temp[k++] = arr[j++];
-            }
-        }
-
-        // Copy remaining elements of left subarray
-        while (i <= mid) {
+    while (i <= mid && j <= right) {
+        if (arr[i] <= arr[j]) { // '<=' guarantees stability
             temp[k++] = arr[i++];
-        }
-
-        // Copy remaining elements of right subarray
-        while (j <= right) {
+        } else {
             temp[k++] = arr[j++];
         }
+    }
 
-        // Copy back from temp into original array
-        for (int x = 0; x < temp.length; x++) {
-            arr[left + x] = temp[x];
-        }
+    // Copy remaining elements of left subarray
+    while (i <= mid) {
+        temp[k++] = arr[i++];
+    }
+
+    // Copy remaining elements of right subarray
+    while (j <= right) {
+        temp[k++] = arr[j++];
+    }
+
+    // Copy back from temp into original array
+    for (int x = 0; x < temp.length; x++) {
+        arr[left + x] = temp[x];
     }
 }
 ```
@@ -287,44 +254,31 @@ public class MergeSort {
 
 ### ☕ Java Implementation (Lomuto Partition with `swap()`)
 ```java
-public class QuickSort {
+private static void quickSort(int[] arr, int low, int high) {
+    if (low >= high) return;
 
-    public static void sort(int[] arr) {
-        if (arr == null || arr.length <= 1) return;
-        quickSort(arr, 0, arr.length - 1);
-    }
-
-    private static void quickSort(int[] arr, int low, int high) {
-        if (low >= high) return;
-
-        // partition returns index of pivot in its correct sorted position
-        int pivotIndex = partition(arr, low, high);
-        quickSort(arr, low, pivotIndex - 1);
-        quickSort(arr, pivotIndex + 1, high);
-    }
-
-    private static int partition(int[] arr, int low, int high) {
-        int pivot = arr[high]; // Choosing last element as pivot
-        int i = low - 1;       // Index of smaller element
-
-        for (int j = low; j < high; j++) {
-            if (arr[j] <= pivot) {
-                i++;
-                swap(arr, i, j);
-            }
-        }
-
-        // Place pivot in its correct position by swapping with arr[i + 1]
-        swap(arr, i + 1, high);
-        return i + 1;
-    }
-
-    private static void swap(int[] arr, int i, int j) {
-        int temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
-    }
+    // partition returns index of pivot in its correct sorted position
+    int pivotIndex = partition(arr, low, high);
+    quickSort(arr, low, pivotIndex - 1);
+    quickSort(arr, pivotIndex + 1, high);
 }
+
+private static int partition(int[] arr, int low, int high) {
+    int pivot = arr[high]; // Choosing last element as pivot
+    int i = low - 1;       // Index of smaller element
+
+    for (int j = low; j < high; j++) {
+        if (arr[j] <= pivot) {
+            i++;
+            swap(arr, i, j);
+        }
+    }
+
+    // Place pivot in its correct position by swapping with arr[i + 1]
+    swap(arr, i + 1, high);
+    return i + 1;
+}
+
 ```
 
 ### ⏱️ Complexity
