@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 370" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="450" y="35" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">Insertion Sort: Card Deck Insertion Pattern</text>
+
+  <!-- Step Progression -->
+  <g transform="translate(60, 70)">
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#0284c7">Initial: [5] is sorted</text>
+    <rect x="180" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="207" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">5</text>
+    <rect x="245" y="5" width="55" height="35" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="272" y="28" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">3</text>
+    <rect x="310" y="5" width="55" height="35" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="337" y="28" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">8</text>
+    <rect x="375" y="5" width="55" height="35" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="402" y="28" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">1</text>
+  </g>
+
+  <g transform="translate(60, 130)">
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#0284c7">Insert 3: Shift 5 right, put 3 at index 0</text>
+    <rect x="180" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="207" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">3</text>
+    <rect x="245" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="272" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">5</text>
+    <rect x="310" y="5" width="55" height="35" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="337" y="28" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">8</text>
+    <rect x="375" y="5" width="55" height="35" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="402" y="28" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">1</text>
+  </g>
+
+  <g transform="translate(60, 190)">
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#0284c7">Insert 8: 8 &gt; 5, stays in place</text>
+    <rect x="180" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="207" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">3</text>
+    <rect x="245" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="272" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">5</text>
+    <rect x="310" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="337" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">8</text>
+    <rect x="375" y="5" width="55" height="35" rx="5" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="402" y="28" font-family="Arial, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">1</text>
+  </g>
+
+  <g transform="translate(60, 250)">
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#0284c7">Insert 1: Shift 8, 5, 3 right, put 1 at index 0</text>
+    <rect x="180" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="207" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">1</text>
+    <rect x="245" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="272" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">3</text>
+    <rect x="310" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="337" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">5</text>
+    <rect x="375" y="5" width="55" height="35" rx="5" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="402" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#15803d" text-anchor="middle">8</text>
+  </g>
+
+  <!-- Placement Box Right -->
+  <rect x="520" y="80" width="340" height="220" rx="10" fill="#f0f9ff" stroke="#0284c7" stroke-width="2"/>
+  <text x="690" y="110" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#0369a1" text-anchor="middle">Placement Pro-Tip ⭐</text>
+  <text x="690" y="145" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#0284c7" text-anchor="middle">Best Algorithm for Nearly-Sorted Data!</text>
+  <text x="690" y="180" font-family="Arial, sans-serif" font-size="12" fill="#334155" text-anchor="middle">If array is already sorted, inner loop never runs</text>
+  <text x="690" y="205" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#16a34a" text-anchor="middle">Best Case Time Complexity: O(n)</text>
+  <text x="690" y="235" font-family="Arial, sans-serif" font-size="12" fill="#334155" text-anchor="middle">Maintains relative order → STABLE (✅)</text>
+  <text x="690" y="260" font-family="Arial, sans-serif" font-size="12" fill="#334155" text-anchor="middle">Space: O(1) in-place</text>
+</svg>

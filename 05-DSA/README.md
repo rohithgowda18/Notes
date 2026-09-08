@@ -9,6 +9,7 @@ This directory contains rapid revision guides and formula sheets for Data Struct
 | File | Type | Description |
 |---|---|---|
 | 📄 [DSA Quick Revision Guide](./DSA%20Quick%20Revision%20Guide.pdf) | Fast Revision Guide | Quick lookup for time & space complexities, standard patterns, core algorithms, and templates. |
+| 📊 [Sorting Algorithms Guide](./Sorting-Algorithms.md) | Placement Guide | Visual walkthrough, trace diagrams, Java code, edge cases & complexity analysis for Bubble, Selection, Insertion, Merge, and Quick Sort. |
 
 ---
 

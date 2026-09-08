@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 950 420" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="475" y="35" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">Quick Sort: Lomuto Partition &amp; Pivot Placement</text>
+
+  <!-- Array Row with Pivot Highlighted -->
+  <g transform="translate(60, 70)">
+    <text x="0" y="25" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#0284c7">1. Select Pivot Element (e.g. Last Element = 1)</text>
+    
+    <g transform="translate(0, 35)">
+      <rect x="0" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+      <text x="27" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">5</text>
+      <rect x="65" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+      <text x="92" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">3</text>
+      <rect x="130" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+      <text x="157" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">8</text>
+      <rect x="195" y="0" width="55" height="45" rx="6" fill="#fef3c7" stroke="#d97706" stroke-width="2.5"/>
+      <text x="222" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#b45309" text-anchor="middle">1</text>
+      <text x="222" y="65" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#b45309" text-anchor="middle">🎯 Pivot</text>
+    </g>
+  </g>
+
+  <!-- Partition Process -->
+  <g transform="translate(60, 195)">
+    <text x="0" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#0284c7">2. Partition: Rearrange elements so Elements &lt;= Pivot go LEFT, Elements &gt; Pivot go RIGHT</text>
+
+    <g transform="translate(0, 35)">
+      <!-- Left Subarray -->
+      <rect x="0" y="0" width="70" height="45" rx="6" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1.5"/>
+      <text x="35" y="28" font-family="Arial, sans-serif" font-size="13" fill="#64748b" text-anchor="middle">[ Empty ]</text>
+      <text x="35" y="65" font-family="Arial, sans-serif" font-size="11" fill="#64748b" text-anchor="middle">&lt;= Pivot</text>
+
+      <!-- Pivot Placed -->
+      <rect x="90" y="0" width="55" height="45" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
+      <text x="117" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#15803d" text-anchor="middle">1</text>
+      <text x="117" y="65" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#16a34a" text-anchor="middle">🔒 Fixed Pivot</text>
+
+      <!-- Right Subarray -->
+      <rect x="165" y="0" width="160" height="45" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="1.5"/>
+      <text x="245" y="28" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#b91c1c" text-anchor="middle">[ 5,  3,  8 ]</text>
+      <text x="245" y="65" font-family="Arial, sans-serif" font-size="11" fill="#dc2626" text-anchor="middle">&gt; Pivot (Recursively Sorted)</text>
+    </g>
+  </g>
+
+  <!-- Callout Right -->
+  <rect x="520" y="70" width="370" height="280" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="705" y="100" font-family="Arial, sans-serif" font-size="15" font-weight="bold" fill="#1e293b" text-anchor="middle">Quick Sort Interview Essentials</text>
+  
+  <text x="545" y="135" font-family="Arial, sans-serif" font-size="12" fill="#334155">• Average Time: <tspan font-weight="bold" fill="#16a34a">O(n log n)</tspan></text>
+  <text x="545" y="165" font-family="Arial, sans-serif" font-size="12" fill="#334155">• Worst Case Time: <tspan font-weight="bold" fill="#dc2626">O(n²)</tspan></text>
+  <text x="560" y="185" font-family="Arial, sans-serif" font-size="11" fill="#64748b">(Occurs when pivot is always min or max in sorted array)</text>
+  
+  <text x="545" y="215" font-family="Arial, sans-serif" font-size="12" fill="#334155">• Space: <tspan font-weight="bold" fill="#0284c7">O(log n)</tspan> call stack</text>
+  <text x="545" y="245" font-family="Arial, sans-serif" font-size="12" fill="#334155">• Stable: <tspan font-weight="bold" fill="#dc2626">No (❌)</tspan> due to non-adjacent swaps</text>
+  <text x="545" y="275" font-family="Arial, sans-serif" font-size="12" fill="#334155">• In-Place: <tspan font-weight="bold" fill="#16a34a">Yes (✅)</tspan></text>
+  <text x="545" y="305" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#9333ea">• Pivot Choice: Random/Median avoids O(n²)</text>
+</svg>

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 380" width="100%" height="100%">
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="450" y="35" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b" text-anchor="middle">Bubble Sort: Adjacent Compare &amp; Swap Flow</text>
+
+  <!-- Pass 1 -->
+  <text x="60" y="80" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#0284c7">Pass 1: Compare adjacent pairs &amp; bubble largest element (8) to the end</text>
+
+  <!-- Array Row 1 -->
+  <g transform="translate(60, 100)">
+    <rect x="0" y="0" width="55" height="45" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="27" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#b91c1c" text-anchor="middle">5</text>
+    <rect x="65" y="0" width="55" height="45" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="92" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#b91c1c" text-anchor="middle">3</text>
+    <rect x="130" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="157" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">8</text>
+    <rect x="195" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="222" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">1</text>
+    <text x="320" y="28" font-family="Arial, sans-serif" font-size="13" fill="#dc2626">5 &gt; 3 → Swap!</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="180" y1="155" x2="180" y2="180" stroke="#64748b" stroke-width="2" marker-end="url(#arr-gray)"/>
+
+  <!-- Array Row 2 -->
+  <g transform="translate(60, 190)">
+    <rect x="0" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="27" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">3</text>
+    <rect x="65" y="0" width="55" height="45" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="92" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#b91c1c" text-anchor="middle">5</text>
+    <rect x="130" y="0" width="55" height="45" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="157" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#b91c1c" text-anchor="middle">8</text>
+    <rect x="195" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="222" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">1</text>
+    <text x="320" y="28" font-family="Arial, sans-serif" font-size="13" fill="#16a34a">5 &lt; 8 → No swap</text>
+  </g>
+
+  <!-- Arrow -->
+  <line x1="180" y1="245" x2="180" y2="270" stroke="#64748b" stroke-width="2" marker-end="url(#arr-gray)"/>
+
+  <!-- Array Row 3 -->
+  <g transform="translate(60, 280)">
+    <rect x="0" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="27" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">3</text>
+    <rect x="65" y="0" width="55" height="45" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="92" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">5</text>
+    <rect x="130" y="0" width="55" height="45" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="157" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#b91c1c" text-anchor="middle">8</text>
+    <rect x="195" y="0" width="55" height="45" rx="6" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+    <text x="222" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#b91c1c" text-anchor="middle">1</text>
+    <text x="320" y="28" font-family="Arial, sans-serif" font-size="13" fill="#dc2626">8 &gt; 1 → Swap!</text>
+  </g>
+
+  <!-- Summary Box Right -->
+  <rect x="520" y="100" width="340" height="225" rx="10" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="690" y="130" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#15803d" text-anchor="middle">End of Pass 1 Result</text>
+  
+  <g transform="translate(565, 150)">
+    <rect x="0" y="0" width="55" height="45" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="27" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">3</text>
+    <rect x="65" y="0" width="55" height="45" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="92" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">5</text>
+    <rect x="130" y="0" width="55" height="45" rx="6" fill="#ffffff" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="157" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1e293b" text-anchor="middle">1</text>
+    <rect x="195" y="0" width="55" height="45" rx="6" fill="#dcfce7" stroke="#16a34a" stroke-width="2.5"/>
+    <text x="222" y="28" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#15803d" text-anchor="middle">8</text>
+    <text x="222" y="65" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#16a34a" text-anchor="middle">🔒 Fixed (Largest)</text>
+  </g>
+
+  <text x="690" y="260" font-family="Arial, sans-serif" font-size="12" fill="#166534" text-anchor="middle">Pass 2 fixes 5 at index 2</text>
+  <text x="690" y="285" font-family="Arial, sans-serif" font-size="12" fill="#166534" text-anchor="middle">Optimized: Stops early if no swaps occur (O(n) Best)</text>
+
+  <defs>
+    <marker id="arr-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#64748b"/>
+    </marker>
+  </defs>
+</svg>
