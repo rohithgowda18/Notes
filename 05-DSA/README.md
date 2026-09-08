@@ -1,4 +1,4 @@
-# ⚡ Data Structures and Algorithms (DSA) — Quick Revision
+# 🗂️ Data Structures and Algorithms (DSA) — Quick Revision
 
 This directory contains rapid revision guides and formula sheets for Data Structures and Algorithms tested in online assessments and technical coding rounds.
 
@@ -9,11 +9,11 @@ This directory contains rapid revision guides and formula sheets for Data Struct
 | File | Type | Description |
 |---|---|---|
 | 📄 [DSA Quick Revision Guide](./DSA%20Quick%20Revision%20Guide.pdf) | Fast Revision Guide | Quick lookup for time & space complexities, standard patterns, core algorithms, and templates. |
-| 📊 [Sorting Algorithms Guide](./Sorting-Algorithms.md) | Placement Guide | Visual walkthrough, trace diagrams, Java code, edge cases & complexity analysis for Bubble, Selection, Insertion, Merge, and Quick Sort. |
+| 📊 [Sorting Algorithms Guide](./Sorting-Algorithms.md) | Placement Guide | Visual walkthrough, trace diagrams, Java code, edge cases & complexity analysis for Insertion, Bubble, Selection, Merge, and Quick Sort. |
 
 ---
 
-## 🎯 High-Yield DSA Patterns Checklist
+## 🚀 High-Yield DSA Patterns Checklist
 
 1. **Arrays & Two Pointers**: Sliding Window, Two Pointers (Opposite/Same direction), Kadane's Algorithm, Prefix Sums.
 2. **Linked Lists**: Fast & Slow Pointers (Floyd's Cycle Detection), Reversing a Linked List, Merge K Sorted Lists.
