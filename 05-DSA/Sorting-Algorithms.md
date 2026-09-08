@@ -6,9 +6,9 @@
 
 ## 📑 Table of Contents
 - [1. Sorting Classification & Properties Overview](#1-sorting-classification--properties-overview)
-- [2. Insertion Sort (Card Deck Shift & Insert)](#2-insertion-sort-card-deck-shift--insert)
+- [2. Selection Sort (Find Minimum & Place at Front)](#2-selection-sort-find-minimum--place-at-front)
 - [3. Bubble Sort (Adjacent Compare & Swap)](#3-bubble-sort-adjacent-compare--swap)
-- [4. Selection Sort (Find Minimum & Place at Front)](#4-selection-sort-find-minimum--place-at-front)
+- [4. Insertion Sort (Card Deck Shift & Insert)](#4-insertion-sort-card-deck-shift--insert)
 - [5. Merge Sort (Divide, Conquer & Merge) ⭐](#5-merge-sort-divide-conquer--merge-)
 - [6. Quick Sort (Pivot Selection & Lomuto Partition) ⭐](#6-quick-sort-pivot-selection--lomuto-partition-)
 - [7. Comprehensive Complexity Matrix & Mental Anchors](#7-comprehensive-complexity-matrix--mental-anchors)
@@ -26,63 +26,70 @@ Before diving into specific algorithms, understand the **2 fundamental propertie
 +----------------------------------------------------------------------------------------------------+
 | 1. Stability        | Preserves the relative order of duplicate elements with equal keys.          |
 |                     | Example: [(4, 'A'), (3, 'B'), (4, 'C')] -> Sorted: [(3, 'B'), (4, 'A'), (4, 'C')]   |
-|                     | Stable Algorithms  : Insertion Sort, Bubble Sort, Merge Sort                 |
+|                     | Stable Algorithms  : Bubble Sort, Insertion Sort, Merge Sort                 |
 |                     | Unstable Algorithms: Selection Sort, Quick Sort, Heap Sort                   |
 +----------------------------------------------------------------------------------------------------+
 | 2. In-Place         | Sorts elements using O(1) auxiliary memory (no extra array allocations).     |
-|                     | In-Place    : Insertion Sort, Bubble Sort, Selection Sort, Quick Sort (O(log n) stack)|
+|                     | In-Place    : Selection Sort, Bubble Sort, Insertion Sort, Quick Sort (O(log n) stack)|
 |                     | Not In-Place: Merge Sort (Requires O(n) temporary array during merge phase)  |
 +----------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 2. Insertion Sort (Card Deck Shift & Insert)
+## 2. Selection Sort (Find Minimum & Place at Front)
 
 ### 💡 Core Idea
-Build the sorted array one element at a time, exactly like sorting playing cards in your hand. Pick the next element (`key`), compare it with elements in the sorted subarray to its left, shift all larger elements one position to the right, and insert the `key` into its correct position.
+Divide the array into a sorted prefix and an unsorted suffix. In each pass, scan the unsorted suffix to find the absolute minimum element, then swap it with the first unsorted element.
 
 ### 🖼️ Visual Execution
-![Insertion Sort Flow](images/insertion-sort-flow.svg)
+![Selection Sort Flow](images/selection-sort-flow.svg)
 
 ### 🔍 Trace Walkthrough `[5, 3, 8, 1]`
-- **Initial State**: `[5 | 3, 8, 1]` *(First element 5 is trivially sorted)*
-- **Insert 3**: Compare with 5 $\rightarrow 5 > 3 \rightarrow$ Shift 5 right $\rightarrow$ Place 3 $\rightarrow [3, 5 \mid 8, 1]$
-- **Insert 8**: Compare with 5 $\rightarrow 8 > 5 \rightarrow$ No shift $\rightarrow [3, 5, 8 \mid 1]$
-- **Insert 1**: Compare with 8, 5, 3 $\rightarrow$ Shift 8, 5, 3 right $\rightarrow$ Place 1 $\rightarrow [1, 3, 5, 8]$
+- **Pass 1**: Scan `[5, 3, 8, 1]` $\rightarrow$ Min is 1 at index 3. Swap `arr[0]` (5) with `arr[3]` (1) $\rightarrow [1, 3, 8, 5]$ *(1 is locked at index 0)*
+- **Pass 2**: Scan `[3, 8, 5]` $\rightarrow$ Min is 3 at index 1. Swap `arr[1]` with `arr[1]` $\rightarrow [1, 3, 8, 5]$ *(3 is locked at index 1)*
+- **Pass 3**: Scan `[8, 5]` $\rightarrow$ Min is 5 at index 3. Swap `arr[2]` (8) with `arr[3]` (5) $\rightarrow [1, 3, 5, 8]$ *(Sorted!)*
 
-### ☕ Java Implementation
+### ☕ Java Implementation (with `swap()`)
 ```java
-public class InsertionSort {
+public class SelectionSort {
 
-    public static void insertionSort(int[] arr) {
+    public static void selectionSort(int[] arr) {
         if (arr == null || arr.length <= 1) return;
 
         int n = arr.length;
-        for (int i = 1; i < n; i++) {
-            int key = arr[i];
-            int j = i - 1;
+        for (int i = 0; i < n - 1; i++) {
+            int minIndex = i;
 
-            // Shift elements of arr[0..i-1] that are greater than key to one position ahead
-            while (j >= 0 && arr[j] > key) {
-                arr[j + 1] = arr[j];
-                j--;
+            // Find index of minimum element in unsorted subarray
+            for (int j = i + 1; j < n; j++) {
+                if (arr[j] < arr[minIndex]) {
+                    minIndex = j;
+                }
             }
-            arr[j + 1] = key;
+
+            // Swap the found minimum element with element at index i
+            if (minIndex != i) {
+                swap(arr, i, minIndex);
+            }
         }
+    }
+
+    private static void swap(int[] arr, int i, int j) {
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
     }
 }
 ```
 
 ### ⏱️ Complexity
 - **Time Complexity**:
-  - **Best Case**: $\mathcal{O}(n)$ *(Array already sorted; inner while condition `arr[j] > key` fails immediately on first check)*
+  - **Best Case**: $\mathcal{O}(n^2)$ *(Always scans entire unsorted suffix)*
   - **Average Case**: $\mathcal{O}(n^2)$
-  - **Worst Case**: $\mathcal{O}(n^2)$ *(Reverse sorted array)*
+  - **Worst Case**: $\mathcal{O}(n^2)$
 - **Auxiliary Space**: $\mathcal{O}(1)$ *(In-place)*
-- **Stable**: **Yes** (✅)
-
-> 🎯 **Placement High-Yield Tip**: Insertion Sort is the algorithm of choice for **nearly-sorted / small arrays ($n \le 16$)** because of minimal constant overhead and $\mathcal{O}(n)$ best-case behavior (often used as the base case in hybrid algorithms like TimSort).
+- **Stable**: **No** (❌) *(Long-distance swaps jump over equal elements, e.g. `[4a, 4b, 1]` $\rightarrow$ 1 swaps with 4a, putting 4a behind 4b)*
 
 ---
 
@@ -147,59 +154,52 @@ public class BubbleSort {
 
 ---
 
-## 4. Selection Sort (Find Minimum & Place at Front)
+## 4. Insertion Sort (Card Deck Shift & Insert)
 
 ### 💡 Core Idea
-Divide the array into a sorted prefix and an unsorted suffix. In each pass, scan the unsorted suffix to find the absolute minimum element, then swap it with the first unsorted element.
+Build the sorted array one element at a time, exactly like sorting playing cards in your hand. Pick the next element (`key`), compare it with elements in the sorted subarray to its left, shift all larger elements one position to the right, and insert the `key` into its correct position.
 
 ### 🖼️ Visual Execution
-![Selection Sort Flow](images/selection-sort-flow.svg)
+![Insertion Sort Flow](images/insertion-sort-flow.svg)
 
 ### 🔍 Trace Walkthrough `[5, 3, 8, 1]`
-- **Pass 1**: Scan `[5, 3, 8, 1]` $\rightarrow$ Min is 1 at index 3. Swap `arr[0]` (5) with `arr[3]` (1) $\rightarrow [1, 3, 8, 5]$ *(1 is locked at index 0)*
-- **Pass 2**: Scan `[3, 8, 5]` $\rightarrow$ Min is 3 at index 1. Swap `arr[1]` with `arr[1]` $\rightarrow [1, 3, 8, 5]$ *(3 is locked at index 1)*
-- **Pass 3**: Scan `[8, 5]` $\rightarrow$ Min is 5 at index 3. Swap `arr[2]` (8) with `arr[3]` (5) $\rightarrow [1, 3, 5, 8]$ *(Sorted!)*
+- **Initial State**: `[5 | 3, 8, 1]` *(First element 5 is trivially sorted)*
+- **Insert 3**: Compare with 5 $\rightarrow 5 > 3 \rightarrow$ Shift 5 right $\rightarrow$ Place 3 $\rightarrow [3, 5 \mid 8, 1]$
+- **Insert 8**: Compare with 5 $\rightarrow 8 > 5 \rightarrow$ No shift $\rightarrow [3, 5, 8 \mid 1]$
+- **Insert 1**: Compare with 8, 5, 3 $\rightarrow$ Shift 8, 5, 3 right $\rightarrow$ Place 1 $\rightarrow [1, 3, 5, 8]$
 
-### ☕ Java Implementation (with `swap()`)
+### ☕ Java Implementation
 ```java
-public class SelectionSort {
+public class InsertionSort {
 
-    public static void selectionSort(int[] arr) {
+    public static void insertionSort(int[] arr) {
         if (arr == null || arr.length <= 1) return;
 
         int n = arr.length;
-        for (int i = 0; i < n - 1; i++) {
-            int minIndex = i;
+        for (int i = 1; i < n; i++) {
+            int key = arr[i];
+            int j = i - 1;
 
-            // Find index of minimum element in unsorted subarray
-            for (int j = i + 1; j < n; j++) {
-                if (arr[j] < arr[minIndex]) {
-                    minIndex = j;
-                }
+            // Shift elements of arr[0..i-1] that are greater than key to one position ahead
+            while (j >= 0 && arr[j] > key) {
+                arr[j + 1] = arr[j];
+                j--;
             }
-
-            // Swap the found minimum element with element at index i
-            if (minIndex != i) {
-                swap(arr, i, minIndex);
-            }
+            arr[j + 1] = key;
         }
-    }
-
-    private static void swap(int[] arr, int i, int j) {
-        int temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
     }
 }
 ```
 
 ### ⏱️ Complexity
 - **Time Complexity**:
-  - **Best Case**: $\mathcal{O}(n^2)$ *(Always scans entire unsorted suffix)*
+  - **Best Case**: $\mathcal{O}(n)$ *(Array already sorted; inner while condition `arr[j] > key` fails immediately on first check)*
   - **Average Case**: $\mathcal{O}(n^2)$
-  - **Worst Case**: $\mathcal{O}(n^2)$
+  - **Worst Case**: $\mathcal{O}(n^2)$ *(Reverse sorted array)*
 - **Auxiliary Space**: $\mathcal{O}(1)$ *(In-place)*
-- **Stable**: **No** (❌) *(Long-distance swaps jump over equal elements, e.g. `[4a, 4b, 1]` $\rightarrow$ 1 swaps with 4a, putting 4a behind 4b)*
+- **Stable**: **Yes** (✅)
+
+> 🎯 **Placement High-Yield Tip**: Insertion Sort is the algorithm of choice for **nearly-sorted / small arrays ($n \le 16$)** because of minimal constant overhead and $\mathcal{O}(n)$ best-case behavior (often used as the base case in hybrid algorithms like TimSort).
 
 ---
 
@@ -340,18 +340,18 @@ public class QuickSort {
 
 | Algorithm | Best Time | Average Time | Worst Time | Auxiliary Space | Stable? | In-Place? | Key Mechanism |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Insertion Sort** | $\mathcal{O}(n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ✅ Yes | ✅ Yes | Shift & insert into sorted prefix |
-| **Bubble Sort** | $\mathcal{O}(n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ✅ Yes | ✅ Yes | Adjacent compare & swap |
 | **Selection Sort** | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ❌ No | ✅ Yes | Find min & swap to front |
+| **Bubble Sort** | $\mathcal{O}(n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ✅ Yes | ✅ Yes | Adjacent compare & swap |
+| **Insertion Sort** | $\mathcal{O}(n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(1)$ | ✅ Yes | ✅ Yes | Shift & insert into sorted prefix |
 | **Merge Sort** | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n)$ | ✅ Yes | ❌ No | Divide, Conquer & Merge |
 | **Quick Sort** | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n \log n)$ | $\mathcal{O}(n^2)$ | $\mathcal{O}(\log n)^*$ | ❌ No | ✅ Yes | Pivot selection & Partitioning |
 
 *\*Recursion call stack memory.*
 
 ### 🧠 1-Sentence Mental Anchors for Coding Rounds:
-- **Insertion Sort**: *"Card deck sort — best for nearly sorted data ($\mathcal{O}(n)$) and small subsets."*
-- **Bubble Sort**: *"Compare neighbours, bubble biggest to the right with early exit check."*
 - **Selection Sort**: *"Select minimum from unsorted suffix, swap with current index."*
+- **Bubble Sort**: *"Compare neighbours, bubble biggest to the right with early exit check."*
+- **Insertion Sort**: *"Card deck sort — best for nearly sorted data ($\mathcal{O}(n)$) and small subsets."*
 - **Merge Sort**: *"Guaranteed $\mathcal{O}(n \log n)$ always and stable, but requires $\mathcal{O}(n)$ extra buffer."*
 - **Quick Sort**: *"Fastest in practice with cache locality and $\mathcal{O}(1)$ heap space, but $\mathcal{O}(n^2)$ worst case without randomized pivot."*
 
