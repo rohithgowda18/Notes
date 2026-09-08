@@ -281,6 +281,57 @@ private static int partition(int[] arr, int low, int high) {
 
 ```
 
+
+### ☕ Alternative: First Element as Pivot (2-Pointer Partition)
+> **Pattern Focus**: Common standard in coding platforms (Striver / LeetCode style) where `arr[low]` is picked as the pivot and two pointers (`i`, `j`) move inwards.
+
+```java
+class Solution {
+
+    public void quickSort(int[] arr, int low, int high) {
+        if (low < high) {
+            int pIndex = partition(arr, low, high);
+            quickSort(arr, low, pIndex - 1);
+            quickSort(arr, pIndex + 1, high);
+        }
+    }
+
+    int partition(int[] arr, int low, int high) {
+        int pivot = arr[low];
+        int i = low;
+        int j = high;
+
+        while (i < j) {
+            // Find element greater than pivot
+            while (i < high && arr[i] <= pivot) {
+                i++;
+            }
+
+            // Find element smaller than pivot
+            while (j > low && arr[j] > pivot) {
+                j--;
+            }
+
+            // Swap if pointers have not crossed
+            if (i < j) {
+                swap(arr, i, j);
+            }
+        }
+
+        // Put pivot in its correct position
+        swap(arr, low, j);
+
+        return j;
+    }
+
+    private void swap(int[] arr, int i, int j) {
+        int temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+}
+```
+
 ### ⏱️ Complexity
 - **Time Complexity**:
   - **Best Case**: $\mathcal{O}(n \log n)$ *(Pivot divides array into 2 equal halves)*
