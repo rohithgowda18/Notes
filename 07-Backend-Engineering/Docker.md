@@ -38,6 +38,8 @@
 
 ## 1. Why Docker? & What is Docker?
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Environment Consistency` & `Portable App Package`
+
 ### Why Docker?
 In traditional setups, running a Java or Spring Boot project requires installing the exact Java version (e.g., Java 17), build tools, operating system packages, environment variables, and databases locally. If another developer uses a different OS (Windows vs. macOS vs. Linux) or different versions, the application often fails: **"It works on my machine!"**
 
@@ -69,6 +71,8 @@ flowchart TD
 ---
 
 ## 2. Image vs Container (The #1 Question)
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Class vs Object` (Image = Blueprint, Container = Live Instance)
 
 This is one of the most frequently asked Docker questions in interviews.
 
@@ -113,6 +117,8 @@ flowchart LR
 
 ## 3. Container vs Virtual Machine (VM)
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Shared Kernel vs Guest OS` (Lightweight vs Heavy)
+
 Another classic interview question.
 
 ```mermaid
@@ -146,6 +152,8 @@ flowchart TD
 
 ## 4. Docker Engine Architecture
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Client Requests, Daemon Executes`
+
 Docker uses a simple **Client-Server architecture**:
 
 ```mermaid
@@ -178,6 +186,8 @@ flowchart TD
 
 ## 5. Docker Hub / Registry
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Image App Store`
+
 A **Registry** stores Docker images so they can be shared across machines.
 
 ```mermaid
@@ -197,6 +207,8 @@ flowchart LR
 ---
 
 ## 6. Must-Know Docker Commands
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Build, Run, Inspect, Logs`
 
 Memorize these high-frequency commands for coding rounds and system design interviews:
 
@@ -220,6 +232,8 @@ Memorize these high-frequency commands for coding rounds and system design inter
 
 ### `docker run` vs `docker start`
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Brand-New vs Existing-Resumed`
+
 > [!IMPORTANT]
 > **Very Common Placement Question**: What is the difference between `docker run` and `docker start`?
 
@@ -235,6 +249,8 @@ flowchart TD
 ---
 
 ## 7. Dockerfile & Core Instructions
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Image Build Recipe`
 
 A `Dockerfile` is a text file containing instructions to build a Docker image.
 
@@ -257,6 +273,12 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
 ### FROM, WORKDIR, COPY, RUN
 
+> 💡 **Quick Revision Anchor (2-3 Words)**:  
+> - `FROM` $\rightarrow$ `Base Operating System`  
+> - `WORKDIR` $\rightarrow$ `Default App Folder`  
+> - `COPY` $\rightarrow$ `Files Into Container`  
+> - `RUN` $\rightarrow$ `Build-Time Execution`
+
 1. **`FROM`**:
    - Specifies the **base image** (e.g., `FROM eclipse-temurin:17-jre-alpine`).
    - Every Dockerfile starts with `FROM`. Alpine is preferred because it is tiny (~5MB Linux base).
@@ -272,6 +294,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 ---
 
 ### CMD vs ENTRYPOINT (Very Common)
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Fixed Process vs Overridable Args` (`ENTRYPOINT` = Permanent Executable, `CMD` = Default Arguments)
 
 Interviewers test whether you know the difference between the main process and default arguments:
 
@@ -299,6 +323,8 @@ flowchart TD
 
 ### EXPOSE vs Port Mapping (`-p`) (Very Common)
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Documentation vs Actual Forwarding` (`EXPOSE` = Documentation, `-p` = Host Port Forwarding)
+
 > [!WARNING]
 > **Common Trap**: Writing `EXPOSE 8080` in your Dockerfile does **NOT** make `localhost:8080` available in your browser!
 
@@ -322,6 +348,8 @@ flowchart LR
 ---
 
 ## 8. Multi-Stage Docker Build (Java 17 / Spring Boot)
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Build Heavy, Run Light` (Stage 1: Maven compiles JAR $\rightarrow$ Stage 2: Minimal JRE runs JAR)
 
 This is a **star topic** for Java / Spring Boot backend interviews.
 
@@ -380,6 +408,8 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 
 ## 9. Docker Image Layers & Caching
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Least-Changing Files First` (Cache dependencies before source code)
+
 Docker images are built in sequential **layers**. Every instruction (`FROM`, `COPY`, `RUN`) creates a new layer.
 
 Docker caches each layer during `docker build`. If a layer and its files haven't changed, Docker reuses the cached layer, making builds ultra-fast.
@@ -410,6 +440,8 @@ COPY . .          # Only copies source code.
 
 ## 10. `.dockerignore`
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Exclude Bloat & Secrets` (Skips `node_modules`, `target`, `.env`)
+
 `.dockerignore` works just like `.gitignore`. It tells Docker which files **NOT** to send into the build context.
 
 ```
@@ -427,6 +459,11 @@ target
 ---
 
 ## 11. Storage & Persistence: Volumes vs Bind Mounts
+
+> 💡 **Quick Revision Anchor (2-3 Words)**:  
+> - `Container FS` $\rightarrow$ `Disposable & Ephemeral`  
+> - `Named Volume` $\rightarrow$ `Persistent Database Disk` (`pgdata`)  
+> - `Bind Mount` $\rightarrow$ `Live Code Sync` (`./src`)
 
 Containers are **ephemeral** (disposable). When a container is deleted (`docker rm`), all data written inside it is lost!
 
@@ -462,6 +499,8 @@ flowchart TD
 ---
 
 ## 12. Docker Networking & The `localhost` Trap
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Service Name, Not Localhost` (Use `db:5432` via Docker DNS, never `localhost`)
 
 ### Why `localhost:5432` fails and `db:5432` works
 
@@ -506,6 +545,8 @@ flowchart TD
 
 ## 13. Docker Compose
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Multi-Container Orchestrator` (`compose.yaml` starts whole stack)
+
 Docker Compose is a tool for defining and running **multi-container applications** using a single YAML file (`compose.yaml` or `docker-compose.yml`).
 
 Instead of running 6 different `docker run` commands manually:
@@ -523,6 +564,8 @@ stops and removes the containers and networks (while keeping named volumes intac
 
 ### Dockerfile vs Docker Compose
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Build Single vs Run All`
+
 | Dockerfile | Docker Compose |
 |---|---|
 | Builds a **single** image. | Runs and coordinates **multiple** containers together. |
@@ -533,6 +576,8 @@ stops and removes the containers and networks (while keeping named volumes intac
 
 ### `build` vs `image`
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Compile Local vs Pull Pre-built`
+
 In your `compose.yaml`:
 - **`build: ./apps/backend`**: Tells Compose to find the `Dockerfile` in `./apps/backend` and build a custom image from your source code.
 - **`image: postgres:15-alpine`**: Tells Compose to pull an already existing official image from Docker Hub (no custom Dockerfile needed).
@@ -540,6 +585,8 @@ In your `compose.yaml`:
 ---
 
 ### Environment Variables & `.env` (`${DB_PASSWORD:-postgres}`)
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Runtime Secret Injection` & `Fallback Default Value`
 
 Instead of hardcoding passwords in source code, Compose injects environment variables at runtime:
 
@@ -560,6 +607,8 @@ services:
 
 ### `depends_on`
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Startup Order, Not Readiness`
+
 ```yaml
 services:
   backend:
@@ -575,6 +624,8 @@ Tells Compose to start the `db` container before starting `backend`.
 ---
 
 ## 14. Career OS Docker Architecture (Resume Project Defense)
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Gateway Routes, Services Register` (Web $\rightarrow$ Gateway $\rightarrow$ Microservices $\rightarrow$ Eureka + Postgres)
 
 This is how Docker is applied in your actual microservices project (**Career OS**):
 
@@ -637,6 +688,8 @@ flowchart TD
 
 ## 15. Scenario-Based Debugging Questions
 
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Logs, Hostnames, Port Mapping`
+
 Interviewers love testing practical troubleshooting skills:
 
 ### Scenario 1: Container starts and immediately stops (`Exit 0` or `Exit 1`)
@@ -660,6 +713,8 @@ Common causes:
 ---
 
 ## 16. High-Priority Interview Q&A Cheatsheet
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Placement Rapid-Fire`
 
 #### Q1: What is the difference between an Image and a Container?
 **Answer**: An image is a read-only, immutable template containing application code, runtime, and libraries. A container is a live, running instance of that image with a thin writable layer on top.
@@ -685,6 +740,8 @@ Common causes:
 ---
 
 ## 17. 1-Page Mental Revision
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Pre-Interview Summary`
 
 ```
 ========================================================================================
@@ -721,3 +778,39 @@ Common causes:
    - `docker exec`   -> Enter container shell to test connectivity (`nc -zv db 5432`)
 ========================================================================================
 ```
+
+---
+
+### ⚡ 30-Second Rapid Recall Matrix (2-3 Word Memory Hooks)
+
+| Topic / Concept | 2-3 Word Memory Hook | What to Speak in Interview |
+|---|---|---|
+| **Why Docker?** | `Environment Consistency` | Solves *"works on my machine"* by packaging app + runtime. |
+| **Docker Image** | `Read-Only Blueprint` | Immutable template containing code, runtime, and libraries. |
+| **Docker Container** | `Live Running Instance` | Isolated running process created from an image. |
+| **Image vs Container** | `Class vs Object` | Image is the class template; container is the instantiated object. |
+| **Docker vs VM** | `Shared Kernel vs Guest OS` | VM runs heavy guest OS; container shares host Linux kernel. |
+| **CLI vs Daemon** | `Client Commands, Daemon Executes` | CLI sends REST calls; Daemon handles containers, images, and networks. |
+| **Docker Hub** | `Image App Store` | Central registry to pull and push pre-built images. |
+| **`docker run` vs `start`** | `Brand-New vs Existing-Resumed` | `run` creates a new container; `start` resumes an existing stopped one. |
+| **`FROM`** | `Base Operating System` | Starting base image (use Alpine for small size). |
+| **`WORKDIR`** | `Default App Folder` | Sets working directory inside container (`/app`). |
+| **`COPY`** | `Files Into Container` | Copies files from local machine into container image. |
+| **`RUN`** | `Build-Time Execution` | Runs commands while building image (e.g. `mvn package`). |
+| **`CMD` vs `ENTRYPOINT`** | `Fixed Executable vs Overridable Args` | `ENTRYPOINT` is the main process; `CMD` are default overridable args. |
+| **`EXPOSE` vs `-p`** | `Documentation vs Actual Forwarding` | `EXPOSE` is metadata; `-p` actually maps host port to container. |
+| **Multi-Stage Build** | `Build Heavy, Run Light` | Compile with Maven/JDK in stage 1, run with slim JRE in stage 2. |
+| **Layer Caching** | `Least-Changing Files First` | Copy `pom.xml`/`package.json` before code to reuse cached layers. |
+| **`.dockerignore`** | `Exclude Bloat & Secrets` | Prevents uploading `node_modules`, `target`, and `.env` files. |
+| **Container Storage** | `Disposable & Ephemeral` | Default container data vanishes when container is deleted. |
+| **Named Volume** | `Persistent Database Disk` | `pgdata` volume persists database records across container recreations. |
+| **Bind Mount** | `Live Code Sync` | Maps host folder (`./src`) into container for instant local dev updates. |
+| **`localhost` Trap** | `Service Name, Not Localhost` | Containers can't use `localhost`; use Compose service name (`db:5432`). |
+| **Docker Compose** | `Multi-Container Orchestrator` | Defines and runs entire multi-service stack with one YAML file. |
+| **`build` vs `image`** | `Compile Local vs Pull Pre-built` | `build` compiles custom Dockerfile; `image` pulls existing image from Hub. |
+| **`${DB_PASSWORD:-postgres}`**| `Fallback Default Value` | Uses env variable if present, otherwise defaults to `"postgres"`. |
+| **`depends_on`** | `Startup Order, Not Readiness` | Starts container first, but doesn't guarantee database is ready for queries. |
+| **Career OS Setup** | `Gateway Routes, Services Register` | Web talks to Gateway; microservices register with Eureka & query `db:5432`. |
+| **Crash Debugging** | `Check Logs & PID 1` | Run `docker ps -a` for exit code and `docker logs` for crash stacktrace. |
+| **DB Debugging** | `Check db:5432 & Network` | Verify database container is running and hostname is `db`, not `localhost`. |
+| **Browser Access Bug** | `Check -p & 0.0.0.0 Binding` | Ensure port mapped with `-p` and app binds to `0.0.0.0` (Vite `--host`). |
