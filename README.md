@@ -80,6 +80,7 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 ## 7. Backend Engineering & Distributed Systems
 📁 **Directory:** [`07-Backend-Engineering/`](./07-Backend-Engineering/) | 📖 [Module Guide](./07-Backend-Engineering/README.md)
 
+- 🐳 [Docker Placement & Interview Master Guide](./07-Backend-Engineering/Docker.md) — Core mechanics, multi-stage Java builds, bridge networking, service discovery, volumes, Compose orchestration, debugging runbooks, and microservices defense
 - ⚡ [Real-Time Backend Systems](./07-Backend-Engineering/Real-Time%20Backend%20Systems.md) — Polling vs Long Polling vs SSE vs WebSockets, Pub/Sub, offsets, fan-out & reconnection storms
 - 📈 [Scaling & Performance - Part 1](./07-Backend-Engineering/Backend%20Scaling%20%26%20Performance%20-%20Part%201.md) — Latency percentiles, queueing curves, profiling, N+1 queries, indexes, and caching tiers
 - 📈 [Scaling & Performance - Part 2](./07-Backend-Engineering/Backend%20Scaling%20%26%20Performance%20-%20Part%202.md) — Stateless servers, load balancing, read replicas, sharding, CDNs, and async queues
