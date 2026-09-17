@@ -2,41 +2,41 @@
 
 > **Target Audience**: Fresher / Entry-Level Java Backend Engineers, SWE / SDE Candidates.  
 > **Source Foundation**: Curated from The Curious Coder Java Spring Boot Interview Series + High-Yield Placement Deep Dives.  
-> **Core Focus**: Intuitive explanations, clear architectural diagrams (Mermaid), real-world Java 17 / Spring Boot 3 code snippets, 2-3 word memory hooks, and equal, in-depth coverage of all core topics and beyond-the-playlist essentials (Spring Security, JPA Relationships, N+1 Query Problem, Testing, Maven, and SQL).
+> **Core Focus**: Exhaustive technical depth, internal architectural mechanisms, clear visual execution diagrams (Mermaid), real-world Java 17 / Spring Boot 3 code implementations, 2-3 word memory hooks, and equal, in-depth coverage across all 31 core topics and beyond-the-playlist essentials (Spring Security, JPA Relationships, N+1 Query Problem, Testing, Maven, and SQL).
 
 ---
 
 ## 📑 Table of Contents
 
-- [1. Inversion of Control (IoC) & Dependency Injection (DI)](#1-inversion-of-control-ioc--dependency-injection-di)
-- [2. `@RestController` vs. `@Controller`](#2-restcontroller-vs-controller)
+- [1. Inversion of Control (IoC), Dependency Injection (DI) & Bean Lifecycle](#1-inversion-of-control-ioc-dependency-injection-di--bean-lifecycle)
+- [2. `@RestController` vs. `@Controller` (Content Negotiation & ResponseBody)](#2-restcontroller-vs-controller-content-negotiation--responsebody)
 - [3. Stereotype Annotations: `@RestController` vs. `@Service` vs. `@Repository` vs. `@Component`](#3-stereotype-annotations-restcontroller-vs-service-vs-repository-vs-component)
-- [4. Spring Boot & Starters](#4-spring-boot--starters)
+- [4. Spring Boot & Starters (Auto-Configuration Internals)](#4-spring-boot--starters-auto-configuration-internals)
 - [5. Spring Framework vs. Spring Boot](#5-spring-framework-vs-spring-boot)
-- [6. `@SpringBootApplication` Internals](#6-springbootapplication-internals)
-- [7. Spring Boot Actuator](#7-spring-boot-actuator)
-- [8. Global Exception Handling (`@RestControllerAdvice`)](#8-global-exception-handling-restcontrolleradvice)
-- [9. Project Lombok in Spring Boot](#9-project-lombok-in-spring-boot)
-- [10. Spring Bean Scopes](#10-spring-bean-scopes)
-- [11. Request Scope vs. Session Scope](#11-request-scope-vs-session-scope)
+- [6. `@SpringBootApplication` Internals & Condition Evaluation](#6-springbootapplication-internals--condition-evaluation)
+- [7. Spring Boot Actuator (Custom Health Indicators & Metrics)](#7-spring-boot-actuator-custom-health-indicators--metrics)
+- [8. Global Exception Handling (`@RestControllerAdvice` & ProblemDetail)](#8-global-exception-handling-restcontrolleradvice--problemdetail)
+- [9. Project Lombok in Spring Boot (Best Practices & JPA Traps)](#9-project-lombok-in-spring-boot-best-practices--jpa-traps)
+- [10. Spring Bean Scopes & Thread-Safety](#10-spring-bean-scopes--thread-safety)
+- [11. Request Scope vs. Session Scope (Scoped Proxies)](#11-request-scope-vs-session-scope-scoped-proxies)
 - [12. Spring Profiles (Multi-Environment Setup)](#12-spring-profiles-multi-environment-setup)
-- [13. `application.properties` vs. `application.yaml`](#13-applicationproperties-vs-applicationyaml)
+- [13. `application.properties` vs. `application.yaml` & Configuration Precedence](#13-applicationproperties-vs-applicationyaml--configuration-precedence)
 - [14. Property Injection: `@Value` vs. `@ConfigurationProperties` vs. `Environment`](#14-property-injection-value-vs-configurationproperties-vs-environment)
 - [15. Persistence Stack: JDBC vs. Hibernate vs. JPA vs. Spring Data JPA](#15-persistence-stack-jdbc-vs-hibernate-vs-jpa-vs-spring-data-jpa)
-- [16. `@Transactional` Mechanics](#16-transactional-mechanics)
-- [17. Transaction Propagation](#17-transaction-propagation)
-- [18. Bean Disambiguation: `@Primary` vs. `@Qualifier`](#18-bean-disambiguation-primary-vs-qualifier)
+- [16. `@Transactional` Mechanics (AOP Proxies & Self-Invocation Trap)](#16-transactional-mechanics-aop-proxies--self-invocation-trap)
+- [17. Transaction Propagation (All 7 Levels Explained)](#17-transaction-propagation-all-7-levels-explained)
+- [18. Bean Disambiguation: `@Primary` vs. `@Qualifier` & Strategy Pattern](#18-bean-disambiguation-primary-vs-qualifier--strategy-pattern)
 - [19. Injection Types: Constructor vs. Setter vs. Field Injection](#19-injection-types-constructor-vs-setter-vs-field-injection)
-- [20. `@Lookup` Annotation (Singleton with Prototype Dependency)](#20-lookup-annotation-singleton-with-prototype-dependency)
+- [20. `@Lookup` Annotation & Dynamic Prototype Injection](#20-lookup-annotation--dynamic-prototype-injection)
 - [21. Servlet Filters vs. Spring MVC Interceptors](#21-servlet-filters-vs-spring-mvc-interceptors)
-- [22. Cyclic Dependencies & `@Lazy`](#22-cyclic-dependencies--lazy)
+- [22. Cyclic Dependencies, `@Lazy` & Architectural Decoupling](#22-cyclic-dependencies-lazy--architectural-decoupling)
 - [23. `@PathVariable` vs. `@RequestParam`](#23-pathvariable-vs-requestparam)
-- [24. `ResponseEntity<T>`](#24-responseentityt)
+- [24. `ResponseEntity<T>` & HTTP Response Customization](#24-responseentityt--http-response-customization)
 - [25. `DispatcherServlet` & Spring MVC Request Flow](#25-dispatcherservlet--spring-mvc-request-flow)
-- [26. Pagination, Sorting & Filtering](#26-pagination-sorting--filtering)
+- [26. Pagination, Sorting & Dynamic Filtering (JPA Criteria / Specifications)](#26-pagination-sorting--dynamic-filtering-jpa-criteria--specifications)
 - [27. Object Mapping with MapStruct & DTO Pattern](#27-object-mapping-with-mapstruct--dto-pattern)
 - [28. Core Spring Boot Annotations Quick Reference](#28-core-spring-boot-annotations-quick-reference)
-- [29. Input Validation & `@Valid`](#29-input-validation--valid)
+- [29. Input Validation & Custom Validators (`@Valid`)](#29-input-validation--custom-validators-valid)
 - [30. Rapid-Fire Interview Questions & Answers](#30-rapid-fire-interview-questions--answers)
 - [31. End-to-End Project Explanation Framework](#31-end-to-end-project-explanation-framework)
 - [32. High-Yield Topics Beyond the Playlist](#32-high-yield-topics-beyond-the-playlist)
@@ -50,31 +50,30 @@
 - [33. 1-Page Master Revision Cheat Sheet](#33-1-page-master-revision-cheat-sheet)
 
 ---
-
-## 1. Inversion of Control (IoC) & Dependency Injection (DI)
+## 1. Inversion of Control (IoC), Dependency Injection (DI) & Bean Lifecycle
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Spring Controls Objects`
 
 ### What is IoC (Inversion of Control)?
-In standard Java programming, if class `OrderService` needs `PaymentService`, it creates it directly using the `new` keyword:
+In traditional Java programming, if class `OrderService` needs `PaymentService`, it creates it directly using the `new` keyword:
 ```java
 // Traditional Java (Tight Coupling)
 class OrderService {
     private PaymentService paymentService = new PaymentService(); // OrderService controls creation
 }
 ```
-**Inversion of Control (IoC)** is an architectural principle where the control of object creation, configuration, and lifecycle management is transferred from the application code to an external container—the **Spring IoC Container**.
+**Inversion of Control (IoC)** is an architectural principle where the control of object creation, configuration, and lifecycle management is transferred from manual application code to an external container—the **Spring IoC Container**.
 
 ```mermaid
 flowchart LR
     subgraph TraditionalJava ["Traditional Java (Tight Coupling)"]
-        A["OrderService"] -->|Calls 'new' directly| B["PaymentService"]
+        A["OrderService"] -->|"Calls 'new' directly"| B["PaymentService"]
     end
 
     subgraph SpringIoC ["Spring IoC Container (Loose Coupling)"]
         Container["Spring IoC Container (ApplicationContext)"]
-        Container -->|Instantiates| P["PaymentService Bean"]
-        Container -->|Injects via Constructor| O["OrderService Bean"]
+        Container -->|"Instantiates"| P["PaymentService Bean"]
+        Container -->|"Injects via Constructor"| O["OrderService Bean"]
     end
 ```
 
@@ -94,22 +93,88 @@ public class OrderService {
 }
 ```
 
-### The Spring IoC Container (`ApplicationContext`)
-The Spring container is the runtime engine that:
-1. Scans your codebase for bean definitions (`@Component`, `@Service`, `@Bean`).
-2. Instantiates objects (called **Spring Beans**).
-3. Resolves and wires dependencies between beans.
-4. Manages the complete lifecycle (initialization to destruction).
+### `BeanFactory` vs. `ApplicationContext`
+Spring provides two primary container abstractions:
 
-The primary interface representing the container is **`ApplicationContext`**.
-
-> [!TIP]
-> **1-Sentence Interview Answer**:  
-> *"IoC is the principle of transferring object lifecycle management from manual application code to the Spring container; Dependency Injection is the mechanism Spring uses to inject those managed objects into dependent classes."*
+| Feature | `BeanFactory` | `ApplicationContext` |
+|---|---|---|
+| **Instantiation Type** | **Lazy** (Beans created only when `getBean()` is called). | **Eager** (Singletons pre-instantiated at container startup). |
+| **Enterprise Features**| Basic dependency injection only. | Event publishing (`ApplicationEvent`), AOP integration, i18n messages, environment profiles. |
+| **Resource Usage** | Extremely lightweight (used in memory-constrained IoT devices). | Standard in all enterprise web and Spring Boot applications. |
 
 ---
 
-## 2. `@RestController` vs. `@Controller`
+### Spring Bean Lifecycle (High-Yield Interview Topic)
+Understanding what happens from the moment Spring discovers a class until it is destroyed is tested frequently in placement interviews:
+
+```mermaid
+flowchart TD
+    Step1["1. Instantiation (Constructor invoked via Reflection)"]
+    Step2["2. Populate Properties (Dependencies injected via @Autowired)"]
+    Step3["3. Aware Interfaces (BeanNameAware, BeanFactoryAware, ApplicationContextAware)"]
+    Step4["4. BeanPostProcessor.postProcessBeforeInitialization()"]
+    Step5["5. Initialization (@PostConstruct -> InitializingBean.afterPropertiesSet -> init-method)"]
+    Step6["6. BeanPostProcessor.postProcessAfterInitialization() (AOP Proxies generated here!)"]
+    Step7["7. Bean is Ready for Use in Application"]
+    Step8["8. Container Shutdown -> @PreDestroy -> DisposableBean.destroy() -> destroy-method"]
+
+    Step1 --> Step2 --> Step3 --> Step4 --> Step5 --> Step6 --> Step7 --> Step8
+```
+
+1. **Instantiation**: Spring reads bean definitions and invokes the class constructor using Java Reflection.
+2. **Populate Properties**: Spring resolves and injects dependencies (`@Autowired`) and configuration values (`@Value`).
+3. **Aware Interfaces**: If the bean implements Spring Aware interfaces, Spring passes internal references:
+   - `BeanNameAware`: Provides the bean's registered name.
+   - `ApplicationContextAware`: Gives access to the underlying `ApplicationContext`.
+4. **`BeanPostProcessor (Before)`**: Custom processors modify bean instances before initialization callbacks run.
+5. **Initialization Callbacks** (Executed in this exact order):
+   - **`@PostConstruct`**: Standard JSR-250 annotation method.
+   - **`InitializingBean.afterPropertiesSet()`**: Spring interface method.
+   - **Custom `init-method`**: Configured via `@Bean(initMethod = "customInit")`.
+6. **`BeanPostProcessor (After)`**: Spring wraps beans with dynamic **AOP proxies** (e.g., for `@Transactional`, `@Async`, security checks).
+7. **Destruction Phase**: Triggered when `ApplicationContext.close()` is invoked:
+   - **`@PreDestroy`** annotated method runs.
+   - **`DisposableBean.destroy()`** interface method runs.
+   - Custom **`destroy-method`** executes.
+
+#### Code Demonstration: Lifecycle Callbacks & BeanPostProcessor
+```java
+@Component
+public class CustomLifecycleBean implements InitializingBean, DisposableBean, BeanNameAware {
+
+    public CustomLifecycleBean() {
+        System.out.println("1. Constructor called");
+    }
+
+    @Override
+    public void setBeanName(String name) {
+        System.out.println("2. BeanNameAware: Bean registered as " + name);
+    }
+
+    @PostConstruct
+    public void postConstruct() {
+        System.out.println("3. @PostConstruct: Executed before InitializingBean");
+    }
+
+    @Override
+    public void afterPropertiesSet() {
+        System.out.println("4. InitializingBean: Properties populated");
+    }
+
+    @PreDestroy
+    public void preDestroy() {
+        System.out.println("5. @PreDestroy: Cleanup before shutdown");
+    }
+
+    @Override
+    public void destroy() {
+        System.out.println("6. DisposableBean: Final destruction");
+    }
+}
+```
+
+---
+## 2. `@RestController` vs. `@Controller` (Content Negotiation & ResponseBody)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `JSON vs HTML-Views`
 
@@ -129,30 +194,14 @@ flowchart TD
 | **Composition** | Base stereotype annotation. | `@RestController = @Controller + @ResponseBody` |
 | **Returning JSON?** | Requires explicit `@ResponseBody` on each method. | Automatically enabled for **all** handler methods. |
 
-### Code Comparison
-```java
-// 1. Traditional MVC Controller
-@Controller
-public class WebPageController {
-    @GetMapping("/home")
-    public String renderHomePage() {
-        return "home"; // Renders home.html or home.jsp
-    }
-}
-
-// 2. REST API Controller
-@RestController
-@RequestMapping("/api/users")
-public class UserApiController {
-    @GetMapping("/{id}")
-    public User getUser(@PathVariable Long id) {
-        return userService.findById(id); // Jackson serializes User object directly into JSON
-    }
-}
-```
+### How `HttpMessageConverter` Operates Under the Hood
+When a `@RestController` returns an object:
+1. Spring inspects the incoming request's **`Accept` header** (e.g., `Accept: application/json` or `application/xml`).
+2. Spring queries its registered list of `HttpMessageConverter` beans.
+3. For JSON, `MappingJackson2HttpMessageConverter` uses Jackson's **`ObjectMapper`** to serialize the Java POJO into JSON byte streams and writes it directly to `HttpServletResponse.getOutputStream()`.
+4. If the client requests XML (`Accept: application/xml`) and `jackson-dataformat-xml` is on the classpath, Spring serializes XML instead—this is called **Content Negotiation**.
 
 ---
-
 ## 3. Stereotype Annotations: `@RestController` vs. `@Service` vs. `@Repository` vs. `@Component`
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Layered Component Roles`
@@ -161,40 +210,43 @@ All four annotations tell Spring: *"This class is a Spring Bean—manage its lif
 
 ```mermaid
 flowchart TD
-    Client(["HTTP Client / Frontend"]) --> Controller["@RestController\n(Presentation / API Layer)"]
-    Controller --> Service["@Service\n(Business Logic / Transaction Layer)"]
-    Service --> Repo["@Repository\n(Data Access / Persistence Layer)"]
+    Client(["HTTP Client / Frontend"]) --> Controller["@RestController
+(Presentation / API Layer)"]
+    Controller --> Service["@Service
+(Business Logic / Transaction Layer)"]
+    Service --> Repo["@Repository
+(Data Access / Persistence Layer)"]
     Repo --> DB[("Database")]
 
-    Component["@Component\n(Generic Utilities / Helpers / Listeners)"] -.-> Service
+    Component["@Component
+(Generic Utilities / Helpers / Listeners)"] -.-> Service
 ```
 
 | Annotation | Layer | Special Framework Behavior |
 |---|---|---|
-| **`@RestController`** | Presentation / API Layer | Handles HTTP requests, parses JSON, and binds responses. |
-| **`@Service`** | Business Logic Layer | Communicates business intent; common target for `@Transactional` boundaries. |
-| **`@Repository`** | Data Access / DAO Layer | Interacts with databases. **Crucial**: Automatically translates low-level database exceptions (e.g., `SQLException`) into Spring's unified `DataAccessException` hierarchy. |
-| **`@Component`** | Generic Utility Layer | Generic stereotype for any Spring-managed component that does not fit into the other three layers (e.g., mail senders, background processors). |
+| **`@RestController`** | Presentation / API Layer | Handles HTTP requests, parses JSON, and binds responses. Combines `@Controller` and `@ResponseBody`. |
+| **`@Service`** | Business Logic Layer | Communicates business intent; common target for `@Transactional` boundaries. Contains validation and business rules. |
+| **`@Repository`** | Data Access / DAO Layer | Interacts with databases. **Crucial**: Automatically translates low-level database exceptions (e.g., `SQLException`, `HibernateException`) into Spring's unified, unchecked `DataAccessException` hierarchy via `PersistenceExceptionTranslationPostProcessor`. |
+| **`@Component`** | Generic Utility Layer | Generic stereotype for any Spring-managed component that does not fit into the other three layers (e.g., mail senders, background processors, custom encoders). |
 
 > [!IMPORTANT]
 > **Interview Question**: *"Why not annotate every class with `@Component`?"*  
 > **Answer**: *"While technically valid, using specialized stereotypes communicates the architectural intent of the class, allows team members to navigate layers easily, and enables framework-specific behavior—such as automatic persistence exception translation with `@Repository`."*
 
 ---
-
-## 4. Spring Boot & Starters
+## 4. Spring Boot & Starters (Auto-Configuration Internals)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Curated Dependency Bundles`
 
 ### What is Spring Boot?
 Spring Boot is an extension of the Spring Framework designed to eliminate boilerplate configuration and streamline production-ready application development through:
-1. **Auto-Configuration**: Guesses configuration based on jar dependencies on the classpath.
-2. **Starter Dependencies**: Curated dependency aggregators.
+1. **Auto-Configuration**: Guesses configuration based on JAR dependencies found on the classpath.
+2. **Starter Dependencies**: Curated dependency aggregators that prevent version mismatches.
 3. **Embedded Web Servers**: Tomcat, Jetty, or Undertow packaged directly inside the executable JAR.
 4. **Production Metrics**: Ready-to-use health checks and metrics via Actuator.
 
 ### What is a Spring Boot Starter?
-A **Starter** is a convenient dependency descriptor (`pom.xml`) that bundles all compatible, version-aligned libraries needed for a specific capability. You add one starter rather than hunting down 10 individual Maven coordinates.
+A **Starter** is a convenient dependency descriptor (`pom.xml`) that bundles all compatible, version-aligned libraries needed for a specific capability.
 
 ```xml
 <!-- Brings in Spring MVC, REST support, Jackson JSON, and Embedded Tomcat -->
@@ -210,8 +262,16 @@ A **Starter** is a convenient dependency descriptor (`pom.xml`) that bundles all
 </dependency>
 ```
 
----
+### How Auto-Configuration Works Internally
+1. When the application starts, `@EnableAutoConfiguration` reads `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` (in Spring Boot 3) or `spring.factories` (in Spring Boot 2.x).
+2. It evaluates dozens of auto-configuration classes (e.g., `DataSourceAutoConfiguration`, `JacksonAutoConfiguration`).
+3. Each class uses **Conditional Annotations** to determine whether it should activate:
+   - **`@ConditionalOnClass(DataSource.class)`**: Only runs if the database driver is present on the classpath.
+   - **`@ConditionalOnMissingBean(DataSource.class)`**: Only creates a default DataSource bean if the developer hasn't created their own custom one.
+   - **`@ConditionalOnProperty(name = "feature.enabled", havingValue = "true")`**: Only activates if an explicit property flag is set in configuration.
+   - **`@ConditionalOnWebApplication`**: Only executes inside web application environments.
 
+---
 ## 5. Spring Framework vs. Spring Boot
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Core vs Automated`
@@ -232,7 +292,7 @@ flowchart LR
         SB4["Embedded Server -> Self-contained 'java -jar'"]
     end
 
-    SpringFramework -->|Evolved Into| SpringBoot
+    SpringFramework -->|"Evolved Into"| SpringBoot
 ```
 
 | Dimension | Spring Framework | Spring Boot |
@@ -240,11 +300,11 @@ flowchart LR
 | **Goal** | Provides the core dependency injection and enterprise features. | Eliminates configuration overhead and speeds up development. |
 | **Configuration** | Heavy boilerplate (XML files or extensive Java `@Configuration` classes). | Opinionated auto-configuration ("convention over configuration"). |
 | **Server Deployment** | Packaged as `.war` and deployed to an external application server (Tomcat/JBoss). | Generates standalone `.jar` with an **embedded server** (Tomcat runs via `java -jar app.jar`). |
-| **Dependency Management** | Developer manually specifies individual artifact versions and resolves version conflicts. | **Starters** manage coordinated, tested dependency versions automatically. |
+| **Dependency Management** | Developer manually specifies individual artifact versions and resolves version conflicts. | **Starters** manage coordinated, tested dependency versions automatically via `spring-boot-dependencies` BOM. |
+| **Production Features** | Requires manual integration for health endpoints, metrics, and monitoring. | **Spring Boot Actuator** provides out-of-the-box production health and metrics endpoints. |
 
 ---
-
-## 6. `@SpringBootApplication` Internals
+## 6. `@SpringBootApplication` Internals & Condition Evaluation
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Three-in-One Bootstrap`
 
@@ -263,21 +323,26 @@ public class Application {
 ```mermaid
 flowchart TD
     SBA["@SpringBootApplication"]
-    SBA --> C["@Configuration\n(Class can define @Bean methods)"]
-    SBA --> EAC["@EnableAutoConfiguration\n(Auto-configures beans based on classpath JARs)"]
-    SBA --> CS["@ComponentScan\n(Scans current package & subpackages for Spring Beans)"]
+    SBA --> C["@Configuration
+(Class can define @Bean methods)"]
+    SBA --> EAC["@EnableAutoConfiguration
+(Auto-configures beans based on classpath JARs)"]
+    SBA --> CS["@ComponentScan
+(Scans current package & subpackages for Spring Beans)"]
 ```
 
 1. **`@Configuration`**: Marks the class as a configuration class capable of declaring `@Bean` factory methods.
-2. **`@EnableAutoConfiguration`**: Instructs Spring Boot to examine classpath libraries and intelligently configure beans (e.g., if `h2.jar` is found, it automatically provisions an in-memory database).
+2. **`@EnableAutoConfiguration`**: Instructs Spring Boot to examine classpath libraries and intelligently configure beans.
 3. **`@ComponentScan`**: Recursively scans the package of the main class and all its subpackages to discover and register `@Component`, `@Service`, `@Repository`, and `@RestController` beans.
 
-> [!WARNING]
-> **Placement Gotcha**: If you create a service in package `com.example.service` while your `@SpringBootApplication` class is in `com.example.app`, Spring will **never find your service** unless you explicitly adjust `@ComponentScan`. Always place your main class in the root parent package!
+### Condition Evaluation Report (`--debug`)
+If an interviewer asks: *"How do you know why Spring Boot created a particular bean or skipped another?"*  
+**Answer**: Run the application with `--debug` (e.g. `java -jar app.jar --debug`). Spring Boot prints the **Condition Evaluation Report** showing:
+- **Positive matches**: Beans created because conditions matched.
+- **Negative matches**: Beans omitted because conditions failed (e.g. missing classes or existing custom beans).
 
 ---
-
-## 7. Spring Boot Actuator
+## 7. Spring Boot Actuator (Custom Health Indicators & Metrics)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Production Health Monitoring`
 
@@ -294,20 +359,39 @@ Spring Boot Actuator provides built-in HTTP endpoints to monitor and inspect app
 - **`/actuator/health`**: Returns basic application status (`{"status": "UP"}`), database connectivity, and disk space.
 - **`/actuator/info`**: Exposes arbitrary application metadata (build version, git commit details).
 - **`/actuator/metrics`**: Displays JVM memory usage, active thread counts, and garbage collection stats.
+- **`/actuator/loggers`**: Allows viewing and **dynamically altering log levels** at runtime without restarting the server!
 
 ```properties
 # Exposing endpoints in application.properties
-management.endpoints.web.exposure.include=health,info,metrics
+management.endpoints.web.exposure.include=health,info,metrics,loggers
 # Showing full component health details
 management.endpoint.health.show-details=always
+# Isolating Actuator on a private internal port
+management.server.port=8081
 ```
 
-> [!CAUTION]
-> **Security Rule**: In production, never expose sensitive endpoints like `/actuator/env` or `/actuator/beans` publicly without securing them behind Spring Security or internal firewalls.
+### Writing a Custom Health Indicator
+```java
+@Component
+public class CustomDatabaseHealthIndicator implements HealthIndicator {
+    @Override
+    public Health health() {
+        boolean databaseReachable = checkDbConnection();
+        if (databaseReachable) {
+            return Health.up().withDetail("database", "PostgreSQL 15 is reachable").build();
+        }
+        return Health.down().withDetail("database", "Connection timed out").build();
+    }
+
+    private boolean checkDbConnection() {
+        // ping database
+        return true;
+    }
+}
+```
 
 ---
-
-## 8. Global Exception Handling (`@RestControllerAdvice`)
+## 8. Global Exception Handling (`@RestControllerAdvice` & ProblemDetail)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Centralized Error Interceptor`
 
@@ -320,45 +404,60 @@ flowchart LR
     Handler --> JSON["Standard Error JSON (404 Not Found)"]
 ```
 
-### Production Implementation
+### Modern Spring Boot 3 Approach: RFC 7807 `ProblemDetail`
+In Spring Boot 3 / Spring 6, the industry-standard way to return errors is using **`ProblemDetail`**:
 ```java
-// 1. Custom Business Exception
-public class UserNotFoundException extends RuntimeException {
-    public UserNotFoundException(String message) {
-        super(message);
-    }
-}
-
-// 2. Structured Error Response DTO
-public record ErrorResponse(
-    LocalDateTime timestamp,
-    int status,
-    String error,
-    String message,
-    String path
-) {}
-
-// 3. Centralized Controller Advice
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex, HttpServletRequest request) {
-        ErrorResponse error = new ErrorResponse(
-            LocalDateTime.now(),
-            HttpStatus.NOT_FOUND.value(),
-            "USER_NOT_FOUND",
-            ex.getMessage(),
-            request.getRequestURI()
+    public ProblemDetail handleUserNotFound(UserNotFoundException ex, HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        problem.setTitle("User Not Found");
+        problem.setType(URI.create("https://api.example.com/errors/not-found"));
+        problem.setProperty("timestamp", Instant.now());
+        problem.setProperty("path", request.getRequestURI());
+        return problem;
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Validation failed");
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(err -> 
+            fieldErrors.put(err.getField(), err.getDefaultMessage())
         );
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+        problem.setProperty("invalidFields", fieldErrors);
+        return problem;
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleGenericException(Exception ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected server error occurred");
+        problem.setTitle("Internal Server Error");
+        return problem;
+    }
+}
+
+#### ⚠️ Elite Placement Gotcha: Why `@RestControllerAdvice` cannot catch Spring Security 401/403 Exceptions!
+Interviewers love asking: *"If a user sends an invalid JWT or accesses an unauthorized route, why doesn't `@RestControllerAdvice` catch the `AuthenticationException` or `AccessDeniedException`?"*  
+**The Reason**: Spring Security filters execute in the **Servlet Filter Chain**, which runs **BEFORE** the `DispatcherServlet` and the MVC Controller layer. By the time an exception happens in the filter chain, `@RestControllerAdvice` hasn't even been reached!  
+**The Solution**: Implement custom `AuthenticationEntryPoint` (for 401 Unauthorized) and `AccessDeniedHandler` (for 403 Forbidden) and register them in your `SecurityFilterChain`:
+```java
+@Component
+public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException ex) throws IOException {
+        response.setContentType("application/json");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.getWriter().write("{"error": "UNAUTHORIZED", "message": "" + ex.getMessage() + ""}");
     }
 }
 ```
+```
 
 ---
-
-## 9. Project Lombok in Spring Boot
+## 9. Project Lombok in Spring Boot (Best Practices & JPA Traps)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Boilerplate Code Reducer`
 
@@ -370,6 +469,7 @@ Lombok uses compile-time annotation processing to automatically generate getters
 - **`@AllArgsConstructor`**: Generates a constructor with one parameter for each field.
 - **`@RequiredArgsConstructor`**: Generates a constructor specifically for all `final` fields (ideal for constructor-based dependency injection).
 - **`@Builder`**: Implements the clean GoF Builder pattern for object creation.
+- **`@Slf4j`**: Injects a thread-safe `Logger log = LoggerFactory.getLogger(...)` instance.
 
 ```java
 @Service
@@ -380,11 +480,13 @@ public class UserService {
 ```
 
 > [!WARNING]
-> **JPA Entity Warning**: Avoid using `@Data` on JPA `@Entity` classes. `@Data` generates `equals()`, `hashCode()`, and `toString()`, which can trigger circular references, break Hibernate proxy equality, and inadvertently trigger lazy-loading queries. Use `@Getter` and `@Setter` on entities instead.
+> **JPA Entity Warning**: Avoid using `@Data` on JPA `@Entity` classes!
+> 1. `@Data` generates `equals()` and `hashCode()` based on all fields. When entities are managed by Hibernate, surrogate primary keys (`id`) are null before persisting, breaking Set collections (`HashSet<Entity>`).
+> 2. `@Data` generates `toString()` which accesses bidirectional relationships (e.g. `User -> Order -> User`), causing an immediate **`StackOverflowError`**.
+> **Solution**: Use `@Getter`, `@Setter`, and `@ToString.Exclude` on relational fields.
 
 ---
-
-## 10. Spring Bean Scopes
+## 10. Spring Bean Scopes & Thread-Safety
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Bean Lifecycle Duration`
 
@@ -408,9 +510,18 @@ flowchart TD
 | **`session`** | One instance per HTTP session. | E-commerce shopping cart, user session state. |
 | **`application`** | One instance per `ServletContext`. | Application-wide global web cache. |
 
----
+### Is a Singleton Bean Thread-Safe?
+**NO!** Spring provides a single shared instance, but it does **not** make it thread-safe. Multiple worker threads in Tomcat can invoke a singleton method concurrently. If the singleton holds mutable class variables:
+```java
+@Service
+public class OrderService {
+    private int orderCount = 0; // ❌ DANGEROUS! Shared mutable state causes race conditions!
+}
+```
+**Golden Rule**: Spring singleton beans must be **completely stateless**. Pass state through method parameters or local variables.
 
-## 11. Request Scope vs. Session Scope
+---
+## 11. Request Scope vs. Session Scope (Scoped Proxies)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Per-Request vs Per-User`
 
@@ -428,11 +539,21 @@ flowchart TD
     end
 ```
 
-- **`@RequestScope`**: Created when an HTTP request arrives, destroyed when the HTTP response completes. Ideal for tracking unique request IDs or multi-tenant customer IDs.
-- **`@SessionScope`**: Persists across multiple HTTP requests originating from the same client session (tracked via `JSESSIONID` cookie). Ideal for shopping carts or login state in stateful applications.
+### The Scoped Proxy Mystery (Interview Deep Dive)
+*"If a Singleton Service starts at boot time, how can it inject a Request-Scoped bean that doesn't exist until a user sends an HTTP request?"*  
+**Answer**: Spring uses a **Scoped Proxy** (`proxyMode = ScopedProxyMode.TARGET_CLASS`). At startup, Spring injects a CGLIB proxy placeholder. When the singleton invokes a method on the proxy, the proxy looks up the current HTTP thread's request context and delegates to the active request bean.
+
+```java
+@Component
+@Scope(value = WebApplicationContext.SCOPE_REQUEST, proxyMode = ScopedProxyMode.TARGET_CLASS)
+public class UserRequestContext {
+    private String tenantId;
+    private String traceId;
+    // getters and setters
+}
+```
 
 ---
-
 ## 12. Spring Profiles (Multi-Environment Setup)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Environment-Specific Config`
@@ -444,63 +565,46 @@ Profiles let you segregate configuration across environments (e.g., `dev`, `test
 - `application-dev.properties` (Local development: H2 or local Postgres)
 - `application-prod.properties` (Production: AWS RDS, real credentials)
 
-### Activating a Profile:
-```properties
-# In application.properties:
-spring.profiles.active=dev
-```
-Or via CLI argument at launch:
-```bash
-java -jar app.jar --spring.profiles.active=prod
-```
-
-### Conditional Bean Loading with `@Profile`:
-```java
-@Service
-@Profile("dev")
-public class MockEmailService implements EmailService {
-    public void sendEmail(String to) { System.out.println("Dev: Simulated email to " + to); }
-}
-
-@Service
-@Profile("prod")
-public class SmtpEmailService implements EmailService {
-    public void sendEmail(String to) { /* Connects to real AWS SES / SendGrid */ }
-}
-```
-
----
-
-## 13. `application.properties` vs. `application.yaml`
-
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Flat vs Hierarchical`
-
-Both formats store external application configuration. Neither provides superior runtime performance, but YAML is preferred for hierarchical clarity.
-
-### Side-by-Side Comparison:
-
-#### `application.properties` (Flat keys)
-```properties
-server.port=8080
-spring.datasource.url=jdbc:postgresql://localhost:5432/career_os
-spring.datasource.username=postgres
-spring.datasource.password=secret
-```
-
-#### `application.yaml` (Hierarchical structure)
+### Multi-Document YAML Format (Single File):
 ```yaml
 server:
   port: 8080
-
+---
 spring:
+  config:
+    activate:
+      on-profile: dev
   datasource:
-    url: jdbc:postgresql://localhost:5432/career_os
-    username: postgres
-    password: secret
+    url: jdbc:h2:mem:devdb
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:postgresql://prod-db:5432/app
 ```
 
----
+### Activating Profiles:
+1. In `application.properties`: `spring.profiles.active=dev`
+2. Via CLI argument: `java -jar app.jar --spring.profiles.active=prod`
+3. Via OS Environment: `export SPRING_PROFILES_ACTIVE=prod`
 
+---
+## 13. `application.properties` vs. `application.yaml` & Configuration Precedence
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Hierarchy & Precedence`
+
+### Configuration Precedence (Highest to Lowest):
+1. **Command line arguments** (`--server.port=9090`).
+2. **Java System Properties** (`-Dserver.port=9090`).
+3. **OS Environment Variables** (`SERVER_PORT=9090`).
+4. **Profile-specific application properties outside packaged jar** (`/config/application-prod.yaml`).
+5. **Profile-specific application properties inside jar** (`application-prod.yaml`).
+6. **Default application properties outside packaged jar**.
+7. **Default application properties inside jar** (`application.yaml`).
+
+---
 ## 14. Property Injection: `@Value` vs. `@ConfigurationProperties` vs. `Environment`
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Injecting Config Values`
@@ -508,33 +612,28 @@ spring:
 | Approach | Best Use Case | Type Safety | Relaxed Binding |
 |---|---|---|---|
 | **`@Value`** | Injecting 1 or 2 isolated primitive properties. | ❌ No (String based) | ❌ No |
-| **`@ConfigurationProperties`** | Grouping a related tree of structured properties (e.g., mail server or payment gateway settings). | ✅ Full Type-Safety | ✅ Yes (handles camelCase, kebab-case) |
+| **`@ConfigurationProperties`** | Grouping a related tree of structured properties. | ✅ Full Type-Safety | ✅ Yes (handles camelCase, kebab-case) |
 | **`Environment`** | Programmatically querying properties dynamically at runtime. | ❌ Manual cast | ❌ No |
 
-### Code Demonstration
+### SpEL (Spring Expression Language) in `@Value`:
 ```java
-// Approach 1: @Value
-@Value("${app.jwt.secret}")
-private String jwtSecret;
+// Default fallback value if property is missing
+@Value("${app.timeout:5000}")
+private int timeout;
 
-// Approach 2: @ConfigurationProperties (Enterprise Standard)
-@Component
-@ConfigurationProperties(prefix = "app.payment")
-@Getter @Setter
-public class PaymentProperties {
-    private String apiKey;
-    private String secretKey;
-    private int timeoutMs;
-}
+// Evaluating SpEL expression
+@Value("#{24 * 60 * 60}")
+private int secondsInDay;
+
+// Injecting list from comma-separated property
+@Value("#{'${app.allowed.origins}'.split(',')}")
+private List<String> allowedOrigins;
 ```
 
 ---
-
 ## 15. Persistence Stack: JDBC vs. Hibernate vs. JPA vs. Spring Data JPA
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Database Abstraction Layers`
-
-Candidates often confuse these four terms. Understand the exact hierarchy:
 
 ```mermaid
 flowchart TD
@@ -543,19 +642,17 @@ flowchart TD
     Hibernate["Hibernate (Concrete ORM Engine that implements JPA specification)"]
     SpringData["Spring Data JPA (Spring abstraction generating automated CRUD repositories)"]
 
-    SpringData -->|Simplifies| JPA
-    JPA -->|Implemented By| Hibernate
-    Hibernate -->|Under the hood uses| JDBC
+    SpringData -->|"Simplifies"| JPA
+    JPA -->|"Implemented By"| Hibernate
+    Hibernate -->|"Under the hood uses"| JDBC
 ```
 
-1. **JDBC (Java Database Connectivity)**: The lowest-level Java standard library for talking to databases. You write raw SQL strings, manually open connections, and loop through `ResultSet` cursors. Lots of boilerplate.
-2. **JPA (Java Persistence API / Jakarta Persistence)**: A **standard specification** (a collection of interfaces like `EntityManager`, annotations like `@Entity`, `@Table`) defining how ORMs should behave. It contains *no actual implementation code*.
-3. **Hibernate**: The popular **Object-Relational Mapping (ORM) framework** that provides a complete, battle-tested implementation of the JPA specification. It maps Java objects to database rows.
-4. **Spring Data JPA**: A high-level library from Spring that sits on top of JPA/Hibernate. It eliminates boilerplate DAO implementations by allowing you to define simple interfaces (`UserRepository extends JpaRepository<User, Long>`) where Spring automatically generates standard CRUD queries and dynamic finders (`findByNameContaining`) at runtime.
+### First-Level Cache & Dirty Checking
+1. **First-Level Cache**: Every Hibernate `Session` (JPA `EntityManager`) acts as an in-memory cache. If you fetch `userRepository.findById(1L)` twice within the same `@Transactional` method, Hibernate executes the SQL query **only once**!
+2. **Dirty Checking**: When an entity is loaded inside a transaction, Hibernate keeps an internal snapshot. If you modify entity fields (e.g. `user.setEmail("new@example.com")`), at transaction commit time, Hibernate compares the entity with the snapshot and **automatically issues SQL `UPDATE` queries** without calling `save()`!
 
 ---
-
-## 16. `@Transactional` Mechanics
+## 16. `@Transactional` Mechanics (AOP Proxies & Self-Invocation Trap)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `All-or-Nothing ACID`
 
@@ -567,198 +664,179 @@ flowchart TD
     Call["transferMoney(accountA, accountB, $100)"] --> Start["Spring AOP Proxy: BEGIN Transaction"]
     Start --> Op1["Step 1: Debit $100 from Account A"]
     Op1 --> Op2["Step 2: Credit $100 to Account B"]
-    Op2 --> Check{Did error occur?}
-    Check -->|No Error| Commit["COMMIT Transaction (Changes saved permanently)"]
-    Check -->|Exception Thrown| Rollback["ROLLBACK Transaction (Account A gets money back!)"]
+    Op2 --> Check{"Did error occur?"}
+    Check -->|"No Error"| Commit["COMMIT Transaction (Changes saved permanently)"]
+    Check -->|"Exception Thrown"| Rollback["ROLLBACK Transaction (Account A gets money back!)"]
 ```
 
-### Under the Hood: Spring AOP Proxies
-`@Transactional` is powered by **Spring AOP (Aspect-Oriented Programming)**. When Spring discovers `@Transactional` on a class or method:
-1. Spring creates a dynamic **Proxy wrapper** around your bean.
-2. When an external caller invokes the method, the proxy intercepts the call.
-3. The proxy opens a database connection transaction.
-4. The proxy executes your target business method.
-5. If the method finishes cleanly, the proxy commits the transaction.
-6. If an unchecked exception (`RuntimeException` or `Error`) is thrown, the proxy commands a rollback.
+### The Self-Invocation Trap (Classic Interview Question)
+```java
+@Service
+public class OrderService {
 
-> [!CAUTION]
-> **Placement Interview Trap**:  
-> *"If method A calls method B within the same service class, and method B has `@Transactional`, will the transaction work?"*  
-> **Answer**: **NO!** Because the call is an internal `this.methodB()` invocation, it bypasses the Spring AOP Proxy wrapper completely! The proxy never gets the chance to start a transaction.
+    public void processOrder() {
+        // Calling method in same class via 'this'
+        this.saveToDatabase(); // ❌ @Transactional WILL NOT WORK!
+    }
+
+    @Transactional
+    public void saveToDatabase() {
+        // database changes
+    }
+}
+```
+**Why it fails**: Spring creates a dynamic proxy around `OrderService`. When an external class calls `processOrder()`, the proxy delegates to the target. But inside `processOrder()`, calling `this.saveToDatabase()` is an internal direct method call on the raw object—**the AOP Proxy is completely bypassed**, so no transaction is ever started!  
+**Solution**: Move `saveToDatabase()` to a separate service or inject self via `@Autowired private OrderService self;`.
+
+### Rollback Rules:
+- **Default**: Rolls back only on unchecked exceptions (`RuntimeException` and `Error`).
+- **Checked Exceptions**: Does **not** roll back on `SQLException` or `IOException` unless specified:  
+  `@Transactional(rollbackFor = Exception.class)`.
+- **`readOnly = true`**: Informs Hibernate that the transaction is read-only. Hibernate skips snapshot dirty checking, saving memory and CPU. In multi-datasource setups, it also routes queries directly to read-only database replicas.
+- **`timeout = 5`**: Enforces a maximum execution time (in seconds). If the transaction takes longer than 5 seconds (e.g. slow database query or locked rows), Spring automatically rolls it back with a `TransactionTimedOutException`.
+- **`isolation = Isolation.READ_COMMITTED`**: Defines the database locking behavior and concurrency isolation level for this specific transaction.
 
 ---
-
-## 17. Transaction Propagation
+## 17. Transaction Propagation (All 7 Levels Explained)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Transaction Boundary Rules`
-
-Transaction propagation determines what happens when a transactional method is called by another method that already has an active transaction.
 
 ```mermaid
 flowchart TD
     subgraph REQUIRED ["REQUIRED (Default)"]
-        R1["Tx Active?"] -->|Yes| R2["Join Existing Tx"]
-        R1 -->|No| R3["Create New Tx"]
+        R1["Tx Active?"] -->|"Yes"| R2["Join Existing Tx"]
+        R1 -->|"No"| R3["Create New Tx"]
     end
 
     subgraph REQUIRES_NEW ["REQUIRES_NEW"]
-        RN1["Tx Active?"] -->|Yes| RN2["Suspend Existing Tx -> Start Independent New Tx"]
-        RN1 -->|No| RN3["Start Independent New Tx"]
+        RN1["Tx Active?"] -->|"Yes"| RN2["Suspend Existing Tx -> Start Independent New Tx"]
+        RN1 -->|"No"| RN3["Start Independent New Tx"]
     end
 ```
 
-| Propagation Level | Meaning & Behavior | Common Interview Use Case |
+| Propagation Level | Behavior | Practical Placement Example |
 |---|---|---|
-| **`REQUIRED`** *(Default)* | If a transaction exists, **joins it**; otherwise, creates a new one. | Standard business operations where steps should commit or rollback together. |
-| **`REQUIRES_NEW`** | **Always starts a brand-new transaction**. If one is currently running, suspends it until the new one finishes. | **Audit logging** or payment attempts: you want the audit record saved even if the outer business transaction fails and rolls back! |
-| **`SUPPORTS`** | If a transaction exists, runs within it; otherwise executes non-transactionally. | Read-only operations. |
-| **`MANDATORY`** | Must be called within an existing transaction; otherwise throws an exception. | Sub-methods that cannot safely execute without an established transaction. |
-| **`NOT_SUPPORTED`** | Always executes non-transactionally; suspends any active transaction. | Long-running I/O or network API calls that should not hold open database locks. |
-| **`NEVER`** | Must never run inside a transaction; throws an exception if one exists. | Tasks forbidden from running in transactions. |
+| **`REQUIRED`** *(Default)* | Joins existing transaction or creates a new one. | Updating inventory and placing order in one combined transaction. |
+| **`REQUIRES_NEW`** | Always creates an independent transaction; suspends active transaction. | Writing security audit logs or payment logs (must persist even if parent business transaction rolls back). |
+| **`SUPPORTS`** | Uses transaction if present; otherwise runs non-transactionally. | Read-only lookup methods. |
+| **`MANDATORY`** | Must run in an existing transaction; throws `IllegalTransactionStateException` if none exists. | Sub-calculations that require transactional locks. |
+| **`NOT_SUPPORTED`** | Suspends any active transaction and executes non-transactionally. | Sending third-party network emails / SMS (avoid holding DB locks). |
+| **`NEVER`** | Throws an exception if a transaction exists. | Operations forbidden from holding locks. |
+| **`NESTED`** | Creates a database **Savepoint** inside the active transaction. | Allows rolling back only a child sub-step to the savepoint without rolling back the entire parent transaction. |
 
 ---
-
-## 18. Bean Disambiguation: `@Primary` vs. `@Qualifier`
+## 18. Bean Disambiguation: `@Primary` vs. `@Qualifier` & Strategy Pattern
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Default vs Explicit Bean`
-
-When two or more beans implement the exact same interface, Spring cannot guess which one to inject and throws a `NoUniqueBeanDefinitionException`.
 
 ```mermaid
 flowchart LR
     Interface["NotificationService (Interface)"]
-    B1["EmailNotificationService\n(@Primary)"] --> Interface
-    B2["SmsNotificationService\n(@Service('sms'))"] --> Interface
+    B1["EmailNotificationService
+(@Primary)"] --> Interface
+    B2["SmsNotificationService
+(@Service('sms'))"] --> Interface
 
-    Consumer1["OrderService (No annotation)"] -->|Injects Default| B1
-    Consumer2["AlertService (@Qualifier('sms'))"] -->|Explicitly Injects| B2
+    Consumer1["OrderService (No annotation)"] -->|"Injects Default"| B1
+    Consumer2["AlertService (@Qualifier('sms'))"] -->|"Explicitly Injects"| B2
 ```
 
-- **`@Primary`**: Marks one implementation as the **default choice** when no specific bean name is requested.
-- **`@Qualifier("beanName")`**: Provides **explicit selection** at the injection point by specifying the exact bean identifier.
+### Dynamic Strategy Pattern (Advanced Placement Question)
+*"How can you select and inject a bean dynamically based on a runtime parameter?"*  
+**Answer**: Inject a `Map<String, NotificationService>`:
+```java
+@Service
+public class NotificationManager {
+    private final Map<String, NotificationService> notificationStrategies;
 
-> [!NOTE]
-> **Precedence Rule**: If a class uses `@Qualifier("smsService")`, it **overrides** any bean marked with `@Primary`.
+    public NotificationManager(Map<String, NotificationService> strategies) {
+        this.notificationStrategies = strategies; // Spring populates beanName -> bean instance!
+    }
+
+    public void send(String type, String message) {
+        NotificationService service = notificationStrategies.get(type);
+        if (service == null) {
+            throw new IllegalArgumentException("Unknown notification type: " + type);
+        }
+        service.sendNotification(message);
+    }
+}
+```
 
 ---
-
 ## 19. Injection Types: Constructor vs. Setter vs. Field Injection
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Always Prefer Constructor`
 
-### Comparison of the 3 Injection Styles:
-
-#### 1. Constructor Injection (✅ Industry Best Practice)
-```java
-@Service
-public class OrderService {
-    private final PaymentService paymentService;
-
-    public OrderService(PaymentService paymentService) {
-        this.paymentService = paymentService;
-    }
-}
-```
-- **Why it wins**:
-  - Allows fields to be declared **`final`** (ensuring true object immutability and thread safety).
-  - Prevents `NullPointerException` because the object cannot be instantiated without its mandatory dependencies.
-  - Trivial to test in pure JUnit tests without needing Spring test contexts or reflection hacks.
-
-#### 2. Setter Injection (Use only for optional dependencies)
-```java
-@Service
-public class NotificationService {
-    private EmailGateway emailGateway;
-
-    @Autowired
-    public void setEmailGateway(EmailGateway emailGateway) {
-        this.emailGateway = emailGateway;
-    }
-}
-```
-- Useful if a dependency can be reconfigured or changed at runtime.
-
-#### 3. Field Injection (❌ Avoid in Production)
-```java
-@Service
-public class UserService {
-    @Autowired
-    private UserRepository userRepository; // Injected via reflection
-}
-```
-- **Flaws**: Hides dependencies, makes pure unit testing difficult (requires reflection to inject mocks), and fields cannot be made `final`.
+### Why Field Injection (`@Autowired private Repo repo;`) is an Anti-Pattern:
+1. **Breaks Immutability**: Fields cannot be marked `final`.
+2. **Hidden Dependencies**: Class can be instantiated with `new UserService()` without compile-time errors, leading to `NullPointerException` at runtime.
+3. **Hard to Unit Test**: Forces you to use Spring Test Contexts or reflection (`ReflectionTestUtils`) just to inject mock objects.
+4. **Circular Dependency Blindness**: Hides circular references until runtime.
 
 ---
-
-## 20. `@Lookup` Annotation (Singleton with Prototype Dependency)
+## 20. `@Lookup` Annotation & Dynamic Prototype Injection
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Prototype Inside Singleton`
 
-### The Problem:
-Spring creates a **Singleton bean once**. If that Singleton holds a reference to a **Prototype bean**, the Prototype bean is also created only once during initialization. Calling a method on the Singleton will **never generate a new Prototype instance**!
-
-### The Solution:
-`@Lookup` tells Spring to override a getter method using dynamic CGLIB byte-buddy proxies to fetch a fresh instance from the `ApplicationContext` on every invocation.
-
+When a Singleton bean depends on a Prototype bean:
 ```java
 @Component
-@Scope("prototype")
-public class HeavyTask {
-    // Unique state per execution
-}
+public abstract class ReportGenerator { // Singleton
 
-@Component
-public abstract class TaskProcessor { // Singleton
-
-    public void runJob() {
-        HeavyTask task = getFreshTask(); // Fresh prototype instance every time!
-        // execute task
+    public void generateReport() {
+        ReportTask task = getTask(); // Fetches brand new prototype instance!
+        task.execute();
     }
 
     @Lookup
-    protected abstract HeavyTask getFreshTask();
+    protected abstract ReportTask getTask();
+}
+```
+**Alternative Modern Approach**: Inject `ObjectProvider<ReportTask>`:
+```java
+@Service
+public class ReportGenerator {
+    private final ObjectProvider<ReportTask> taskProvider;
+
+    public void generateReport() {
+        ReportTask task = taskProvider.getObject(); // Fresh prototype instance
+        task.execute();
+    }
 }
 ```
 
 ---
-
 ## 21. Servlet Filters vs. Spring MVC Interceptors
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Servlet vs MVC Layer`
 
-Both intercept HTTP requests, but they operate in completely different lifecycle stages:
-
 ```mermaid
 flowchart LR
-    Client(["HTTP Request"]) --> Filter["Servlet Filter (Security, CORS, GZIP)\nLow-level Servlet Layer"]
-    Filter --> DS["DispatcherServlet\nFront Controller"]
-    DS --> Interceptor["HandlerInterceptor (preHandle / postHandle)\nSpring MVC Layer"]
+    Client(["HTTP Request"]) --> Filter["Servlet Filter (Security, CORS, GZIP)
+Low-level Servlet Layer"]
+    Filter --> DS["DispatcherServlet
+Front Controller"]
+    DS --> Interceptor["HandlerInterceptor (preHandle / postHandle)
+Spring MVC Layer"]
     Interceptor --> Controller["@RestController Controller Method"]
 ```
 
-| Dimension | Servlet Filter | Handler Interceptor |
+| Lifecycle Method | Servlet Filter (`OncePerRequestFilter`) | Handler Interceptor (`HandlerInterceptor`) |
 |---|---|---|
-| **Ecosystem** | Java Servlet Standard (`jakarta.servlet.Filter`). | Spring MVC Framework (`HandlerInterceptor`). |
-| **Position in Flow** | Executes **before** `DispatcherServlet`. | Executes **after** `DispatcherServlet`, right before the Controller. |
-| **Spring Awareness** | Low-level; does not know which controller will handle the request. | Rich Spring context; has direct access to the target `handler` method object. |
-| **Common Use Cases** | CORS headers, request/response body logging, raw JWT token validation, compression. | Route authorization checks, locale changes, execution timing metrics. |
+| **Before Execution** | `doFilter(request, response, chain)` before `chain.doFilter()` | `preHandle(request, response, handler)` (Return false to abort!) |
+| **After Execution** | Code after `chain.doFilter()` | `postHandle(...)` (Can modify `ModelAndView`) |
+| **After Completion**| `destroy()` on server stop | `afterCompletion(...)` (Executed even if exception occurs; ideal for cleanup) |
 
 ---
-
-## 22. Cyclic Dependencies & `@Lazy`
+## 22. Cyclic Dependencies, `@Lazy` & Architectural Decoupling
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Circular Reference Workaround`
 
-A **circular dependency** occurs when Bean A requires Bean B, and Bean B requires Bean A (`A ⇄ B`). Spring fails to start and throws `BeanCurrentlyInCreationException`.
-
-```mermaid
-flowchart LR
-    A["Service A"] -->|Constructor needs| B["Service B"]
-    B -->|Constructor needs| A
-```
+A **circular dependency** occurs when Bean A requires Bean B, and Bean B requires Bean A (`A ⇄ B`). Starting with **Spring Boot 2.6**, circular dependencies are **disabled by default** (`BeanCurrentlyInCreationException`).
 
 ### How `@Lazy` Works:
-Placing `@Lazy` on one constructor parameter causes Spring to inject a dynamic proxy instead of the real bean. The real bean is resolved only when its method is called for the first time:
+Placing `@Lazy` on one constructor parameter causes Spring to inject a dynamic CGLIB proxy instead of the real bean. The real bean is resolved only when its method is called for the first time:
 ```java
 @Service
 public class ServiceB {
@@ -770,64 +848,58 @@ public class ServiceB {
 }
 ```
 
-> [!WARNING]
-> **Architectural Wisdom**: `@Lazy` is a temporary bandage. A circular dependency almost always indicates poor design. The proper fix is to extract shared logic into a separate `ServiceC` or decouple via Spring Events.
+### Proper Architectural Fixes:
+1. **Extract Shared Logic**: Move the overlapping method to a new `ServiceC`.
+2. **Event-Driven Decoupling**: Instead of direct method calls, publish an event via `ApplicationEventPublisher`.
 
 ---
-
 ## 23. `@PathVariable` vs. `@RequestParam`
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `URI Path vs Query Param`
 
 ```mermaid
 flowchart LR
-    URL1["/api/v1/users/42"] -->|42 is part of URI path| PV["@PathVariable Long id"]
-    URL2["/api/v1/users?role=admin&page=1"] -->|Parameters after '?'| RP["@RequestParam String role, int page"]
+    URL1["/api/v1/users/42"] -->|"42 is part of URI path"| PV["@PathVariable Long id"]
+    URL2["/api/v1/users?role=admin&page=1"] -->|"Parameters after '?'"| RP["@RequestParam String role, int page"]
 ```
 
-- **`@PathVariable`**: Extracts values directly embedded inside the URI path (identifies a specific resource).  
-  Example: `GET /orders/{orderId}` $\rightarrow$ `@PathVariable Long orderId`
-- **`@RequestParam`**: Extracts query parameters appended after the `?` in the URL (used for filtering, sorting, pagination).  
-  Example: `GET /orders?status=PENDING&page=2` $\rightarrow$ `@RequestParam String status`
+- **`@PathVariable`**: Identifies a specific resource. Supports regex: `@GetMapping("/{id:[0-9]+}")`.
+- **`@RequestParam`**: Supports optional inputs: `@RequestParam(required = false, defaultValue = "10") int limit`.
 
 ---
-
-## 24. `ResponseEntity<T>`
+## 24. `ResponseEntity<T>` & HTTP Response Customization
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Full HTTP Control`
 
-In REST controllers, returning raw objects defaults to HTTP `200 OK`. `ResponseEntity<T>` represents the entire HTTP response, letting you customize the **Status Code**, **Headers**, and **Body**:
+`ResponseEntity<T>` represents the complete HTTP response:
 
 ```java
 @GetMapping("/{id}")
 public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
     UserResponse user = userService.findById(id);
-    return ResponseEntity.ok(user); // 200 OK with body
+    return ResponseEntity.ok()
+        .eTag(String.valueOf(user.version()))
+        .cacheControl(CacheControl.maxAge(60, TimeUnit.SECONDS))
+        .body(user);
 }
 
 @PostMapping
-public ResponseEntity<UserResponse> createUser(@RequestBody UserRequest request) {
+public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
     UserResponse created = userService.create(request);
-    return ResponseEntity
-        .status(HttpStatus.CREATED) // 201 Created
-        .header("Location", "/api/users/" + created.id())
-        .body(created);
-}
-
-@DeleteMapping("/{id}")
-public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-    userService.delete(id);
-    return ResponseEntity.noContent().build(); // 204 No Content
+    URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+        .path("/{id}")
+        .buildAndExpand(created.id())
+        .toUri();
+    return ResponseEntity.created(location).body(created); // 201 Created with Location Header
 }
 ```
 
 ---
-
 ## 25. `DispatcherServlet` & Spring MVC Request Flow
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Front Controller Hub`
 
-`DispatcherServlet` is the core architectural engine of Spring MVC, implementing the classic **Front Controller Pattern**.
+`DispatcherServlet` coordinates all incoming HTTP requests via the **Front Controller Pattern**.
 
 ```mermaid
 sequenceDiagram
@@ -850,15 +922,16 @@ sequenceDiagram
     DS-->>Client: HTTP 200 OK + JSON Payload
 ```
 
-1. **`DispatcherServlet`** receives the incoming HTTP request.
-2. Calls **`HandlerMapping`** to identify the matched controller method.
-3. Delegates invocation to **`HandlerAdapter`**.
-4. Controller invokes service/repository layers and returns raw DTO.
-5. **`HttpMessageConverter`** (Jackson) serializes the DTO into JSON and writes it to the response stream.
+### Six Core Collaborators:
+1. **`HandlerMapping`**: Maps URL to a specific handler method.
+2. **`HandlerAdapter`**: Executes the handler method dynamically.
+3. **`HandlerExceptionResolver`**: Maps exceptions to HTTP status codes / `@ExceptionHandler`.
+4. **`HttpMessageConverter`**: Serializes/deserializes request and response bodies.
+5. **`ViewResolver`**: Resolves view names to HTML templates (for MVC).
+6. **`MultipartResolver`**: Handles file uploads.
 
 ---
-
-## 26. Pagination, Sorting & Filtering
+## 26. Pagination, Sorting & Dynamic Filtering (JPA Criteria / Specifications)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Database-Side Chunking`
 
@@ -875,28 +948,34 @@ public ResponseEntity<Page<ProductResponse>> getProducts(
     Pageable pageable = PageRequest.of(page, size, Sort.by("price").descending());
     return ResponseEntity.ok(productService.findAll(pageable));
 }
-
-// Repository
-public interface ProductRepository extends JpaRepository<Product, Long> {
-    // Generates: SELECT * FROM products ORDER BY price DESC LIMIT 20 OFFSET 0;
-    Page<Product> findAll(Pageable pageable);
-}
 ```
 
 ### `Page<T>` vs. `Slice<T>`
 - **`Page<T>`**: Executes **two SQL queries**: one to fetch the slice data (`LIMIT/OFFSET`), and a secondary `SELECT COUNT(*)` query to calculate total pages.
 - **`Slice<T>`**: Fetches `LIMIT + 1` elements. Does **not** execute a count query. Ideal for mobile app infinite scrolling where total count is unnecessary.
 
----
+### Dynamic Multi-Field Filtering via `Specification<T>`:
+```java
+public class ProductSpecifications {
+    public static Specification<Product> hasCategory(String category) {
+        return (root, query, cb) -> category == null ? null : cb.equal(root.get("category"), category);
+    }
 
+    public static Specification<Product> priceBetween(BigDecimal min, BigDecimal max) {
+        return (root, query, cb) -> cb.between(root.get("price"), min, max);
+    }
+}
+
+// In Service
+Specification<Product> spec = Specification.where(ProductSpecifications.hasCategory("Electronics"))
+                                           .and(ProductSpecifications.priceBetween(min, max));
+Page<Product> results = productRepository.findAll(spec, pageable);
+```
+
+---
 ## 27. Object Mapping with MapStruct & DTO Pattern
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Compile-Time DTO Mapper`
-
-### Why use DTOs (Data Transfer Objects)?
-1. Never expose your raw database `@Entity` to external callers.
-2. Prevents exposing sensitive fields (passwords, social security numbers).
-3. Eliminates circular reference serialization bugs in bidirectional JPA relationships.
 
 ### Why MapStruct?
 Traditional reflection-based mappers (like ModelMapper) are slow at runtime. **MapStruct generates type-safe, plain Java code at compile time** with zero reflection overhead.
@@ -904,127 +983,100 @@ Traditional reflection-based mappers (like ModelMapper) are slow at runtime. **M
 ```java
 @Mapper(componentModel = "spring")
 public interface UserMapper {
-    UserResponse toResponse(User entity);
+    @Mapping(source = "user.contact.emailAddress", target = "email")
+    UserResponse toResponse(User user);
+
     User toEntity(UserCreateRequest request);
+
+    @AfterMapping
+    default void setAuditFields(@MappingTarget User user) {
+        user.setCreatedAt(Instant.now());
+    }
 }
 ```
 
 ---
-
 ## 28. Core Spring Boot Annotations Quick Reference
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Essential Annotation Cheat Sheet`
 
-| Category | Annotations | Purpose |
+| Annotation | Category | What it does |
 |---|---|---|
-| **Core Stereotypes** | `@Component`, `@Service`, `@Repository`, `@RestController` | Registers managed beans in the IoC container. |
-| **Dependency Injection** | `@Autowired`, `@Qualifier`, `@Primary`, `@Lazy` | Directs how dependencies are wired. |
-| **HTTP Web Mapping** | `@GetMapping`, `@PostMapping`, `@PutMapping`, `@DeleteMapping`, `@PatchMapping` | Maps HTTP verbs to handler methods. |
-| **HTTP Parameters** | `@PathVariable`, `@RequestParam`, `@RequestBody`, `@RequestHeader` | Extracts data from URL paths, query parameters, bodies, and headers. |
-| **Database & JPA** | `@Entity`, `@Table`, `@Id`, `@GeneratedValue`, `@Column`, `@Transient` | Defines ORM entity mappings. |
-| **Transactions** | `@Transactional` | Manages database transaction commit and rollback boundaries. |
-| **Error Handling** | `@RestControllerAdvice`, `@ExceptionHandler` | Intercepts and formats application-wide exceptions. |
+| `@Version` | JPA Concurrency | Enables **Optimistic Locking** to detect concurrent record updates. |
+| `@CreatedDate` | JPA Auditing | Automatically populates row insertion timestamp. |
+| `@Transient` | JPA Mapping | Ignores field; never persists it to the database table. |
+| `@Transactional` | Spring Tx | Defines database transaction boundary. |
+| `@CreationTimestamp` | Hibernate | Automatically sets creation timestamp. |
+| `@UpdateTimestamp` | Hibernate | Automatically sets update timestamp on row update. |
 
 ---
-
-## 29. Input Validation & `@Valid`
+## 29. Input Validation & Custom Validators (`@Valid`)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Declarative Bean Validation`
 
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-validation</artifactId>
-</dependency>
-```
-
-### Annotating Request DTOs
+### Creating a Custom Constraint Validator:
 ```java
-public record UserCreateRequest(
-    @NotBlank(message = "Username cannot be empty")
-    @Size(min = 3, max = 20, message = "Username must be 3-20 characters")
-    String username,
-
-    @NotBlank(message = "Email is required")
-    @Email(message = "Must be a valid email address")
-    String email,
-
-    @Min(value = 18, message = "Must be at least 18 years old")
-    int age
-) {}
-```
-
-### Triggering Validation in Controller
-```java
-@PostMapping("/users")
-public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(request));
+@Target({ElementType.FIELD})
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = PhoneNumberValidator.class)
+public @interface ValidPhoneNumber {
+    String message() default "Invalid international phone number";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
 }
-```
 
-### Centralized Validation Exception Handler
-When validation fails, Spring throws `MethodArgumentNotValidException`. Intercept it cleanly:
-```java
-@ExceptionHandler(MethodArgumentNotValidException.class)
-public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-    Map<String, String> errors = new HashMap<>();
-    ex.getBindingResult().getFieldErrors().forEach(error ->
-        errors.put(error.getField(), error.getDefaultMessage())
-    );
-    return ResponseEntity.badRequest().body(errors);
+public class PhoneNumberValidator implements ConstraintValidator<ValidPhoneNumber, String> {
+    @Override
+    public boolean isValid(String value, ConstraintValidatorContext context) {
+        return value != null && value.matches("^\+[1-9]\d{1,14}$");
+    }
 }
 ```
 
 ---
-
 ## 30. Rapid-Fire Interview Questions & Answers
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `10-Second Recall Answers`
 
-1. **What is Spring Boot Auto-Configuration?**  
-   It automatically provisions Spring beans based on the libraries found on your classpath and predefined conditions.
-2. **What embedded servers does Spring Boot support?**  
-   Tomcat (default), Jetty, and Undertow.
-3. **What is the default Spring bean scope?**  
-   `singleton` (one instance per Spring IoC Container).
-4. **Is Spring's singleton scope thread-safe?**  
-   No. If a singleton bean has mutable instance variables, it is not thread-safe. Spring beans should be stateless.
-5. **What is the difference between `@NotNull`, `@NotEmpty`, and `@NotBlank`?**  
-   `@NotNull` checks non-null; `@NotEmpty` checks non-null and size > 0; `@NotBlank` checks non-null, size > 0, and not pure whitespace.
-6. **Can `@Transactional` rollback on checked exceptions?**  
-   By default, it only rolls back on `RuntimeException` and `Error`. To rollback on checked exceptions, use `@Transactional(rollbackFor = Exception.class)`.
-7. **What is Spring Boot Actuator used for?**  
-   Production health checks, metrics, and application runtime monitoring.
+1. **What is Spring Boot Auto-Configuration?** Automatically registers beans based on classpath dependencies.
+2. **What is the default Spring bean scope?** `singleton`.
+3. **Is Spring's singleton scope thread-safe?** No. Beans must be stateless.
+4. **`@NotNull` vs `@NotBlank`?** `@NotNull` checks non-null; `@NotBlank` checks non-null, non-empty, and non-whitespace.
+5. **Does `@Transactional` rollback checked exceptions?** No, only unchecked (`RuntimeException`). Use `rollbackFor = Exception.class`.
+6. **What embedded servers does Spring Boot support?** Tomcat, Jetty, and Undertow.
+7. **What is the N+1 problem?** 1 query for parent + N queries for children. Solved using `JOIN FETCH`.
+8. **What does `@SpringBootApplication` combine?** `@Configuration`, `@EnableAutoConfiguration`, and `@ComponentScan`.
+9. **How to solve circular dependencies?** Refactor architecture, use events, or `@Lazy` as a temporary fix.
+10. **Why use constructor injection?** Immutability with `final`, explicit dependencies, and easy unit testing without reflection.
 
 ---
-
 ## 31. End-to-End Project Explanation Framework
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Resume Architecture Defense`
 
-When asked *"Explain your Spring Boot project architecture"*, use this structured 4-layer response:
-
 ```mermaid
 flowchart TD
     Client(["Client (Browser / Mobile)"]) --> Gateway["API Gateway / Security Filter (JWT Validation)"]
-    Gateway --> Controller["Controller Layer (@RestController)\nValidates DTO via @Valid"]
-    Controller --> Service["Service Layer (@Service, @Transactional)\nBusiness Rules & Orchestration"]
-    Service --> Repo["Repository Layer (Spring Data JPA)\nHikariCP Connection Pool"]
+    Gateway --> Controller["Controller Layer (@RestController)
+Validates DTO via @Valid"]
+    Controller --> Service["Service Layer (@Service, @Transactional)
+Business Rules & Orchestration"]
+    Service --> Cache[("Redis Distributed Cache")]
+    Service --> Repo["Repository Layer (Spring Data JPA)
+HikariCP Connection Pool"]
     Repo --> DB[("PostgreSQL Database")]
 ```
 
-### Verbal Script Template:
-> *"In my project, I built a RESTful backend using Spring Boot 3 and Java 17. The system follows a layered architecture:*
-> 1. *The **Controller Layer** exposes versioned REST endpoints, consumes and returns DTOs, and validates input payloads via Bean Validation (`@Valid`).*
-> 2. *The **Service Layer** encapsulates core business logic and manages transactional integrity with `@Transactional`.*
-> 3. *The **Data Layer** uses Spring Data JPA with PostgreSQL to perform type-safe database queries.*
-> 4. *Cross-cutting concerns like JWT authorization are handled via a custom `OncePerRequestFilter`, and exceptions are handled globally with `@RestControllerAdvice`."*
+### Verbal Script Template for Placement Interviews:
+> *"In my project, I engineered a scalable RESTful backend using Spring Boot 3 and Java 17. The architecture strictly follows industry best practices:*
+> 1. *Incoming requests are intercepted by a custom `JwtAuthenticationFilter` that validates tokens and populates the `SecurityContextHolder`.*
+> 2. *The **Controller Layer** exposes REST endpoints, enforces input validation via Bean Validation (`@Valid`), and returns structured responses using `ResponseEntity<T>`.*
+> 3. *The **Service Layer** encapsulates core business logic and guarantees ACID transaction integrity using `@Transactional`.*
+> 4. *The **Data Access Layer** leverages Spring Data JPA on top of PostgreSQL, utilizing `JOIN FETCH` queries to eliminate N+1 latency bottlenecks and HikariCP for high-throughput connection pooling.*
+> 5. *Cross-cutting exceptions are intercepted centrally with `@RestControllerAdvice` returning RFC 7807 `ProblemDetail` payloads."*
 
 ---
-
 ## 32. High-Yield Topics Beyond the Playlist
-
-Candidates are frequently evaluated on the following 7 production-critical topics in SDE / Backend interviews:
 
 ---
 
@@ -1032,7 +1084,7 @@ Candidates are frequently evaluated on the following 7 production-critical topic
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Stateless Token Security`
 
-In modern microservices and REST APIs, stateful HTTP sessions are replaced with **stateless JSON Web Tokens (JWT)**.
+In modern microservices and REST APIs, stateful HTTP sessions are replaced with stateless JSON Web Tokens (JWT).
 
 ```mermaid
 sequenceDiagram
@@ -1049,11 +1101,54 @@ sequenceDiagram
     Controller-->>Client: 200 OK (Orders List)
 ```
 
-#### 1. How Spring Security Works:
-- Incoming HTTP requests pass through a chain of filters called the **`SecurityFilterChain`**.
-- A custom **`JwtAuthenticationFilter`** intercepts the request, validates the signature using an HMAC secret key, extracts user claims, and sets the authenticated principal in the **`SecurityContextHolder`**.
+#### JWT Token Structure:
+A JWT consists of 3 Base64URL-encoded parts separated by dots (`header.payload.signature`):
+1. **Header**: Algorithm and token type (`{"alg": "HS256", "typ": "JWT"}`).
+2. **Payload (Claims)**: Registered and custom claims (e.g. `sub` (username), `roles`, `iat`, `exp`).
+3. **Signature**: Cryptographic hash created using secret key: `HMACSHA256(base64UrlEncode(header) + "." + base64UrlEncode(payload), secretKey)`.
 
-#### 2. Spring Security 6 / Spring Boot 3 Configuration:
+#### JWT Generation & Validation Service:
+```java
+@Service
+public class JwtService {
+    private final String SECRET_KEY = "mySuperSecretSigningKeyThatIsAtLeast256BitsLongForHMACSHA256";
+
+    public String generateToken(UserDetails userDetails) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList());
+        return Jwts.builder()
+            .setClaims(claims)
+            .setSubject(userDetails.getUsername())
+            .setIssuedAt(new Date(System.currentTimeMillis()))
+            .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 2)) // 2 Hours
+            .signWith(Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8)), SignatureAlgorithm.HS256)
+            .compact();
+    }
+
+    public String extractUsername(String token) {
+        return extractAllClaims(token).getSubject();
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        final String username = extractUsername(token);
+        return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    private boolean isTokenExpired(String token) {
+        return extractAllClaims(token).getExpiration().before(new Date());
+    }
+
+    private Claims extractAllClaims(String token) {
+        return Jwts.parserBuilder()
+            .setSigningKey(Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8)))
+            .build()
+            .parseClaimsJws(token)
+            .getBody();
+    }
+}
+```
+
+#### Spring Security 6 / Spring Boot 3 Configuration:
 ```java
 @Configuration
 @EnableWebSecurity
@@ -1068,7 +1163,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Disabled for stateless APIs
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // Public login/register endpoints
+                .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
@@ -1084,8 +1179,6 @@ public class SecurityConfig {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Entity Mapping & Ownership`
 
-Relational database foreign keys are represented in JPA using relationship annotations.
-
 ```mermaid
 flowchart LR
     Customer["Customer (Parent Entity)
@@ -1100,37 +1193,10 @@ flowchart LR
     OrderEntity -- "N to 1 (@JoinColumn: customer_id)" --> Customer
 ```
 
-#### 1. The `@ManyToOne` Side (Owner of the Relationship):
-The table with the foreign key column is **always the owner of the relationship**. It uses `@JoinColumn`:
-```java
-@Entity
-@Table(name = "orders")
-public class Order {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id", nullable = false) // Foreign key in 'orders' table
-    private Customer customer;
-}
-```
-
-#### 2. The `@OneToMany` Side (Inverse Side):
-Must declare **`mappedBy`** pointing to the field name in the child entity. If you forget `mappedBy`, JPA will create an unwanted third join table!
-```java
-@Entity
-@Table(name = "customers")
-public class Customer {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Order> orders = new ArrayList<>();
-}
-```
-
-- **`CascadeType.ALL`**: Operations (persist, remove, merge) performed on `Customer` automatically cascade to its `orders`.
-- **`orphanRemoval = true`**: If an order is removed from the `orders` list, JPA deletes the corresponding row from the database table.
+- **Ownership Rule**: The table with the foreign key column is **always the owner of the relationship**.
+- **`mappedBy` Rule**: Belongs strictly on the inverse (parent) side. Points to the property name in the child entity. Forgetting `mappedBy` creates an unnecessary third join table!
+- **`orphanRemoval = true`**: If a child entity is removed from the parent's collection, JPA automatically issues an SQL `DELETE` for the child row.
+- **`CascadeType.ALL`**: Cascades all lifecycle events (`PERSIST`, `MERGE`, `REMOVE`, `REFRESH`, `DETACH`) from parent to child.
 
 ---
 
@@ -1140,7 +1206,7 @@ public class Customer {
 
 ### Default Fetch Types in JPA:
 - **`@ManyToOne` / `@OneToOne`**: Defaults to **`EAGER`** (Loads associated entity immediately).  
-  *Best Practice*: Always change this to `FetchType.LAZY`!
+  *Best Practice*: Always change to `FetchType.LAZY`!
 - **`@OneToMany` / `@ManyToMany`**: Defaults to **`LAZY`** (Loads associated collection on demand).
 
 ### What is the N+1 Query Problem?
@@ -1158,15 +1224,32 @@ flowchart TD
     QN --> Disaster["Result: 101 database queries executed! Slows down production."]
 ```
 
-### The Solution: `JOIN FETCH`
-Use a `JOIN FETCH` query in your repository to retrieve both parent and children in a single SQL join:
-```java
-public interface CustomerRepository extends JpaRepository<Customer, Long> {
-    // Solves N+1 Problem: Executes 1 single SQL JOIN query!
-    @Query("SELECT c FROM Customer c JOIN FETCH c.orders")
-    List<Customer> findAllWithOrders();
-}
-```
+### The Three Solutions:
+1. **`JOIN FETCH` in JPQL** (Most Popular):
+   ```java
+   @Query("SELECT c FROM Customer c JOIN FETCH c.orders")
+   List<Customer> findAllWithOrders();
+   ```
+2. **`@EntityGraph`**:
+   ```java
+   @EntityGraph(attributePaths = {"orders"})
+   List<Customer> findAll();
+   ```
+3. **`@BatchSize`**:
+   ```java
+   @BatchSize(size = 20)
+   @OneToMany(mappedBy = "customer")
+   private List<Order> orders;
+   // Replaces N queries with IN query: SELECT * FROM orders WHERE customer_id IN (?, ?, ...)
+   ```
+
+#### ⚠️ The MultipleBagFetchException Trap (Common Interview Trap)
+*"Can you solve the N+1 problem by `JOIN FETCH`ing two `@OneToMany` list collections simultaneously (e.g. `JOIN FETCH u.orders JOIN FETCH u.addresses`)?"*  
+**Answer**: **NO!** Hibernate will throw `org.hibernate.loader.MultipleBagFetchException: cannot simultaneously fetch multiple bags`.  
+**Why**: A `List` in Java represents a bag (an unordered collection that allows duplicates). Joining two bags creates a cartesian product of rows ($N 	imes M$), causing Hibernate to be unable to reconstruct the lists accurately.  
+**Solutions**:
+1. Change one or both collections from `List<T>` to `Set<T>`.
+2. Fetch the first collection with `JOIN FETCH`, and configure `@BatchSize(size = 20)` on the second collection to fetch it efficiently in a separate second query without cartesian explosion.
 
 ---
 
@@ -1174,21 +1257,19 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Standard Verbs & Statuses`
 
-### HTTP Verb Characteristics:
-
-| HTTP Verb | CRUD Action | Is Safe? (Does not alter state) | Is Idempotent? (Multiple identical requests = same result) |
+| HTTP Verb | CRUD Action | Safe? | Idempotent? |
 |---|---|---|---|
 | **GET** | Read | ✅ Yes | ✅ Yes |
-| **POST** | Create | ❌ No | ❌ **No** (Calling POST 5 times creates 5 records) |
-| **PUT** | Replace / Overwrite | ❌ No | ✅ Yes (Overwriting with the same data 5 times yields same state) |
-| **PATCH** | Partial Update | ❌ No | ❌ No (Can be non-idempotent depending on operation) |
-| **DELETE** | Remove | ❌ No | ✅ Yes (Deleting resource ID 5 multiple times leaves it deleted) |
+| **POST** | Create | ❌ No | ❌ No |
+| **PUT** | Full Replace | ❌ No | ✅ Yes |
+| **PATCH**| Partial Update| ❌ No | ❌ No |
+| **DELETE**| Delete | ❌ No | ✅ Yes |
 
-### Standard HTTP Status Codes:
+### Key Status Codes:
 - **`200 OK`**: Request succeeded with body.
 - **`201 Created`**: Resource created successfully (`POST`).
 - **`204 No Content`**: Succeeded, but no response body (`DELETE`).
-- **`400 Bad Request`**: Malformed syntax or validation failure.
+- **`400 Bad Request`**: Validation or syntax error.
 - **`401 Unauthorized`**: Authentication missing or token invalid.
 - **`403 Forbidden`**: Authenticated, but user lacks permissions (Role check failed).
 - **`404 Not Found`**: Resource does not exist.
@@ -1201,31 +1282,20 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Joins, Indexing, ACID`
 
-Spring Boot developers are evaluated directly on database fundamentals:
-
 ```mermaid
 flowchart LR
     A["Table A (Users)"]
     B["Table B (Orders)"]
 
-    A -->|INNER JOIN: Rows matching in both| IJ["Matching Rows"]
-    A -->|LEFT JOIN: All rows from A + matches from B| LJ["All Users + Orders (if any)"]
+    A -->|"INNER JOIN: Matching Rows"| IJ["Matching Rows"]
+    A -->|"LEFT JOIN: All Users + Matched Orders"| LJ["All Users + Orders (if any)"]
 ```
 
-1. **INNER JOIN vs. LEFT JOIN**:
-   - `INNER JOIN`: Returns records that have matching values in both tables.
-   - `LEFT JOIN`: Returns all records from the left table, and matched records from the right table (NULL if no match).
-2. **`WHERE` vs. `HAVING`**:
-   - `WHERE` filters individual rows **before** aggregation.
-   - `HAVING` filters aggregated groups **after** `GROUP BY`.
-3. **Database Indexing**:
-   - Speeds up `SELECT` queries by maintaining an ordered **B-Tree** pointer index.
-   - *Trade-off*: Slows down `INSERT`, `UPDATE`, and `DELETE` operations because the database must update index trees on every write.
-4. **ACID Properties**:
-   - **Atomicity**: All operations succeed, or all rollback.
-   - **Consistency**: Database transitions from one valid state to another.
-   - **Isolation**: Concurrent transactions do not interfere with one another.
-   - **Durability**: Committed data is never lost, even across hardware power outages.
+### Transaction Isolation Levels & Read Phenomena:
+1. **READ UNCOMMITTED**: Allows **Dirty Reads** (reading uncommitted data).
+2. **READ COMMITTED** *(Default in PostgreSQL/Oracle)*: Solves dirty reads; allows **Non-Repeatable Reads**.
+3. **REPEATABLE READ** *(Default in MySQL InnoDB)*: Solves non-repeatable reads; can permit **Phantom Reads**.
+4. **SERIALIZABLE**: Complete isolation via locking/MVCC. No anomalies, highest latency.
 
 ---
 
@@ -1233,43 +1303,49 @@ flowchart LR
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Unit Mocking vs Integration`
 
-```mermaid
-flowchart TD
-    subgraph UnitTest ["Unit Test (@ExtendWith(MockitoExtension.class))"]
-        UT["Fast, in-memory test. Mocks Repository; tests isolated Service logic."]
-    end
-
-    subgraph IntegrationTest ["Integration Test (@SpringBootTest + MockMvc)"]
-        IT["Loads Spring Context, verifies HTTP Routing, Security, and Database."]
-    end
-```
-
-### 1. Unit Test with Mockito:
+#### 1. Unit Testing with Mockito (`@Mock`, `@InjectMocks`):
+Tests isolated business logic without starting a Spring application context (runs in milliseconds):
 ```java
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
-
-    @Mock
-    private UserRepository userRepository;
-
-    @InjectMocks
-    private UserService userService;
+    @Mock private UserRepository userRepository;
+    @InjectMocks private UserService userService;
 
     @Test
     void shouldReturnUserWhenIdExists() {
-        User mockUser = new User(1L, "Alice");
-        when(userRepository.findById(1L)).thenReturn(Optional.of(mockUser));
-
-        User result = userService.getUser(1L);
-
-        assertNotNull(result);
-        assertEquals("Alice", result.getName());
+        when(userRepository.findById(1L)).thenReturn(Optional.of(new User(1L, "Alice")));
+        User user = userService.getUser(1L);
+        assertNotNull(user);
+        assertEquals("Alice", user.getName());
         verify(userRepository, times(1)).findById(1L);
     }
 }
 ```
 
-### 2. Controller Integration Test with `MockMvc`:
+#### 2. Repository Slice Testing with `@DataJpaTest`:
+Tests only JPA entities, repository interfaces, and Hibernate queries with an in-memory embedded H2 database:
+```java
+@DataJpaTest
+class UserRepositoryTest {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Test
+    void shouldSaveAndFindUserByEmail() {
+        User user = new User("Alice", "alice@example.com");
+        userRepository.save(user);
+
+        Optional<User> found = userRepository.findByEmail("alice@example.com");
+
+        assertTrue(found.isPresent());
+        assertEquals("Alice", found.get().getName());
+    }
+}
+```
+
+#### 3. Controller Slice Testing with `@WebMvcTest` and `MockMvc`:
+Tests only the web layer (HTTP routing, JSON serialization, security, and `@Valid` validations) while mocking out the service layer:
 ```java
 @WebMvcTest(UserController.class)
 class UserControllerTest {
@@ -1281,10 +1357,11 @@ class UserControllerTest {
     private UserService userService;
 
     @Test
-    void shouldReturn200Ok() throws Exception {
+    void shouldReturn200AndUserJson() throws Exception {
         when(userService.getUser(1L)).thenReturn(new User(1L, "Alice"));
 
-        mockMvc.perform(get("/api/users/1"))
+        mockMvc.perform(get("/api/users/1")
+                .contentType(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value("Alice"));
     }
@@ -1299,20 +1376,25 @@ class UserControllerTest {
 
 ```mermaid
 flowchart LR
-    Clean["mvn clean\n(Deletes target/ folder)"]
-    Compile["compile\n(Compiles src/ to .class)"]
-    Test["test\n(Executes JUnit tests)"]
-    Package["package\n(Packs into executable JAR)"]
-    Install["install\n(Copies JAR to local ~/.m2)"]
+    Clean["mvn clean
+(Deletes target/)"]
+    Compile["compile
+(Compiles src/)"]
+    Test["test
+(Runs JUnit)"]
+    Package["package
+(Builds JAR)"]
+    Install["install
+(Copies to ~/.m2)"]
 
     Compile --> Test --> Package --> Install
 ```
 
 ### Maven Dependency Scopes:
-- **`compile`** *(Default)*: Dependency is available during compilation, testing, and runtime. Bundled into final JAR.
-- **`provided`**: Required for compilation, but provided at runtime by the container/JDK (e.g., `lombok`).
-- **`runtime`**: Not needed for compilation, but required for runtime execution (e.g., database drivers like `postgresql`).
-- **`test`**: Only used for compiling and executing tests (e.g., `spring-boot-starter-test`, Mockito). Never included in the production JAR.
+- **`compile`** *(Default)*: Available in compilation, test, and runtime.
+- **`provided`**: Required to compile, but provided by JDK/container at runtime (e.g., `lombok`).
+- **`runtime`**: Not needed for compile; needed at runtime (e.g., `postgresql` driver).
+- **`test`**: Only used for tests (e.g., `spring-boot-starter-test`). Never packaged into the production JAR.
 
 ---
 
