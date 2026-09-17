@@ -115,9 +115,9 @@ The primary interface representing the container is **`ApplicationContext`**.
 
 ```mermaid
 flowchart TD
-    Req["Incoming HTTP Request"] --> Router{Controller Type?}
-    Router -->|@Controller| C1["Returns View Name (e.g. 'home')"] --> VR["View Resolver -> Renders home.html"]
-    Router -->|@RestController| C2["Returns Java Object (e.g. User)"] --> MC["HttpMessageConverter (Jackson) -> Writes JSON directly to Response Body"]
+    Req["Incoming HTTP Request"] --> Router{"Controller Type?"}
+    Router -->|"Traditional @Controller"| C1["Returns View Name (e.g. 'home')"] --> VR["View Resolver -> Renders home.html"]
+    Router -->|"REST @RestController"| C2["Returns Java Object (e.g. User)"] --> MC["HttpMessageConverter (Jackson) -> Writes JSON directly to Response Body"]
 ```
 
 ### Comparison Matrix
@@ -1087,17 +1087,17 @@ public class SecurityConfig {
 Relational database foreign keys are represented in JPA using relationship annotations.
 
 ```mermaid
-erDiagram
-    CUSTOMER ||--o{ ORDER : places
-    CUSTOMER {
-        bigint id PK
-        string name
-    }
-    ORDER {
-        bigint id PK
-        bigint customer_id FK
-        decimal total_amount
-    }
+flowchart LR
+    Customer["Customer (Parent Entity)
+- id (Primary Key)
+- name"]
+    OrderEntity["CustomerOrder (Child Entity / Owner)
+- id (Primary Key)
+- customer_id (Foreign Key)
+- total_amount"]
+
+    Customer -- "1 to N (mappedBy = 'customer')" --> OrderEntity
+    OrderEntity -- "N to 1 (@JoinColumn: customer_id)" --> Customer
 ```
 
 #### 1. The `@ManyToOne` Side (Owner of the Relationship):
