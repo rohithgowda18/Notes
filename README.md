@@ -73,6 +73,7 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 - 📄 [Java Programming Notes](./06-Java-and-Spring-Boot/java%20Programming.pdf) — Core Java, JVM architecture & Collections
 - 📝 [Java Streams & Functional Programming](./06-Java-and-Spring-Boot/Java%20Streams.md) — Lambdas, Pipelines, Collectors, ForkJoinPool & placement coding patterns
 - 📝 [Maven Build Lifecycle & Dependencies](./06-Java-and-Spring-Boot/Maven.md) — Dependency tree resolution, Scopes, POM configuration, and build phases
+- 🍃 [Spring Boot Interview Preparation Master Guide](./06-Java-and-Spring-Boot/Spring%20Boot%20Interview%20Guide.md) — Complete placement notes covering IoC/DI, Stereotypes, Actuator, Global Exceptions, Transactions, DispatcherServlet, Spring Security & JWT, JPA relationships, N+1 Problem, Mockito, and Maven
 - 📄 [Spring Boot Complete Notes](./06-Java-and-Spring-Boot/Spring%20Boot%20Complete%20Notes.pdf) — Spring Core, JPA, Security & REST
 
 ---
