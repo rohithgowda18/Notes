@@ -594,27 +594,21 @@ flowchart TD
 
 Transaction propagation determines what happens when a transactional method is called by another method that already has an active transaction.
 
-```mermaid
-flowchart TD
-    subgraph REQUIRED ["REQUIRED (Default)"]
-        R1["Tx Active?"] -->|Yes| R2["Join Existing Tx"]
-        R1 -->|No| R3["Create New Tx"]
-    end
+<p align="center">
+  <img src="images/transaction-propagation.png" alt="Transaction Propagation Decision Tree" width="550"/>
+</p>
 
-    subgraph REQUIRES_NEW ["REQUIRES_NEW"]
-        RN1["Tx Active?"] -->|Yes| RN2["Suspend Existing Tx -> Start Independent New Tx"]
-        RN1 -->|No| RN3["Start Independent New Tx"]
-    end
-```
+### 🎯 Transaction Propagation Decision Matrix
 
-| Propagation Level | Meaning & Behavior | Common Interview Use Case |
-|---|---|---|
-| **`REQUIRED`** *(Default)* | If a transaction exists, **joins it**; otherwise, creates a new one. | Standard business operations where steps should commit or rollback together. |
-| **`REQUIRES_NEW`** | **Always starts a brand-new transaction**. If one is currently running, suspends it until the new one finishes. | **Audit logging** or payment attempts: you want the audit record saved even if the outer business transaction fails and rolls back! |
-| **`SUPPORTS`** | If a transaction exists, runs within it; otherwise executes non-transactionally. | Read-only operations. |
-| **`MANDATORY`** | Must be called within an existing transaction; otherwise throws an exception. | Sub-methods that cannot safely execute without an established transaction. |
-| **`NOT_SUPPORTED`** | Always executes non-transactionally; suspends any active transaction. | Long-running I/O or network API calls that should not hold open database locks. |
-| **`NEVER`** | Must never run inside a transaction; throws an exception if one exists. | Tasks forbidden from running in transactions. |
+| Propagation Level | Caller Has Active Txn? (**YES**) | Caller Has No Active Txn? (**NO**) | Common Placement Use Case |
+|---|---|---|---|
+| **`REQUIRED`** *(Default)* | **Join Existing** transaction | **Start new** transaction | Standard business flow (Order + Payment commit together). |
+| **`REQUIRES_NEW`** | **Suspend** current, **start new** transaction | **Start new** transaction | **Audit logs / payment attempts** (must save even if caller fails!). |
+| **`SUPPORTS`** | **Join Existing** transaction | **Run without** transaction | Read-only lookup methods. |
+| **`NOT_SUPPORTED`** | **Suspend** current, **run without** transaction | **Run without** transaction | External network/API calls (sending email/SMS) to avoid holding DB locks. |
+| **`MANDATORY`** | **Join Existing** transaction | **Throws Error** | Sub-calculations that strictly require an existing transaction context. |
+| **`NEVER`** | **Throws Error** | **Run without** transaction | Strict operations forbidden from executing inside any transaction. |
+| **`NESTED`** | Execute inside a database **Savepoint** | **Start new** transaction | Sub-steps that can roll back individually without failing the entire parent transaction. |
 
 ---
 
