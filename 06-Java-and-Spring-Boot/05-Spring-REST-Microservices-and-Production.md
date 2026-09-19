@@ -1,358 +1,434 @@
 # 🚀 Spring REST, Microservices & Production Features — Complete Master Guide
 
-> **Foundation**: Based on EazyBytes *Spring, SpringBoot, JPA, Hibernate: Zero to Master* (Slides 166–201).  
-> **Core Philosophy**: Modern backend architectures rely on **REST APIs** for client-server decoupling and service-to-service communication. Enterprise readiness demands mastering **REST consumers (OpenFeign, WebClient)**, **HAL hypermedia**, robust **production logging (SLF4J/Logback)**, **multi-environment profiles**, and telemetry monitoring with **Spring Boot Actuator**.
+> **Foundation**: Enterprise Spring Boot 3+ & Spring Framework 6+ Architecture.  
+> **Core Philosophy**: Modern backend architectures rely on **REST APIs** for client-server decoupling and service-to-service communication. Enterprise readiness demands mastering **RESTful API design (DTOs, validation, error formats)**, **REST consumers (OpenFeign, WebClient, RestTemplate)**, **microservices architectural patterns (API Gateway, Service Discovery, Circuit Breakers)**, robust **production logging (SLF4J/Logback)**, **multi-environment configuration & profiles**, telemetry monitoring with **Spring Boot Actuator**, and **testing strategies (JUnit 5, Mockito, MockMvc, Slices)**.
 
 ---
 
 ## 📑 Table of Contents
-- [1. Building REST APIs: `@RestController` vs. `@Controller`](#1-building-rest-apis-restcontroller-vs-controller)
-- [2. JSON Serialization with Jackson Annotations](#2-json-serialization-with-jackson-annotations)
-- [3. Consuming REST Services: OpenFeign vs. RestTemplate vs. WebClient](#3-consuming-rest-services-openfeign-vs-resttemplate-vs-webclient)
-- [4. Spring Data REST & HAL Explorer](#4-spring-data-rest--hal-explorer)
-- [5. Production Logging: SLF4J, Logback & Format Anatomy](#5-production-logging-slf4j-logback--format-anatomy)
-- [6. Externalized Configuration & Property Hierarchy](#6-externalized-configuration--property-hierarchy)
+- [1. REST API Fundamentals & Request Handling](#1-rest-api-fundamentals--request-handling)
+- [2. Production REST API Design Best Practices](#2-production-rest-api-design-best-practices)
+- [3. JSON Serialization with Jackson Annotations](#3-json-serialization-with-jackson-annotations)
+- [4. Consuming External REST Services: OpenFeign vs. RestTemplate vs. WebClient](#4-consuming-external-rest-services-openfeign-vs-resttemplate-vs-webclient)
+- [5. Microservices Architecture Fundamentals](#5-microservices-architecture-fundamentals)
+- [6. Production Configuration & Hierarchy](#6-production-configuration--hierarchy)
 - [7. Type-Safe Configuration with `@ConfigurationProperties`](#7-type-safe-configuration-with-configurationproperties)
 - [8. Multi-Environment Spring Profiles (`@Profile`)](#8-multi-environment-spring-profiles-profile)
-- [9. Spring Boot Actuator & Production Telemetry](#9-spring-boot-actuator--production-telemetry)
-- [10. 1-Page Master Revision Cheat Sheet](#10-1-page-master-revision-cheat-sheet)
+- [9. Production Logging: SLF4J, Logback & Parameterized Best Practices](#9-production-logging-slf4j-logback--parameterized-best-practices)
+- [10. Spring Boot Actuator & Production Telemetry](#10-spring-boot-actuator--production-telemetry)
+- [11. Spring Boot Testing Fundamentals (JUnit 5, Mockito, Test Slices)](#11-spring-boot-testing-fundamentals-junit-5-mockito-test-slices)
+- [12. 1-Page Master Revision Cheat Sheet](#12-1-page-master-revision-cheat-sheet)
 
 ---
 
-## 1. Building REST APIs: `@RestController` vs. `@Controller`
+## 1. REST API Fundamentals & Request Handling
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `ResponseBody Auto Bypasses View`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `RESTful Resource Operations`
 
-In standard Spring MVC web apps, controller methods return view names (`"home.html"`), which `DispatcherServlet` routes through a `ViewResolver`. In **REST APIs**, the server bypasses view rendering and streams raw data (JSON / XML) directly to the client:
+**REST (Representational State Transfer)** is an architectural style for designing networked applications. It treats data elements as **Resources**, identified by unique URIs, and manipulated using standard **HTTP verbs**.
 
 ```mermaid
 flowchart TD
-    subgraph StandardMVC ["@Controller (HTML View Resolution)"]
-        C1["@Controller Method"] -->|Returns 'contact'| VR["ViewResolver"]
-        VR -->|Finds template| HTML["Renders contact.html to Client"]
+    subgraph Client ["Client (React, Mobile App, Microservice)"]
+        Req["HTTP Request<br>GET /api/v1/products/42<br>Accept: application/json"]
     end
-    subgraph RestAPI ["@RestController (Direct Data Serialization)"]
-        C2["@RestController Method"] -->|Returns Contact object| HMC["HttpMessageConverter (Jackson)"]
-        HMC -->|Serializes JSON| Stream["Streams raw JSON directly into HTTP response body ✅"]
+    subgraph SpringBoot ["Spring Boot REST API"]
+        DS["DispatcherServlet"] --> HMC["HttpMessageConverter (Jackson)"]
+        HMC --> RC["@RestController<br>ProductController"]
+        RC --> S["ProductService"]
+        S --> R["ProductRepository"]
+        R --> DB[(Database)]
     end
+    Client --> DS
+    RC -->|ResponseEntity.ok(dto)| HMC
+    HMC -->|JSON Serialized Payload| Client
 ```
 
-### The Formula:
-$$\mathbf{@RestController} = \mathbf{@Controller} + \mathbf{@ResponseBody}$$
+> **Visual:** Mermaid — REST client-server request and serialization flow.
+
+---
+
+### Key HTTP Methods & Idempotency
+
+| HTTP Method | CRUD Operation | Purpose | Idempotent? | Safe? (Read-only) | Typical Response Code |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **GET** | Read | Retrieve resource representation | **Yes** | **Yes** | `200 OK`, `404 Not Found` |
+| **POST** | Create | Create a new subordinate resource / trigger action | **No** | **No** | `201 Created` (+ `Location` header) |
+| **PUT** | Update / Replace | Complete replacement of target resource | **Yes** | **No** | `200 OK`, `204 No Content` |
+| **PATCH** | Partial Update | Modify specific fields of an existing resource | **No** (Standard) | **No** | `200 OK`, `204 No Content` |
+| **DELETE** | Delete | Remove the designated resource | **Yes** | **No** | `200 OK`, `204 No Content` |
+
+> 📌 **What is Idempotency?**  
+> An HTTP method is **idempotent** if making multiple identical requests has the same intended effect on server state as making a single request.  
+> - `GET /users/5` 10 times $\rightarrow$ Same server state.  
+> - `DELETE /users/5` 10 times $\rightarrow$ User is deleted once; subsequent calls still leave the user deleted.  
+> - `POST /orders` 10 times $\rightarrow$ Creates 10 different orders (**Not idempotent**).
+
+---
+
+### Essential HTTP Status Codes
+
+| Category | Status Code | Meaning & Production Use Case |
+| :--- | :--- | :--- |
+| **2xx Success** | `200 OK` | Request succeeded; payload returned in body. |
+| | `201 Created` | Resource successfully created (used with POST); include `Location` header. |
+| | `204 No Content` | Request succeeded, but response intentionally has no body (DELETE/PUT). |
+| **4xx Client Error** | `400 Bad Request` | Malformed JSON syntax, invalid query param, or validation failure. |
+| | `401 Unauthorized` | Missing, invalid, or expired authentication token (Unauthenticated). |
+| | `403 Forbidden` | Authenticated client lacks sufficient permission/role (Unauthorized). |
+| | `404 Not Found` | Resource URI does not exist or target entity ID not found. |
+| | `409 Conflict` | Request conflicts with current server state (e.g., duplicate email address). |
+| **5xx Server Error** | `500 Internal Error`| Unhandled backend exception or infrastructure failure. |
+| | `503 Unavailable` | Downstream dependency or database connection pool exhausted. |
+
+---
+
+### Request Annotations: Extracting Input Data
 
 ```java
 @RestController
-@RequestMapping("/api/contacts")
-public class ContactRestController {
+@RequestMapping("/api/v1/products")
+public class ProductRestController {
 
-    @Autowired
-    private ContactRepository contactRepository;
+    private final ProductService productService;
 
-    @GetMapping("/by-status")
-    public ResponseEntity<List<Contact>> getContactsByStatus(
-            @RequestParam(name = "status") String status,
-            @RequestHeader(name = "User-Agent") String userAgent) {
+    public ProductRestController(ProductService productService) {
+        this.productService = productService;
+    }
 
-        List<Contact> contacts = contactRepository.findByStatus(status);
-        return ResponseEntity.ok()
-                             .header("X-Custom-Header", "EazySchoolAPI")
-                             .body(contacts);
+    // 1. Path Variable: /api/v1/products/42
+    @GetMapping("/{id}")
+    public ResponseEntity<ProductResponse> getById(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
+    }
+
+    // 2. Query Parameters: /api/v1/products?category=ELEC&page=0&size=10
+    @GetMapping
+    public ResponseEntity<Page<ProductResponse>> searchProducts(
+            @RequestParam(name = "category", required = false) String category,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
+        return ResponseEntity.ok(productService.search(category, page, size));
+    }
+
+    // 3. Request Body with Validation: JSON payload -> DTO
+    @PostMapping
+    public ResponseEntity<ProductResponse> createProduct(
+            @Valid @RequestBody CreateProductRequest request,
+            @RequestHeader(name = "X-Correlation-ID", required = false) String correlationId) {
+        ProductResponse created = productService.createProduct(request);
+        URI location = URI.create("/api/v1/products/" + created.getId());
+        return ResponseEntity.created(location).body(created);
     }
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
-## 2. JSON Serialization with Jackson Annotations
+## 2. Production REST API Design Best Practices
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Jackson Payload Control`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `API Design Standards`
 
-Spring Boot uses **Jackson** by default to serialize Java POJOs into JSON strings (and vice-versa). Use Jackson annotations to customize external payload representations:
+### 1. Entity vs. DTO Separation
+Never expose JPA Entities directly through `@RestController` endpoints:
+* **Security**: Entities contain sensitive internal attributes (password hashes, audit trails, tenant IDs).
+* **Decoupling**: Prevents client contracts from breaking when the database schema changes.
+* **Performance**: Avoids Jackson triggering unintended `LazyInitializationException` or circular JSON recursion.
 
 ```mermaid
 flowchart LR
-    POJO["Java Entity<br>private String contactName;<br>private String passwordHash;"] --> Jackson["Jackson ObjectMapper"]
-    Jackson --> JSON["Output JSON<br>{ 'name': 'Lucy' }<br>(passwordHash filtered out!)"]
+    Client["Client App"] -->|JSON (CreateProductRequest)| Controller["@RestController"]
+    Controller -->|Maps to Entity| Service["ProductService (Domain Layer)"]
+    Service -->|Persists Entity| Repo["ProductRepository"]
+    Repo -->|JPA Entity| Service
+    Service -->|Maps to ProductResponse DTO| Controller
+    Controller -->|JSON (ProductResponse)| Client
 ```
 
+> **Visual:** Mermaid — DTO transformation and isolation boundary.
+
+---
+
+### 2. PUT vs. PATCH
+* **`PUT` (Complete Replacement)**: The client sends the *entire* resource representation. Fields omitted in the request body are typically set to `null` or default values.
+* **`PATCH` (Partial Update)**: The client sends *only* the specific fields to modify (e.g., `{"price": 49.99}`). All other fields remain unchanged.
+
+---
+
+### 3. API Versioning Strategies
+
+| Strategy | Example | Pros & Cons |
+| :--- | :--- | :--- |
+| **URI Path (Recommended)** | `/api/v1/users`, `/api/v2/users` | **Most common, clear, easy to cache & route at Gateway.** |
+| **Request Header** | `X-API-Version: 2` | Clean URIs, but harder to test via standard browser links. |
+| **Query Parameter** | `/api/users?version=2` | Simple, but pollutes query string logic. |
+| **Content Negotiation** | `Accept: application/vnd.company.app-v2+json` | Pure RESTful standard, but complex client setup. |
+
+---
+
+### 4. Standardized API Error Response
+In production, every REST error (whether 400, 404, or 500) must return a consistent, machine-readable JSON structure:
+
+```json
+{
+  "timestamp": "2026-09-19T14:30:00Z",
+  "status": 404,
+  "error": "Not Found",
+  "message": "Product with ID 999 not found",
+  "path": "/api/v1/products/999"
+}
+```
+
+---
+
+## 3. JSON Serialization with Jackson Annotations
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Jackson Payload Control`
+
+Spring Boot uses **Jackson** (`ObjectMapper`) to serialize Java POJOs into JSON strings and deserialize incoming JSON payloads into Java objects.
+
+```mermaid
+flowchart LR
+    POJO["Java DTO<br>private String fullName;<br>private String password;"] --> Jackson["Jackson ObjectMapper"]
+    Jackson --> JSON["Output JSON<br>{ 'full_name': 'Alice' }<br>(password excluded!)"]
+```
+
+> **Visual:** Mermaid — Jackson transformation and property filtering.
+
+---
+
 ### Core Jackson Annotations:
-1. **`@JsonProperty("custom_name")`**: Maps a Java field name to a different JSON property key.
-2. **`@JsonIgnore`**: Completely excludes a sensitive field (e.g., password hash) from serialization and deserialization.
-3. **`@JsonIgnoreProperties({"createdAt", "updatedAt"})`**: Class-level annotation that filters out multiple fields at once.
+
+| Annotation | Placement | Purpose | Production Example |
+| :--- | :--- | :--- | :--- |
+| **`@JsonProperty`** | Field / Getter | Renames JSON key or defines read/write access. | `@JsonProperty("user_name")` |
+| **`@JsonIgnore`** | Field / Method | Completely excludes field from serialization and deserialization. | `@JsonIgnore private String password;` |
+| **`@JsonIgnoreProperties`** | Class | Ignores unknown fields or lists multiple exclusions. | `@JsonIgnoreProperties(ignoreUnknown = true)` |
+| **`@JsonFormat`** | Field | Formats dates, times, and numbers during serialization. | `@JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")` |
+| **`@JsonInclude`** | Class / Field | Omits fields conditionally (e.g., exclude null values). | `@JsonInclude(JsonInclude.Include.NON_NULL)` |
 
 ```java
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class UserDto {
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class UserResponseDto {
 
     @JsonProperty("user_id")
-    private int userId;
+    private Long id;
 
     @JsonProperty("full_name")
     private String fullName;
 
-    @JsonIgnore // NEVER exposed in JSON response!
-    private String password;
+    @JsonIgnore // NEVER exposed in response JSON!
+    private String internalPasswordHash;
 
-    @JsonProperty("contact_email")
-    private String email;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "UTC")
+    private LocalDateTime createdAt;
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
-## 3. Consuming REST Services: OpenFeign vs. RestTemplate vs. WebClient
+## 4. Consuming External REST Services: OpenFeign vs. RestTemplate vs. WebClient
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `REST Client Evolution`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `REST Client Comparison`
 
-When microservices or backend applications need to call external third-party APIs, Spring provides three primary client tools:
+When a Spring Boot application needs to call external third-party APIs or downstream microservices, Spring offers three main HTTP client approaches:
 
 ```mermaid
 timeline
-    title Evolution of Spring REST Clients
+    title Evolution of Spring HTTP REST Clients
     2009 : RestTemplate (Spring 3.0 - Classic synchronous blocking client)
     2015 : OpenFeign (Spring Cloud - Declarative interface-driven proxy client)
-    2017 : WebClient (Spring 5.0 - Modern reactive non-blocking async client)
+    2017 : WebClient (Spring 5.0 / WebFlux - Modern reactive non-blocking async client)
+    2023 : RestClient (Spring 6.0 / Boot 3 - Modern synchronous fluent API)
 ```
 
+> **Visual:** Mermaid — HTTP client evolution in the Spring ecosystem.
+
 ---
 
-### Comparison of the 3 REST Clients:
+### Comparison of Spring REST Clients:
 
-| Dimension | OpenFeign | RestTemplate | WebClient |
+| Dimension | OpenFeign | `RestTemplate` | `WebClient` |
 | :--- | :--- | :--- | :--- |
-| **Paradigm** | **Declarative Interface** | Imperative / Synchronous | Functional / Reactive / Non-Blocking |
-| **Underlying Module** | `spring-cloud-starter-openfeign` | `spring-boot-starter-web` | `spring-boot-starter-webflux` |
-| **Status in Spring** | Active & widely used in Spring Cloud. | **Maintenance Mode** (Deprecated in favor of WebClient / RestClient). | **Modern Standard** (Supports both Sync & Async). |
-| **Thread Model** | 1 thread per request (Blocks). | 1 thread per request (Blocks). | Event-Loop non-blocking (Handles thousands of concurrent calls per thread). |
+| **Programming Model** | **Declarative Interface Proxy** | Imperative / Object-oriented | Functional / Fluent API |
+| **Execution Model** | Synchronous / Blocking (1 thread/req) | Synchronous / Blocking (1 thread/req) | **Asynchronous / Non-blocking** (Event Loop) |
+| **Module / Dependency** | `spring-cloud-starter-openfeign` | `spring-boot-starter-web` | `spring-boot-starter-webflux` |
+| **Status in Spring 6+** | Industry Standard for Spring Cloud | **Maintenance Mode** (Use `RestClient` or `WebClient`) | **Active Modern Standard** |
+| **Best Used When** | Calling internal microservices with defined contracts | Legacy codebases maintaining existing calls | High-concurrency async streaming or reactive stacks |
+
+> 📌 **Note on Reactive Programming**: Not every application needs WebClient or reactive programming. For standard CRUD business backends, synchronous blocking calls (or OpenFeign / RestClient) are simple, debuggable, and sufficient.
 
 ---
 
-### Option 1: OpenFeign (Declarative Interface Proxy)
-You write **only an interface** with Spring MVC annotations; OpenFeign generates the implementation proxy automatically:
+### Implementation Examples:
 
+#### 1. OpenFeign (Declarative Interface Proxy)
 ```java
 // 1. Declare the Feign Client Interface
-@FeignClient(name = "contact-service", url = "http://localhost:8080/api/contact", configuration = FeignConfig.class)
-public interface ContactProxy {
+@FeignClient(name = "payment-service", url = "${payment.service.url}")
+public interface PaymentClient {
 
-    @GetMapping("/messages")
-    List<Contact> getMessagesByStatus(@RequestParam("status") String status);
+    @GetMapping("/api/v1/payments/{id}")
+    PaymentDto getPaymentStatus(@PathVariable("id") String paymentId);
+
+    @PostMapping("/api/v1/payments")
+    PaymentDto processPayment(@RequestBody PaymentRequest request);
 }
 
-// 2. Inject and call like a local Java bean!
+// 2. Inject and call like a local Java Spring bean!
 @Service
-public class DashboardService {
-    @Autowired
-    private ContactProxy contactProxy;
+public class OrderService {
+    private final PaymentClient paymentClient;
 
-    public void loadDashboard() {
-        List<Contact> openMsgs = contactProxy.getMessagesByStatus("OPEN");
+    public OrderService(PaymentClient paymentClient) {
+        this.paymentClient = paymentClient;
+    }
+
+    public void checkout(PaymentRequest request) {
+        PaymentDto result = paymentClient.processPayment(request);
     }
 }
 ```
 
----
-
-### Option 2: `RestTemplate` (Classic Synchronous Client)
+#### 2. `RestTemplate` (Classic Synchronous Client)
 ```java
 @Service
-public class LegacyRestClient {
+public class LegacyWeatherService {
+    private final RestTemplate restTemplate;
 
-    @Autowired
-    private RestTemplate restTemplate;
+    public LegacyWeatherService(RestTemplateBuilder builder) {
+        this.restTemplate = builder.build();
+    }
 
-    public Contact fetchContact(int id) {
-        String url = "http://localhost:8080/api/contact/{id}";
-        return restTemplate.getForObject(url, Contact.class, id);
+    public WeatherDto fetchWeather(String city) {
+        String url = "https://api.weather.com/v1/{city}";
+        return restTemplate.getForObject(url, WeatherDto.class, city);
     }
 }
 ```
 
----
-
-### Option 3: `WebClient` (Modern Reactive & Non-Blocking)
+#### 3. `WebClient` (Modern Reactive & Non-Blocking)
 ```java
 @Service
-public class ModernRestClient {
-
+public class ReactiveDataService {
     private final WebClient webClient;
 
-    public ModernRestClient(WebClient.Builder builder) {
-        this.webClient = builder.baseUrl("http://localhost:8080/api").build();
+    public ReactiveDataService(WebClient.Builder builder) {
+        this.webClient = builder.baseUrl("https://api.external.com").build();
     }
 
-    public Mono<Contact> fetchContactAsync(int id) {
+    public Mono<ExternalDto> fetchAsync(String id) {
         return webClient.get()
-                        .uri("/contact/{id}", id)
+                        .uri("/items/{id}", id)
                         .retrieve()
-                        .bodyToMono(Contact.class); // Non-blocking reactive stream!
+                        .bodyToMono(ExternalDto.class); // Non-blocking reactive stream
     }
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
-## 4. Spring Data REST & HAL Explorer
+## 5. Microservices Architecture Fundamentals
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Hypermedia REST AutoGen`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Distributed Architecture Pillars`
 
-**Spring Data REST** automatically analyzes your Spring Data repositories and generates production-ready, HATEOAS-compliant REST endpoints **without writing a single Controller class**!
+### Microservices Ecosystem Architecture
 
-```xml
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-rest</artifactId>
-</dependency>
-<dependency>
-    <groupId>org.springframework.data</groupId>
-    <artifactId>spring-data-rest-hal-explorer</artifactId>
-</dependency>
-```
+![Spring Cloud Microservices Architecture](images/microservices-architecture.jpg)
 
-```mermaid
-flowchart LR
-    Repo["ContactRepository extends JpaRepository"] --> SD_REST["Spring Data REST Engine"]
-    SD_REST --> Endpoints["Auto-generates GET, POST, PUT, DELETE /contacts<br>with Pagination & Hypermedia links! ⚡"]
-```
+> **Visual:** Technical Diagram — Spring Cloud Microservices Architecture with API Gateway, Eureka Service Registry, Config Server, Dedicated Databases, and Circuit Breakers.
 
-### 1. The HAL Explorer UI
-Navigate to `http://localhost:8080/` in a browser. The **HAL (Hypertext Application Language) Explorer** provides an interactive web GUI to inspect, query, and test your repositories.
-
-### 2. Customizing Paths:
-In `application.properties`:
-```properties
-spring.data.rest.base-path=/data-api
-```
-On specific repositories:
-```java
-@RepositoryRestResource(path = "courses", collectionResourceRel = "courses")
-public interface CourseRepository extends JpaRepository<Course, Integer> {}
-```
-
-[⬆ Back to Top](#📑-table-of-contents)
-
----
-
-## 5. Production Logging: SLF4J, Logback & Format Anatomy
-
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Logback Severity Anatomy`
-
-Spring Boot uses **SLF4J (Simple Logging Facade for Java)** as an abstraction layer backed by **Logback** as the default logging implementation.
-
----
-
-### Anatomy of a Spring Boot Console Log Line:
-
-```text
-2025-01-21 08:02:46.035  INFO 15084 --- [restartedMain] c.e.eazyschool.EazyschoolApplication    : Started EazyschoolApplication in 5.189 seconds
-```
+### Monolith vs. Microservices
 
 ```mermaid
 flowchart TD
-    LogLine["Sample Log Output Breakdown"]
-    LogLine --- F1["Date & Time: 2025-01-21 08:02:46.035 (Millisecond precision)"]
-    LogLine --- F2["Log Level: INFO (ERROR, WARN, INFO, DEBUG, TRACE)"]
-    LogLine --- F3["Process ID: 15084 (Operating System PID)"]
-    LogLine --- F4["Separator: --- (Marks start of actual log payload)"]
-    LogLine --- F5["Thread Name: [restartedMain] (Enclosed in square brackets)"]
-    LogLine --- F6["Logger Name: c.e.eazyschool.Application (Abbreviated class name)"]
-    LogLine --- F7["Message: Started Application in 5.189s (Human-readable text)"]
+    subgraph Monolith ["Monolithic Architecture"]
+        M1["UI + Auth + Orders + Inventory + Payments<br>Single Deployment Unit / Shared Database"]
+    end
+    subgraph Microservices ["Microservices Architecture"]
+        GW["API Gateway (Spring Cloud Gateway)"]
+        SR["Service Registry (Eureka / Consul)"]
+        GW --> MS1["Order Service<br>[(Order DB)]"]
+        GW --> MS2["Payment Service<br>[(Payment DB)]"]
+        GW --> MS3["Inventory Service<br>[(Inventory DB)]"]
+        MS1 -.->|Register / Lookup| SR
+        MS2 -.->|Register / Lookup| SR
+        MS3 -.->|Register / Lookup| SR
+    end
 ```
+
+> **Visual:** Mermaid — Monolith vs. Microservices core topology.
 
 ---
 
-### Log Severity Hierarchy:
-$$\mathbf{TRACE} < \mathbf{DEBUG} < \mathbf{INFO} < \mathbf{WARN} < \mathbf{ERROR}$$
-- Setting a level enables that level and **all higher severities**. (e.g., setting `INFO` logs `INFO`, `WARN`, and `ERROR`, but suppresses `DEBUG` and `TRACE`).
+### Core Microservice Architectural Building Blocks:
 
-### Useful Logging Configurations (`application.properties`):
-```properties
-# Global log level
-logging.level.root=INFO
+1. **API Gateway (e.g., Spring Cloud Gateway)**:
+   - **Single Entry Point**: All client requests route through the Gateway.
+   - **Cross-Cutting Concerns**: Handles authentication, SSL termination, global rate-limiting, CORS, and request logging in one central location.
 
-# Package-specific log level
-logging.level.com.eazyschool=DEBUG
+2. **Service Discovery (e.g., Netflix Eureka / HashiCorp Consul)**:
+   - Microservice instances start dynamically with variable IP addresses (especially in containerized/Kubernetes environments).
+   - Each service registers with Eureka on boot. The Gateway and other services discover target service network locations dynamically.
 
-# Enable ANSI colors in terminal
-spring.output.ansi.enabled=ALWAYS
+3. **Centralized Configuration (e.g., Spring Cloud Config / Vault)**:
+   - Centralizes `application.yml` files for all microservices in a single Git repository or secrets vault.
+   - Allows updating configurations across 100+ services without redeploying code.
 
-# Write logs to a persistent file
-logging.file.name=logs/application.log
-```
-
----
-
-### Logging in Code via Lombok `@Slf4j`:
-```java
-@Service
-@Slf4j // Injects: private static final org.slf4j.Logger log = LoggerFactory.getLogger(...)
-public class PaymentService {
-
-    public void processPayment(double amount) {
-        log.info("Processing payment for amount: ${}", amount);
-        try {
-            // execute payment
-        } catch (Exception ex) {
-            log.error("Payment failed for amount: ${}, error: {}", amount, ex.getMessage(), ex);
-        }
-    }
-}
-```
-
-[⬆ Back to Top](#📑-table-of-contents)
+4. **Synchronous vs. Asynchronous Communication**:
+   - **Synchronous (HTTP/REST, gRPC)**: Client waits for immediate response. Simple, but creates tight runtime coupling (cascading latency).
+   - **Asynchronous (Message Brokers: Apache Kafka, RabbitMQ)**: Services emit events (e.g., `OrderPlacedEvent`). Downstream services consume events independently. Enables high throughput and fault decoupling.
 
 ---
 
-## 6. Externalized Configuration & Property Hierarchy
+### Resilience & Circuit Breakers (Resilience4j)
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Property Order Precedence`
+When a downstream service slows down or fails, calling it repeatedly can exhaust thread pools and bring down the entire system (**cascading failure**). A **Circuit Breaker** monitors call failures:
 
-Spring Boot allows externalizing configurations so the same packaged JAR can run seamlessly across Development, Staging, and Production environments without recompilation.
+```mermaid
+stateDiagram-v2
+    [*] --> Closed: Normal Operation
+    Closed --> Open: Failure threshold exceeded (e.g. 50% errors)
+    Open --> HalfOpen: Sleep window expires (e.g. 10s wait)
+    HalfOpen --> Closed: Trial requests succeed ✅
+    HalfOpen --> Open: Trial requests fail ❌
+```
+
+> **Visual:** Mermaid — Circuit breaker state transition lifecycle.
+
+* **Closed**: Requests flow normally to the downstream service.
+* **Open**: Requests fail fast immediately without calling the failing downstream service. A fallback response is returned.
+* **Half-Open**: Allows a limited trial number of requests through to check if the downstream service has recovered.
+
+---
+
+## 6. Production Configuration & Hierarchy
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Config Precedence Hierarchy`
+
+Spring Boot uses an **Externalized Configuration Hierarchy** that allows the exact same JAR artifact to run seamlessly across Development, Staging, and Production without rebuilding.
 
 ```mermaid
 flowchart TD
     subgraph Precedence ["Property Resolution Order (Highest Overrides Lowest)"]
-        P1["1. Command-Line Arguments: --server.port=9090 (HIGHEST PRIORITY)"]
+        P1["1. Command-Line Arguments: --server.port=9090 (HIGHEST)"]
         P2["2. OS Environment Variables: SERVER_PORT=9090"]
-        P3["3. Profile-Specific Properties: application-prod.properties"]
-        P4["4. Standard Properties: application.properties in classpath (LOWEST PRIORITY)"]
+        P3["3. Profile-Specific Properties: application-prod.properties / yml"]
+        P4["4. Standard Properties: application.properties in classpath (LOWEST)"]
         P1 --> P2 --> P3 --> P4
     end
 ```
 
-### Reading Properties in Code:
+> **Visual:** Mermaid — Spring Boot configuration property precedence.
 
-#### 1. `@Value` (Single Field Injection)
-```java
-@Component
-public class DashboardController {
-    @Value("${eazyschool.pageSize:10}") // 10 is default fallback if property is missing
-    private int pageSize;
+---
 
-    @Value("${eazyschool.contact.successMsg}")
-    private String successMessage;
-}
-```
-
-#### 2. `Environment` Bean
-```java
-@Autowired
-private Environment env;
-
-public void printEnv() {
-    String javaHome = env.getProperty("JAVA_HOME");
-    String activeProfile = env.getProperty("spring.profiles.active");
-}
-```
-
-[⬆ Back to Top](#📑-table-of-contents)
+### Secrets Management in Production:
+> ⚠️ **Critical Production Rule**: **Never hardcode secrets** (database passwords, API keys, JWT secret keys) in `application.properties` or commit them to Git.
+* In Kubernetes/Cloud: Inject secrets via **Environment Variables** (`SPRING_DATASOURCE_PASSWORD`).
+* In Enterprise Cloud: Use dedicated secret managers (AWS Secrets Manager, HashiCorp Vault).
 
 ---
 
@@ -360,40 +436,66 @@ public void printEnv() {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Type-Safe Bean Binding`
 
-Instead of littering dozens of individual `@Value` annotations across multiple classes, group related configurations into a single strongly-typed Java bean with **`@ConfigurationProperties`**:
+Instead of scattering dozens of loose `@Value` annotations across multiple classes, group related configurations into a strongly-typed, validated Java class using **`@ConfigurationProperties`**:
 
-### In `application.properties`:
-```properties
-eazyschool.page-size=10
-eazyschool.contact.success-msg=Your message was submitted successfully!
-eazyschool.branches[0]=NewYork
-eazyschool.branches[1]=Delhi
-eazyschool.branches[2]=Singapore
+### In `application.yml`:
+```yaml
+app:
+  security:
+    jwt:
+      secret-key: "my-super-secret-production-signing-key-32-chars-long"
+      expiration-ms: 86400000
+  email:
+    smtp-host: "smtp.mailgun.org"
+    port: 587
+    whitelisted-domains:
+      - "company.com"
+      - "partner.org"
 ```
 
-### The Configuration Bean:
+### The Configuration Class:
 ```java
 @Component
-@ConfigurationProperties(prefix = "eazyschool")
-@Validated // Supports Bean Validation!
+@ConfigurationProperties(prefix = "app")
+@Validated // Supports Bean Validation during startup!
 @Data
-public class EazySchoolProps {
+public class AppProperties {
 
-    @Min(value = 5, message = "Page size must be at least 5")
-    @Max(value = 50, message = "Page size cannot exceed 50")
-    private int pageSize;
+    private final Security security = new Security();
+    private final Email email = new Email();
 
-    private Map<String, String> contact;
-    private List<String> branches;
+    @Data
+    public static class Security {
+        private final Jwt jwt = new Jwt();
+
+        @Data
+        public static class Jwt {
+            @NotBlank(message = "JWT Secret key cannot be blank")
+            @Size(min = 32, message = "JWT Secret must be at least 32 characters")
+            private String secretKey;
+            private long expirationMs = 3600000; // 1 hour default
+        }
+    }
+
+    @Data
+    public static class Email {
+        @NotBlank
+        private String smtpHost;
+        private int port;
+        private List<String> whitelistedDomains = new ArrayList<>();
+    }
 }
 ```
 
-### Advantages over `@Value`:
-1. **Type-Safety & Autocompletion**: Full IDE autocomplete and validation for property keys.
-2. **Supports Collections & Maps**: Effortlessly binds nested YAML/properties arrays and key-value maps.
-3. **Supports Validation**: Can be annotated with `@Validated` and `@Min`, `@NotNull` to fail fast on invalid properties during startup!
+### `@Value` vs. `@ConfigurationProperties`:
 
-[⬆ Back to Top](#📑-table-of-contents)
+| Dimension | `@Value` | `@ConfigurationProperties` |
+| :--- | :--- | :--- |
+| **Binding Scope** | Single field per annotation | Groups entire hierarchical structures |
+| **Type Safety & Validation** | No validation support | Supports `@Validated` (`@NotNull`, `@Min`) |
+| **Collections / Maps** | Clunky SpEL syntax | Native nested lists and key-value maps |
+| **Relaxed Binding** | Strict matching | Supports kebab-case, camelCase, snake_case |
+| **Best Used For** | Simple one-off property injection | Structured enterprise application settings |
 
 ---
 
@@ -401,59 +503,119 @@ public class EazySchoolProps {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Multi-Environment Profiles`
 
-Profiles provide a mechanism to segregate parts of your application configuration and make it available only in specific environments (`dev`, `uat`, `prod`).
+Spring Profiles segregate parts of the application configuration and enable specific beans only in designated environments (`dev`, `uat`, `prod`).
 
 ```mermaid
 flowchart TD
-    App["EazySchool Spring Boot App"]
-    App -->|spring.profiles.active=dev| Dev["application-dev.properties<br>(H2 in-memory DB, DEBUG logs)"]
-    App -->|spring.profiles.active=prod| Prod["application-prod.properties<br>(AWS RDS MySQL, INFO logs, SSL)"]
+    App["Spring Boot Application"]
+    App -->|spring.profiles.active=dev| Dev["application-dev.yml<br>(In-Memory H2 DB, DEBUG Logs)"]
+    App -->|spring.profiles.active=prod| Prod["application-prod.yml<br>(AWS RDS MySQL, Connection Pooling, INFO Logs)"]
 ```
 
----
-
-### Activating Profiles:
-1. In `application.properties`:
-   ```properties
-   spring.profiles.active=prod
-   ```
-2. Via Command-Line Argument:
-   ```bash
-   java -jar myApp.jar --spring.profiles.active=prod
-   ```
-3. Via OS Environment Variable:
-   ```bash
-   export SPRING_PROFILES_ACTIVE=prod
-   ```
+> **Visual:** Mermaid — Multi-environment profile isolation.
 
 ---
 
-### Conditional Bean Creation with `@Profile`:
+### Profile Activation Methods:
+1. In `application.properties`: `spring.profiles.active=prod`
+2. Via Command-Line Argument: `java -jar app.jar --spring.profiles.active=prod`
+3. Via OS Environment Variable: `export SPRING_PROFILES_ACTIVE=prod`
+
+### Conditional Bean Activation with `@Profile`:
 ```java
 // Registered ONLY in production
-@Component
+@Service
 @Profile("prod")
-public class AwsS3StorageService implements StorageService {
-    // Stores files in cloud S3
+public class S3DocumentStorageService implements StorageService {
+    public void store(byte[] content, String filename) {
+        // Uploads file to AWS S3 bucket
+    }
 }
 
-// Registered in all environments EXCEPT production
-@Component
+// Registered in ALL environments EXCEPT production (e.g. dev, test)
+@Service
 @Profile("!prod")
 public class LocalDiskStorageService implements StorageService {
-    // Stores files on local /tmp directory
+    public void store(byte[] content, String filename) {
+        // Writes file to local /tmp directory
+    }
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
+---
+
+## 9. Production Logging: SLF4J, Logback & Parameterized Best Practices
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `SLF4J Parameterized Logging`
+
+Spring Boot uses **SLF4J (Simple Logging Facade for Java)** as an abstraction layer backed by **Logback** as the default logging engine.
 
 ---
 
-## 9. Spring Boot Actuator & Production Telemetry
+### Anatomy of a Spring Boot Console Log Line:
+```text
+2026-09-19 14:02:46.035  INFO 15084 --- [main] c.e.order.service.OrderService          : Processing payment for order ID: 1045
+```
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Production Health Monitoring`
+```mermaid
+flowchart TD
+    LogLine["Sample Log Output Breakdown"]
+    LogLine --- F1["Timestamp: 2026-09-19 14:02:46.035 (Millisecond precision)"]
+    LogLine --- F2["Log Level: INFO (ERROR, WARN, INFO, DEBUG, TRACE)"]
+    LogLine --- F3["PID: 15084 (Operating System Process ID)"]
+    LogLine --- F4["Separator: --- (Marks start of log message)"]
+    LogLine --- F5["Thread: [main] (Executing thread name)"]
+    LogLine --- F6["Logger Name: c.e.order.service.OrderService (Class name)"]
+    LogLine --- F7["Message: Processing payment for order ID: 1045"]
+```
 
-In a physical machine, an "actuator" controls mechanical parts. In Spring Boot, **Actuator** inspects and controls the inner workings of a running application in production:
+> **Visual:** Mermaid — Console log format breakdown.
+
+---
+
+### Log Severity Hierarchy:
+$$\mathbf{TRACE} < \mathbf{DEBUG} < \mathbf{INFO} < \mathbf{WARN} < \mathbf{ERROR}$$
+
+* Enabling a level enables that level and **all levels to its right** (higher severity).
+* Setting level to `INFO` logs `INFO`, `WARN`, and `ERROR`, while suppressing `DEBUG` and `TRACE`.
+
+---
+
+### Parameterized Logging in Code (Correct SLF4J Syntax)
+
+> ⚠️ **Critical Syntax Rule**: Always use `{}` placeholders in SLF4J. **Never** use string concatenation `+` (which wastes CPU and memory creating String objects even when the log level is disabled) or `${}` (which is for property resolution).
+
+```java
+@Service
+@Slf4j // Injects: private static final Logger log = LoggerFactory.getLogger(OrderService.class);
+public class OrderService {
+
+    public void processOrder(Long orderId, BigDecimal amount) {
+        // Correct parameterized logging:
+        log.info("Processing order with ID: {} and amount: {}", orderId, amount);
+
+        try {
+            // Business logic
+        } catch (PaymentException ex) {
+            // Log exception stack trace as the last argument without a placeholder:
+            log.error("Failed to process order ID: {} due to error: {}", orderId, ex.getMessage(), ex);
+            throw ex;
+        }
+    }
+}
+```
+
+### Production Logging Best Practices:
+1. **Never log sensitive data**: Mask credit card numbers, passwords, SSNs, and JWT tokens.
+2. **Correlation / Trace IDs (MDC)**: Use Mapped Diagnostic Context (`MDC.put("traceId", traceId)`) so every log line across microservices carries the same trace identifier for distributed debugging.
+
+---
+
+## 10. Spring Boot Actuator & Production Telemetry
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Production Health Telemetry`
+
+**Spring Boot Actuator** provides production-ready features to monitor, gather metrics, and inspect the operational health of running applications.
 
 ```xml
 <dependency>
@@ -462,43 +624,148 @@ In a physical machine, an "actuator" controls mechanical parts. In Spring Boot, 
 </dependency>
 ```
 
-### Exposing Endpoints (`application.properties`):
-By default, only `/health` is exposed via web. To expose all endpoints in non-production environments:
+---
+
+### Essential Actuator Endpoints:
+
+| Endpoint | HTTP Method | What It Exposes |
+| :--- | :---: | :--- |
+| **`/actuator/health`** | GET | Overall system health (`UP`/`DOWN`), database connectivity, disk space. |
+| **`/actuator/metrics`** | GET | JVM memory, GC pauses, CPU utilization, active HTTP request rates. |
+| **`/actuator/info`** | GET | Arbitrary build/application metadata (git commit, app version). |
+| **`/actuator/beans`** | GET | Complete catalog of all registered Spring beans in `ApplicationContext`. |
+| **`/actuator/env`** | GET | Active property sources, environment variables, active profiles. |
+| **`/actuator/loggers`** | GET, POST | Inspect and **dynamically change log levels at runtime** without restarting! |
+| **`/actuator/mappings`** | GET | Catalog of all mapped `@RequestMapping` URLs and handler methods. |
+| **`/actuator/threaddump`**| GET | Generates JVM thread dump to diagnose thread deadlocks or CPU spikes. |
+
+---
+
+### Production Actuator Security Configuration:
+> ⚠️ **Security Warning**: Exposing all actuator endpoints publicly (`include: "*"`) leaks internal environment variables, database credentials, and system architecture.
+
 ```properties
-management.endpoints.web.exposure.include=*
+# Expose only health and info publicly
+management.endpoints.web.exposure.include=health,info
+
+# Show full health details (database, disk) only to authenticated users
+management.endpoint.health.show-details=when_authorized
+```
+
+In Spring Security configuration:
+```java
+.authorizeHttpRequests(auth -> auth
+    .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+    .requestMatchers("/actuator/**").hasRole("ADMIN") // Protect sensitive telemetry
+    .anyRequest().authenticated()
+)
 ```
 
 ---
 
-### Key Actuator Endpoints:
+## 11. Spring Boot Testing Fundamentals (JUnit 5, Mockito, Test Slices)
 
-| Endpoint | HTTP Method | What It Exposes |
-| :--- | :---: | :--- |
-| **`/actuator/health`** | GET | Aggregate health status (`UP`, `DOWN`) of database, disk space, and message brokers. |
-| **`/actuator/metrics`** | GET | JVM memory usage, garbage collection pauses, CPU load, active HTTP request rates. |
-| **`/actuator/beans`** | GET | Complete list of all registered Spring beans in the `ApplicationContext`. |
-| **`/actuator/env`** | GET | All active property sources, system environment variables, and active profiles. |
-| **`/actuator/loggers`** | GET, POST | Inspect and **change logging levels dynamically at runtime** without restarting! |
-| **`/actuator/mappings`** | GET | Complete catalog of all `@RequestMapping` paths and their handler methods. |
-| **`/actuator/threaddump`** | GET | Generates thread dump to diagnose thread deadlocks or CPU spikes. |
-| **`/actuator/heapdump`** | GET | Downloads gzip compressed JVM heap dump for OutOfMemoryError analysis. |
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Unit vs Slice Testing`
 
-[⬆ Back to Top](#📑-table-of-contents)
+A robust Spring Boot testing strategy combines **Unit Tests** (fast, isolated with mocks) and **Integration/Slice Tests** (verifying Spring context components).
+
+```mermaid
+flowchart TD
+    subgraph TestingPyramid ["Spring Boot Testing Pyramid"]
+        UT["Unit Tests (JUnit 5 + Mockito)<br>Fastest • Isolated • No Spring Context"]
+        ST["Slice Tests (@WebMvcTest, @DataJpaTest)<br>Fast • Loads only specific layer"]
+        IT["Full Integration Tests (@SpringBootTest)<br>Slowest • Loads Complete ApplicationContext"]
+        UT --> ST --> IT
+    end
+```
+
+> **Visual:** Mermaid — Spring Boot testing pyramid and scope.
 
 ---
 
-## 10. 1-Page Master Revision Cheat Sheet
+### Testing Tools & Annotations Summary:
+
+| Annotation / Tool | Test Type | Purpose | Loads Full Spring Context? |
+| :--- | :--- | :--- | :---: |
+| **JUnit 5 (`@Test`)** | Unit | Standard Java test execution framework and assertions. | ❌ No |
+| **Mockito (`@Mock`, `@InjectMocks`)** | Unit | Creates mock objects and stubs return values (`when().thenReturn()`). | ❌ No |
+| **`@SpringBootTest`** | Full Integration | Bootstraps the entire `ApplicationContext` (with real beans, DB, etc.). | ✅ **Yes** |
+| **`@WebMvcTest`** | Web Layer Slice | Tests only Controller layer; mocks services with `@MockBean`. | ❌ Controller slice only |
+| **`@DataJpaTest`** | JPA Layer Slice | Tests only JPA Repositories with an embedded in-memory database. | ❌ Repository slice only |
+| **`MockMvc`** | Controller Testing | Simulates HTTP requests and verifies status codes/JSON responses. | N/A (Used with `@WebMvcTest`) |
+
+---
+
+### Code Examples:
+
+#### 1. Unit Test (JUnit 5 + Mockito)
+```java
+@ExtendWith(MockitoExtension.class)
+class ProductServiceTest {
+
+    @Mock
+    private ProductRepository productRepository;
+
+    @InjectMocks
+    private ProductService productService;
+
+    @Test
+    void whenValidId_thenProductShouldBeFound() {
+        Product mockProduct = new Product(1L, "Laptop", new BigDecimal("1200.00"));
+        Mockito.when(productRepository.findById(1L)).thenReturn(Optional.of(mockProduct));
+
+        ProductResponse response = productService.getProductById(1L);
+
+        Assertions.assertNotNull(response);
+        Assertions.assertEquals("Laptop", response.getName());
+        Mockito.verify(productRepository, Mockito.times(1)).findById(1L);
+    }
+}
+```
+
+#### 2. Controller Slice Test (`@WebMvcTest` + `MockMvc`)
+```java
+@WebMvcTest(ProductRestController.class)
+class ProductRestControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private ProductService productService;
+
+    @Test
+    void getProductById_shouldReturnOkAndJson() throws Exception {
+        ProductResponse dto = new ProductResponse(1L, "Laptop", new BigDecimal("1200.00"));
+        Mockito.when(productService.getProductById(1L)).thenReturn(dto);
+
+        mockMvc.perform(get("/api/v1/products/1")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.full_name").value("Laptop"))
+                .andExpect(jsonPath("$.price").value(1200.00));
+    }
+}
+```
+
+---
+
+## 12. 1-Page Master Revision Cheat Sheet
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Production REST Cheat Sheet`
 
-| Feature | Key Concept | Production Rule |
+| Topic | Key Concept | Production Rule / Best Practice |
 | :--- | :--- | :--- |
-| **`@RestController`** | `@Controller` + `@ResponseBody`. Bypasses ViewResolver. | Returns domain objects serialized into JSON via Jackson. |
-| **REST Clients** | OpenFeign (Declarative) vs. WebClient (Reactive). | Use OpenFeign for microservice proxies; WebClient for async calls. |
-| **Logging** | SLF4J facade with Logback implementation. | Use parameterized logging: `log.info("id: {}", id)`. |
-| **Property Order** | CLI args > Environment variables > Properties file. | Never hardcode passwords in properties; pass via environment variables. |
-| **`@ConfigurationProperties`**| Strongly-typed, validated object binding. | Prefer over `@Value` for hierarchical, multi-property configurations. |
-| **Profiles** | Multi-environment config isolation. | Use `@Profile("prod")` to swap mocks for real infrastructure. |
-| **Actuator** | Production-ready telemetry and health checks. | Secure endpoints with Spring Security; expose only `/health` publicly. |
+| **`@RestController`** | `@Controller` + `@ResponseBody`. Bypasses ViewResolver. | Returns DTOs serialized into JSON via Jackson. Never expose Entities directly. |
+| **HTTP Methods** | GET/PUT/DELETE are idempotent; POST/PATCH are not. | Use `201 Created` for POST with `Location` header; `204` for bodyless DELETE. |
+| **REST Clients** | OpenFeign (Declarative) vs. WebClient (Async) vs. RestTemplate (Legacy). | Use OpenFeign for microservices contracts; WebClient for reactive async streams. |
+| **Microservices** | Distributed system with API Gateway, Eureka Discovery, Config Server. | Implement Circuit Breakers (Resilience4j) to prevent cascading downstream outages. |
+| **Property Precedence**| CLI Args > Env Vars > Profile YAML > Default YAML. | Inject database credentials and JWT secrets via OS environment variables. |
+| **`@ConfigurationProperties`**| Type-safe, validated object binding. | Group related properties with `@Validated` and `@Min`/`@NotBlank` annotations. |
+| **Logging** | SLF4J abstraction + Logback implementation. | Use `{}` placeholders: `log.info("User {} logged in", id)`. Mask sensitive PII. |
+| **Actuator** | Production telemetry, health, metrics, and log level control. | Expose only `/health` and `/info` publicly; secure `/actuator/**` behind `ROLE_ADMIN`. |
+| **Testing** | Unit (JUnit 5/Mockito), Slice (`@WebMvcTest`), Integration (`@SpringBootTest`). | Prefer lightweight Slice tests (`@WebMvcTest`, `@DataJpaTest`) over slow full context tests. |
+
+---
 
 [⬆ Back to Top](#📑-table-of-contents)

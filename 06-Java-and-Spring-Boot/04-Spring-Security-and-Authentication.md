@@ -1,31 +1,31 @@
 # 🔒 Spring Security & Authentication — Complete Master Guide
 
-> **Foundation**: Based on EazyBytes *Spring, SpringBoot, JPA, Hibernate: Zero to Master* (Slides 89–105, 143–148).  
-> **Core Philosophy**: Applications must be secure by default. Spring Security provides a robust, customizable security framework handling **Authentication (Who are you?)**, **Authorization (What can you do?)**, **Password Hashing (`BCrypt`)**, and defensive protections against **CSRF** and **CORS** vulnerabilities.
+> **Foundation**: Based on EazyBytes *Spring, SpringBoot, JPA, Hibernate: Zero to Master* (Slides 89–105, 143–148) updated for **Spring Boot 3+ / Spring Security 6+ (Jakarta EE)**.  
+> **Core Philosophy**: Applications must be secure by default. Modern Spring Security provides a robust, component-driven security framework handling **Authentication (Who are you?)**, **Authorization (What can you do?)**, **BCrypt Password Hashing**, **Stateless JWT Security**, method-level access control, and defenses against **CSRF** and **CORS** vulnerabilities.
 
 ---
 
 ## 📑 Table of Contents
-- [1. Spring Security Architecture & Starters](#1-spring-security-architecture--starters)
-- [2. Authentication vs. Authorization (401 vs. 403)](#2-authentication-vs-authorization-401-vs-403)
-- [3. Default Security Behavior & Configuration](#3-default-security-behavior--configuration)
-- [4. Custom `SecurityFilterChain` Configuration](#4-custom-securityfilterchain-configuration)
-- [5. Endpoint Matchers: `mvcMatchers` vs. `antMatchers` vs. `regexMatchers`](#5-endpoint-matchers-mvcmatchers-vs-antmatchers-vs-regexmatchers)
-- [6. In-Memory User Authentication](#6-in-memory-user-authentication)
-- [7. Custom `AuthenticationProvider` (Database & External Auth)](#7-custom-authenticationprovider-database--external-auth)
-- [8. Password Management: Encoding vs. Encryption vs. Hashing](#8-password-management-encoding-vs-encryption-vs-hashing)
-- [9. `PasswordEncoder` Implementations & BCrypt](#9-passwordencoder-implementations--bcrypt)
-- [10. Cross-Site Request Forgery (CSRF): Attack Anatomy & Defense](#10-cross-site-request-forgery-csrf-attack-anatomy--defense)
-- [11. Cross-Origin Resource Sharing (CORS) Configuration](#11-cross-origin-resource-sharing-cors-configuration)
+- [1. Spring Security Architecture & Filter Chain](#1-spring-security-architecture--filter-chain)
+- [2. Core Concepts: Authentication vs. Authorization (401 vs. 403)](#2-core-concepts-authentication-vs-authorization-401-vs-403)
+- [3. Principal, Authorities & Roles](#3-principal-authorities--roles)
+- [4. Modern `SecurityFilterChain` Configuration (Spring Security 6+)](#4-modern-securityfilterchain-configuration-spring-security-6)
+- [5. The Authentication Architecture Deep Dive](#5-the-authentication-architecture-deep-dive)
+- [6. Password Security: Encoding vs. Encryption vs. Hashing & BCrypt](#6-password-security-encoding-vs-encryption-vs-hashing--bcrypt)
+- [7. JWT (JSON Web Token) Stateless Authentication](#7-jwt-json-web-token-stateless-authentication)
+- [8. Method-Level Security (`@PreAuthorize`)](#8-method-level-security-preauthorize)
+- [9. Cross-Site Request Forgery (CSRF): Threat & Defense](#9-cross-site-request-forgery-csrf-threat--defense)
+- [10. Cross-Origin Resource Sharing (CORS) Configuration](#10-cross-origin-resource-sharing-cors-configuration)
+- [11. OAuth2 & OpenID Connect (OIDC) Fundamentals](#11-oauth2--openid-connect-oidc-fundamentals)
 - [12. 1-Page Master Revision Cheat Sheet](#12-1-page-master-revision-cheat-sheet)
 
 ---
 
-## 1. Spring Security Architecture & Starters
+## 1. Spring Security Architecture & Filter Chain
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Security Filter Chain`
 
-Adding the Spring Security starter immediately secures all application endpoints:
+Spring Security intercepts web requests through a series of ordered servlet filters known as the **`SecurityFilterChain`**:
 
 ```xml
 <dependency>
@@ -34,234 +34,158 @@ Adding the Spring Security starter immediately secures all application endpoints
 </dependency>
 ```
 
+### Official SecurityFilterChain Architecture
+
+![Spring Security FilterChain Architecture](https://docs.spring.io/spring-security/reference/_images/servlet/architecture/securityfilterchain.png)
+
+> **Visual:** Official Spring Documentation — [Spring Security Servlet Architecture Reference](https://docs.spring.io/spring-security/reference/servlet/architecture.html)
+
 ```mermaid
 flowchart LR
-    Request(["Incoming HTTP Request"]) --> FilterChain["SecurityFilterChain (Ordered Servlet Filters)"]
-    FilterChain -->|1. AuthenticationFilter| Auth["Extract Credentials & Authenticate"]
-    FilterChain -->|2. AuthorizationFilter| Role["Evaluate Authorities & Roles"]
-    FilterChain -->|3. CSRF Filter| CSRF["Validate CSRF Token"]
-    FilterChain --> DS["DispatcherServlet -> Target Controller ✅"]
+    Client(["Client Request"]) --> DFP["DelegatingFilterProxy"]
+    DFP --> FCP["FilterChainProxy"]
+    FCP --> FilterChain["SecurityFilterChain"]
+    FilterChain --> F1["1. CorsFilter / CsrfFilter"]
+    F1 --> F2["2. JwtAuthenticationFilter / UsernamePasswordAuthFilter"]
+    F2 --> F3["3. AuthorizationFilter"]
+    F3 --> DS["DispatcherServlet -> @RestController ✅"]
 ```
 
-### What Happens Out-of-the-Box:
-1. Intercepts **every HTTP request** before it reaches your controllers.
-2. Redirects unauthenticated browser requests to a built-in login form (`/login`).
-3. Generates a default username (`user`) and prints a random security password to the startup console.
-4. Activates default CSRF protection for state-changing HTTP methods (`POST`, `PUT`, `DELETE`).
+> **Visual:** Mermaid — Spring Security filter pipeline flow.
 
-[⬆ Back to Top](#📑-table-of-contents)
+### Filter Chain Mechanics:
+1. **`DelegatingFilterProxy`**: A standard Servlet filter registered with the servlet container (Tomcat) that delegates all filtering logic to Spring-managed beans.
+2. **`FilterChainProxy`**: The Spring-managed bean that wraps one or more `SecurityFilterChain` instances and routes requests to the matching chain.
+3. **`SecurityFilterChain`**: An ordered list of security filters that execute in sequence to authenticate the caller and evaluate authorization rules before reaching your controllers.
 
 ---
 
-## 2. Authentication vs. Authorization (401 vs. 403)
+## 2. Core Concepts: Authentication vs. Authorization (401 vs. 403)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Identity vs Permission`
 
 ```mermaid
 flowchart TD
-    subgraph AuthN ["Authentication (401 Unauthorized)"]
-        A1["Who are you?"] --> A2["Validates credentials (Username/Password, JWT, OAuth2 token)"]
-        A2 --> A3["Occurs FIRST in the security filter chain"]
+    subgraph AuthN ["1. Authentication (HTTP 401 Unauthorized)"]
+        A1["Who are you? (Identity Verification)"] --> A2["Validates credentials (Username/Password, JWT Token)"]
+        A2 --> A3["Occurs FIRST in the pipeline"]
         A3 --> A4["Failure -> HTTP 401 Unauthorized"]
     end
-    subgraph AuthZ ["Authorization (403 Forbidden)"]
-        B1["What are you allowed to do?"] --> B2["Evaluates privileges, roles, or authorities (e.g., ROLE_ADMIN)"]
-        B2 --> B3["Occurs AFTER successful authentication"]
+    subgraph AuthZ ["2. Authorization (HTTP 403 Forbidden)"]
+        B1["What are you allowed to do? (Access Control)"] --> B2["Evaluates roles, privileges, and authorities (e.g., ROLE_ADMIN)"]
+        B2 --> B3["Occurs AFTER successful Authentication"]
         B3 --> B4["Failure -> HTTP 403 Forbidden"]
     end
+    AuthN --> AuthZ
 ```
 
-### Real-World Analogy (Bank Customer):
-- **Authentication**: Proving your identity at the bank counter by showing your government ID and entering your PIN. (If verification fails $ightarrow$ **401 Unauthorized**).
-- **Authorization**: Once inside, the teller checks whether your account type allows wire transfers of $1,000,000. If your role does not permit this action $ightarrow$ **403 Forbidden**.
+> **Visual:** Mermaid — AuthN vs. AuthZ lifecycle stages.
 
-[⬆ Back to Top](#📑-table-of-contents)
+- **HTTP 401 Unauthorized**: The caller has **not provided valid authentication credentials** (or token is expired/missing). The system does not know who they are.
+- **HTTP 403 Forbidden**: The caller is **successfully authenticated**, but their account **lacks permission/role** to access the requested resource.
 
 ---
 
-## 3. Default Security Behavior & Configuration
+## 3. Principal, Authorities & Roles
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Default Properties Configuration`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Principal Roles Authorities`
 
-For rapid local testing and POCs, override the default username and console password via `application.properties`:
+- **Principal**: The currently authenticated user representation in the system (e.g., `UserDetails` instance or username).
+- **Granted Authority**: A fine-grained permission string granting access to a specific action (e.g., `student:read`, `student:write`, `payment:refund`).
+- **Role**: A coarse-grained grouping of authorities. In Spring Security, a **Role is just a GrantedAuthority prefixed with `ROLE_`** (e.g., `ROLE_ADMIN`, `ROLE_STUDENT`).
 
-```properties
-# Custom default credentials for POC testing
-spring.security.user.name=eazybytes
-spring.security.user.password=12345
+```java
+// Under the hood in Spring Security:
+hasRole("ADMIN")           ==> checks for authority: "ROLE_ADMIN"
+hasAuthority("ROLE_ADMIN") ==> checks for exact string: "ROLE_ADMIN"
+hasAuthority("student:read") ==> checks for fine-grained permission
 ```
-
-> [!CAUTION]
-> Hardcoding plaintext credentials in properties files is strictly for local prototyping. **Never** use in-memory plaintext credentials in production systems!
-
-[⬆ Back to Top](#📑-table-of-contents)
 
 ---
 
-## 4. Custom `SecurityFilterChain` Configuration
+## 4. Modern `SecurityFilterChain` Configuration (Spring Security 6+)
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Modern SecurityFilterChain`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `requestMatchers DSL`
 
-In modern Spring Boot 3+ (Spring Security 6+), `WebSecurityConfigurerAdapter` is completely removed. Configure security declaratively by registering a **`SecurityFilterChain`** bean:
+In **Spring Security 6+ (Spring Boot 3+)**, `WebSecurityConfigurerAdapter` and old matchers (`antMatchers`, `mvcMatchers`) are completely replaced by declarative lambda DSL with **`requestMatchers`**:
 
 ```java
 @Configuration
 @EnableWebSecurity
-public class ProjectSecurityConfig {
+@EnableMethodSecurity // Enables @PreAuthorize on service/controller methods
+public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthFilter) throws Exception {
         http
             .csrf(csrf -> csrf.disable()) // Disabled for stateless REST APIs
-            .authorizeHttpRequests(requests -> requests
-                // Protected Endpoints
-                .requestMatchers("/myAccount", "/myBalance", "/myLoans").authenticated()
-                // Public Endpoints
-                .requestMatchers("/notices", "/contact", "/register").permitAll()
-                // Administrative Endpoints
-                .requestMatchers("/admin/**").hasRole("ADMIN")
+            .cors(Customizer.withDefaults())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                // 1. Public Endpoints
+                .requestMatchers("/api/v1/auth/**", "/api/v1/public/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                // 2. Role-Restricted Endpoints
+                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/v1/students/**").hasAnyRole("STUDENT", "ADMIN")
+                // 3. Fine-Grained Authority Endpoint
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/courses/**").hasAuthority("course:delete")
+                // 4. Any other request must be authenticated
+                .anyRequest().authenticated()
             )
-            .formLogin(Customizer.withDefaults())
-            .httpBasic(Customizer.withDefaults());
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 }
 ```
 
-### Special Authorization Directives:
-- **`permitAll()`**: Allows open public access to a path without requiring authentication (e.g., landing page, static assets, registration).
-- **`denyAll()`**: Completely blocks all access to an endpoint, regardless of authentication. (Useful for temporarily retiring an endpoint in production without deleting the underlying code).
-- **`authenticated()`**: Requires a valid authenticated user session.
-- **`hasRole("ADMIN")`**: Enforces specific authority checks (expects `ROLE_ADMIN` in user authorities).
-
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
-## 5. Endpoint Matchers: `mvcMatchers` vs. `antMatchers` vs. `regexMatchers`
+## 5. The Authentication Architecture Deep Dive
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Matcher Security Differences`
-
-When defining URL security patterns, choosing the right matcher is critical to prevent security bypass bugs:
+> 💡 **Quick Revision Anchor (2-3 Words)**: `AuthenticationManager Flow`
 
 ```mermaid
-flowchart LR
-    subgraph Ant ["antMatchers('/secured')"]
-        A1["Matches ONLY exact '/secured' ⚠️"]
-        A1 -.-> Vulnerability["Bypassed by '/secured/' or '/secured.html'!"]
-    end
-    subgraph Mvc ["mvcMatchers('/secured') - RECOMMENDED"]
-        M1["Matches '/secured', '/secured/', '/secured.html', '/secured.xyz' ✅"]
-        M1 --> Safe["Intrinsically secures all Spring MVC path variations!"]
-    end
+sequenceDiagram
+    autonumber
+    actor Client as User / Login Request
+    participant Filter as Security Filter (Jwt / UsernamePassword)
+    participant AuthManager as ProviderManager (AuthenticationManager)
+    participant Provider as DaoAuthenticationProvider
+    participant UserDetailsSvc as UserDetailsService
+    participant Encoder as PasswordEncoder (BCrypt)
+    participant Context as SecurityContextHolder
+
+    Client->>Filter: Submits credentials (email + password)
+    Filter->>AuthManager: authenticate(UsernamePasswordAuthenticationToken)
+    AuthManager->>Provider: Delegates to matching AuthenticationProvider
+    Provider->>UserDetailsSvc: loadUserByUsername(email)
+    UserDetailsSvc-->>Provider: Returns UserDetails (DB entity + password hash)
+    Provider->>Encoder: matches(rawPassword, storedHash)
+    Encoder-->>Provider: Password Valid ✅
+    Provider-->>AuthManager: Returns fully-authenticated Authentication object
+    AuthManager-->>Filter: Success
+    Filter->>Context: SecurityContextHolder.getContext().setAuthentication(auth)
+    Filter-->>Client: Returns JWT Token / HTTP 200 OK ✅
 ```
 
-| Matcher Type | How it Resolves Paths | Security Implications |
-| :--- | :--- | :--- |
-| **`mvcMatchers`**<br>(Spring Boot 3: `requestMatchers`) | Uses Spring MVC's `HandlerMappingIntrospector` to align with the exact way controllers parse paths. | **Most Secure (Industry Standard)**. Protects against trailing slashes (`/secured/`) and suffix extensions (`/secured.html`). |
-| **`antMatchers`** | Uses basic Ant-style glob patterns (`/app/**`, `/public/*`). | **Vulnerable to path variations** if the servlet container normalizes paths differently from Spring MVC. |
-| **`regexMatchers`** | Uses complex regular expressions for matching. | Highly flexible for complex pattern constraints; computationally slower. |
+> **Visual:** Mermaid — Spring Security authentication architecture sequence.
 
-[⬆ Back to Top](#📑-table-of-contents)
+### Core Components:
+1. **`SecurityContextHolder`**: ThreadLocal storage storing details of the current security context.
+2. **`SecurityContext`**: Holds the `Authentication` object representing the current user.
+3. **`AuthenticationManager`**: The main API interface for authentication (default implementation is `ProviderManager`).
+4. **`AuthenticationProvider`**: Executes specific authentication types (e.g., `DaoAuthenticationProvider` for username/password, `JwtAuthenticationProvider`).
+5. **`UserDetailsService`**: Core interface to retrieve user data (`UserDetails`) from databases or LDAP.
+6. **`UserDetails`**: Provides core user information (username, password hash, authorities, account locked/expired flags).
 
 ---
 
-## 6. In-Memory User Authentication
+## 6. Password Security: Encoding vs. Encryption vs. Hashing & BCrypt
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `InMemoryUserDetailsManager`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `BCrypt Adaptive Hashing`
 
-To configure multiple test users with distinct roles in local development:
-
-```java
-@Configuration
-public class ProjectSecurityConfig {
-
-    @Bean
-    public InMemoryUserDetailsManager userDetailsService(PasswordEncoder passwordEncoder) {
-        UserDetails admin = User.builder()
-                .username("admin")
-                .password(passwordEncoder.encode("54321"))
-                .roles("ADMIN", "USER")
-                .build();
-
-        UserDetails user = User.builder()
-                .username("user")
-                .password(passwordEncoder.encode("12345"))
-                .roles("USER")
-                .build();
-
-        return new InMemoryUserDetailsManager(admin, user);
-    }
-}
-```
-
-[⬆ Back to Top](#📑-table-of-contents)
-
----
-
-## 7. Custom `AuthenticationProvider` (Database & External Auth)
-
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Custom AuthProvider`
-
-When authenticating users against a relational database, LDAP, or an external corporate identity system, implement the **`AuthenticationProvider`** interface:
-
-```mermaid
-flowchart TD
-    LoginReq["User submits Username & Password"] --> ProviderMgr["ProviderManager (AuthenticationManager)"]
-    ProviderMgr --> CustomAuth["Custom AuthenticationProvider"]
-    CustomAuth --> FetchUser["Fetch User Entity & Hash from Database"]
-    CustomAuth --> VerifyPass["Verify passwordEncoder.matches(raw, hash)"]
-    VerifyPass -- "Match" --> Success["Return UsernamePasswordAuthenticationToken(user, roles) ✅"]
-    VerifyPass -- "Mismatch" --> Fail["Throw BadCredentialsException ❌"]
-```
-
-### Production Implementation:
-```java
-@Component
-public class EazySchoolUsernamePwdAuthenticationProvider implements AuthenticationProvider {
-
-    @Autowired
-    private PersonRepository personRepository;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Override
-    public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        String username = authentication.getName();
-        String rawPassword = authentication.getCredentials().toString();
-
-        Person person = personRepository.findByEmail(username)
-                .orElseThrow(() -> new BadCredentialsException("No user registered with this email!"));
-
-        // Compare raw submitted password with BCrypt hash from DB
-        if (passwordEncoder.matches(rawPassword, person.getPwd())) {
-            List<GrantedAuthority> authorities = new ArrayList<>();
-            authorities.add(new SimpleGrantedAuthority(person.getRole()));
-            return new UsernamePasswordAuthenticationToken(username, rawPassword, authorities);
-        } else {
-            throw new BadCredentialsException("Invalid password!");
-        }
-    }
-
-    @Override
-    public boolean supports(Class<?> authentication) {
-        // Declares that this provider handles standard username/password tokens
-        return UsernamePasswordAuthenticationToken.class.isAssignableFrom(authentication);
-    }
-}
-```
-
-[⬆ Back to Top](#📑-table-of-contents)
-
----
-
-## 8. Password Management: Encoding vs. Encryption vs. Hashing
-
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Encoding Encryption Hashing`
-
-Storing passwords in plaintext inside a database is an immediate security failure. Understanding the three cryptographic transformations is mandatory for backend engineers:
+Storing passwords in plaintext or using reversible algorithms is a critical security vulnerability:
 
 ```mermaid
 flowchart LR
@@ -273,33 +197,20 @@ flowchart LR
     subgraph EncryptionSec ["2. Encryption (AES / RSA)"]
         En1["'password'"] -->|Encrypt with Key| En2["Ciphertext"]
         En2 -->|Decrypt with Key| En1
-        Note2["Two-way function with key ⚠️"]
+        Note2["Two-way function with secret key ⚠️"]
     end
-    subgraph HashingSec ["3. Hashing (BCrypt / SHA-256)"]
+    subgraph HashingSec ["3. Hashing (BCrypt / Argon2)"]
         H1["'password'"] -->|Cryptographic Hash| H2["'$2a$10$e7...'"]
         H2 -.->|IMPOSSIBLE to reverse| H1
         Note3["One-way non-reversible mathematical digest ✅"]
     end
 ```
 
-### Comparison Matrix:
+> **Visual:** Mermaid — cryptographic transformation comparison.
 
-| Dimension | Encoding (e.g., Base64, ASCII) | Encryption (e.g., AES-256, RSA) | Hashing (e.g., BCrypt, SCrypt) |
-| :--- | :--- | :--- | :--- |
-| **Reversibility** | **100% Reversible** without any secret key. | **Reversible** using decryption key. | **Irreversible** (One-way mathematical digest). |
-| **Primary Purpose** | Data transmission compatibility (e.g., binary over HTTP). | Confidentiality of sensitive data in transit or storage. | **Password storage & integrity verification**. |
-| **Verification Method**| Decode string directly. | Decrypt with private/symmetric key. | Hash input again and compare resulting digests. |
-| **Suitable for Passwords?**| ❌ **NEVER** | ❌ **NO** (Compromised keys leak all passwords). | ✅ **MANDATORY** |
-
-[⬆ Back to Top](#📑-table-of-contents)
-
----
-
-## 9. `PasswordEncoder` Implementations & BCrypt
-
-> 💡 **Quick Revision Anchor (2-3 Words)**: `BCrypt Adaptive Hashing`
-
-Spring Security provides the `PasswordEncoder` interface to safely hash and verify passwords:
+### Key Rules:
+- **Passwords are NEVER decrypted during login**: The server hashes the raw password provided in the login attempt using the stored salt and compares the two hashes.
+- **`BCryptPasswordEncoder`**: Generates a **random 16-byte salt** for every password and embeds it into the output string (`$2a$10$...`). It features an **adaptive cost factor** to defend against hardware brute-force attacks.
 
 ```java
 @Configuration
@@ -307,137 +218,225 @@ public class SecurityBeansConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); // Recommended standard
+        return new BCryptPasswordEncoder();
     }
 }
 ```
 
 ---
 
-### How Passwords Are Validated with Hashing:
+## 7. JWT (JSON Web Token) Stateless Authentication
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Stateless JWT Token`
+
+### JWT Stateless Authentication Architecture
+
+![Spring Security JWT Stateless Authentication Architecture](images/jwt-authentication-flow.jpg)
+
+> **Visual:** Technical Diagram — Spring Security 6 JWT Stateless Authentication Architecture (Login, Token Generation, Bearer Validation, and Security Context Population).
+
+### 1. Complete JWT Authentication Workflow:
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Client
-    participant Auth as Spring Security
-    participant DB as Relational Database
-
-    Note over DB: Database stores BCrypt Hash:<br>'$2a$10$dXJ3SW6G7P50lGtakXYbOetX...'
-    User->>Auth: Submits raw password: "password123"
-    Auth->>DB: Fetches stored hash for user
-    Auth->>Auth: passwordEncoder.matches("password123", storedHash)
-    Note over Auth: Extracts embedded salt from hash,<br>computes BCrypt(raw, salt),<br>and compares digests in constant time
-    Auth-->>User: Authentication Success ✅
+flowchart TD
+    Login["1. Client POST /login (Username & Password)"] --> AuthMgr["2. AuthenticationManager validates credentials"]
+    AuthMgr --> Success["3. Credentials Validated Successfully"]
+    Success --> GenJWT["4. JwtService generates signed JWT Token"]
+    GenJWT --> ReturnToken["5. Server returns JWT (accessToken) to Client"]
+    ReturnToken --> ClientStore["6. Client stores token (localStorage / secure cookie)"]
+    ClientStore --> NextReq["7. Subsequent API Request: Header 'Authorization: Bearer &lt;token&gt;'"]
+    NextReq --> JwtFilter["8. JwtAuthenticationFilter intercepts request"]
+    JwtFilter --> Validate["9. Validate signature, claims & expiration"]
+    Validate -- "Valid" --> SetContext["10. Set Authentication in SecurityContextHolder"]
+    SetContext --> Controller["11. Forward to DispatcherServlet & @RestController ✅"]
+    Validate -- "Invalid / Expired" --> Reject["12. Return HTTP 401 Unauthorized ❌"]
 ```
 
-### Common `PasswordEncoder` Implementations:
-1. **`BCryptPasswordEncoder` (Industry Standard)**:
-   - Incorporates a **random 16-byte salt** directly into the output string to defend against Rainbow Table attacks.
-   - Includes an **adaptive work factor (cost parameter)** that can be increased as hardware speeds up, defending against brute-force GPU attacks.
-2. **`SCryptPasswordEncoder`**: Memory-hard hashing algorithm designed to resist custom hardware (ASIC) attacks.
-3. **`Pbkdf2PasswordEncoder`**: Federal standard key derivation function.
-4. **`NoOpPasswordEncoder` (Deprecated)**: Compares plaintext passwords. Useful **only for toy legacy demos**; dangerous in production.
-
-[⬆ Back to Top](#📑-table-of-contents)
+> **Visual:** Mermaid — end-to-end stateless JWT authentication flow.
 
 ---
 
-## 10. Cross-Site Request Forgery (CSRF): Attack Anatomy & Defense
+### 2. Anatomy of a JWT:
+$$\mathbf{JWT} = \underbrace{\text{Header}}_{\text{Base64Url}} \mathbf{.} \underbrace{\text{Payload}}_{\text{Base64Url}} \mathbf{.} \underbrace{\text{Signature}}_{\text{HMAC-SHA256}}$$
+
+1. **Header**: Declares the token type (`JWT`) and hashing algorithm (`HS256` or `RS256`).
+2. **Payload (Claims)**: Contains statements about the entity (e.g., `sub: "user@example.com"`, `roles: ["ROLE_STUDENT"]`, `exp: 1719823000`).
+   > [!CAUTION]
+   > The payload is **Base64 encoded, NOT encrypted**. Anyone can decode it. **Never put passwords, API keys, or SSNs in JWT claims!**
+3. **Signature**: Cryptographic hash created using the secret key to ensure the token has not been tampered with:
+   $$\text{Signature} = \text{HMACSHA256}(\text{base64UrlEncode}(\text{Header}) + \text{"."} + \text{base64UrlEncode}(\text{Payload}),\ \text{SecretKey})$$
+
+---
+
+### 3. Implementing the `JwtAuthenticationFilter`:
+
+```java
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private UserDetailsService userDetailsService;
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        final String authHeader = request.getHeader("Authorization");
+
+        // 1. Check if Authorization header is present and starts with 'Bearer '
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        final String jwt = authHeader.substring(7);
+        final String userEmail = jwtService.extractUsername(jwt);
+
+        // 2. Validate and set authentication if not already authenticated
+        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+            if (jwtService.isTokenValid(jwt, userDetails)) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
+                );
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                // 3. Update SecurityContext
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
+}
+```
+
+---
+
+## 8. Method-Level Security (`@PreAuthorize`)
+
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Method Access Control`
+
+While URL security protects endpoints at the HTTP level, **Method Security** enforces access rules directly on service methods or controllers:
+
+```java
+// Enable on Configuration
+@Configuration
+@EnableMethodSecurity(prePostEnabled = true)
+public class SecurityConfig {}
+```
+
+```java
+@Service
+public class StudentService {
+
+    // Only users with ROLE_ADMIN can execute
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteStudent(Long studentId) { ... }
+
+    // Users can access only their own records (SpEL expression evaluation)
+    @PreAuthorize("hasRole('ADMIN') or #username == authentication.principal.username")
+    public StudentResponse getStudentProfile(String username) { ... }
+
+    // Evaluates return object after method execution
+    @PostAuthorize("returnObject.email == authentication.name")
+    public StudentResponse findById(Long id) { ... }
+}
+```
+
+---
+
+## 9. Cross-Site Request Forgery (CSRF): Threat & Defense
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `CSRF Token Defense`
 
-### The Attack Walkthrough (The "90% OFF on iPhone" Trap):
+### The Attack Walkthrough:
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User as Legitimate User
     participant Browser as User Browser
-    participant Netflix as Netflix.com (Legitimate App)
-    participant Evil as Evil.com (Attacker Server)
+    participant Bank as Bank.com (Cookie-Authenticated App)
+    participant Evil as Evil.com (Attacker Website)
 
-    User->>Browser: 1. Logs into Netflix.com
-    Netflix-->>Browser: Returns Session Cookie (Stored in browser)
-    User->>Browser: 2. Opens new tab and visits evil.com
-    Evil-->>Browser: Serves page with bait: "90% OFF on iPhone!"
-    Note over Browser: Hidden form inside evil.com executes automatically:<br><form action="https://netflix.com/changeEmail" method="POST"><br><input type="hidden" name="email" value="attacker@evil.com">
-    Browser->>Netflix: 3. Forged POST /changeEmail sent to Netflix!
-    Note over Browser,Netflix: Browser AUTOMATICALLY attaches the Netflix session cookie!
-    Netflix->>Netflix: 4. Sees valid session cookie -> Changes user email to attacker@evil.com! 💥
+    User->>Browser: 1. Logs into Bank.com (Cookie stored in browser)
+    User->>Browser: 2. Visits malicious site evil.com in another tab
+    Evil-->>Browser: Returns page with hidden auto-submitting form
+    Browser->>Bank: 3. Forged POST /transfer?to=attacker&amount=10000
+    Note over Browser,Bank: Browser AUTOMATICALLY attaches Bank.com session cookie!
+    Bank->>Bank: 4. Sees valid session cookie -> Transfers funds! 💥
 ```
 
----
-
-### The Solution: Synchronizer CSRF Token Pattern
-To defeat CSRF attacks, the server requires a **secret, unpredictable cryptographic token** on all state-changing HTTP requests:
-1. When the user loads a form, the server generates a unique CSRF token and embeds it as a hidden field in the HTML:
-   ```html
-   <input type="hidden" name="_csrf" value="4bf3b267-27b9-4f76-8889-873b22cfc1b4" />
-   ```
-2. When the user submits the form, Spring Security's `CsrfFilter` checks whether the submitted token matches the server's session token.
-3. If an attacker's website (`evil.com`) tricks the browser into sending a request, **it cannot read or guess the secret CSRF token** due to the browser's Same-Origin Policy. The request is immediately rejected with **HTTP 403 Forbidden**!
+> **Visual:** Mermaid — CSRF vulnerability execution sequence.
 
 ---
 
-### When to Disable CSRF (`http.csrf().disable()`):
-> [!IMPORTANT]
-> - **Server-Rendered MVC Apps (Thymeleaf/JSP)**: **Enable CSRF**. Browser cookies automatically authorize form posts, making CSRF protection mandatory.
-> - **Stateless REST APIs (JWT / Bearer Tokens)**: **Disable CSRF**. Since REST APIs store authentication tokens in `Authorization: Bearer <jwt>` headers (which browsers never attach automatically), CSRF attacks are impossible!
-
-[⬆ Back to Top](#📑-table-of-contents)
+### When to Enable vs. Disable CSRF:
+- **Server-Rendered MVC (Thymeleaf / JSP)**: **ENABLE CSRF**. Browsers automatically attach session cookies to form posts, making CSRF defense mandatory via the Synchronizer Token Pattern.
+- **Stateless REST APIs (JWT in Authorization Header)**: **DISABLE CSRF** (`csrf.disable()`). Because REST clients send tokens manually in `Authorization: Bearer <token>` headers, third-party sites cannot forge this header!
+  > [!WARNING]
+  > If your frontend stores JWT in an **`HttpOnly` Cookie**, the browser will attach it automatically, meaning **CSRF protection is STILL required**!
 
 ---
 
-## 11. Cross-Origin Resource Sharing (CORS) Configuration
+## 10. Cross-Origin Resource Sharing (CORS) Configuration
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Browser Origin Security`
 
-### What is CORS?
-The browser enforces the **Same-Origin Policy (SOP)**: a script executing on `https://myfrontend.com` is forbidden from reading data from `https://api.mybackend.com` unless the backend explicitly grants permission.
+The browser's **Same-Origin Policy (SOP)** blocks web pages from making AJAX requests to a different domain/port unless the server explicitly permits it via CORS headers:
 
-An "Origin" is defined by the **Scheme + Domain + Port**:
-- `http://localhost:3000` $
-e$ `http://localhost:8080` (Different Port).
-- `http://example.com` $
-e$ `https://example.com` (Different Scheme).
+```java
+@Configuration
+public class WebCorsConfig {
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("http://localhost:3000", "https://myschool.com"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L); // Cache preflight OPTIONS response for 1 hour
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+}
+```
 
 ---
 
-### Enabling CORS in Spring Boot:
+## 11. OAuth2 & OpenID Connect (OIDC) Fundamentals
 
-#### Approach 1: Controller-Level `@CrossOrigin`
-```java
-@RestController
-@RequestMapping("/api/contacts")
-@CrossOrigin(origins = "http://localhost:3000") // Allows React frontend
-public class ContactRestController {
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Third-Party Delegated Auth`
 
-    @GetMapping
-    public List<Contact> getContacts() {
-        return contactRepository.findAll();
-    }
-}
+```mermaid
+flowchart LR
+    User(["User (Resource Owner)"]) --> App["Client App (Frontend)"]
+    App --> AuthServer["Authorization Server<br>(Google / Keycloak / Okta)"]
+    AuthServer -->|Issues Access Token & ID Token| App
+    App -->|Requests resource with Bearer Token| ResourceServer["Resource Server<br>(Our Spring Boot REST API)"]
 ```
 
-#### Approach 2: Global Configuration via `WebMvcConfigurer` (Production Standard)
-```java
-@Configuration
-public class WebCorsConfig implements WebMvcConfigurer {
+> **Visual:** Mermaid — OAuth2 & OpenID Connect ecosystem roles.
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:3000", "https://eazyschool.com")
-                .allowedMethods("GET", "POST", "PUT", "DELETE")
-                .allowedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600); // Cache pre-flight OPTIONS response for 1 hour
-    }
-}
-```
-
-[⬆ Back to Top](#📑-table-of-contents)
+### Core Concepts:
+1. **OAuth 2.0**: An **authorization framework** enabling third-party apps to obtain limited access to an HTTP service on behalf of a user (Delegated Authorization).
+2. **OpenID Connect (OIDC)**: A simple **identity authentication layer** built on top of OAuth 2.0. While OAuth2 issues an *Access Token* (for API calls), OIDC issues an *ID Token* (JWT containing user profile info).
+3. **Roles**:
+   - **Resource Server**: Our Spring Boot REST API protecting data.
+   - **Authorization Server**: The identity provider (e.g., Keycloak, Auth0, Google) issuing signed tokens.
+   - **Client**: The React/Mobile application requesting access.
 
 ---
 
@@ -445,13 +444,14 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Security Master Sheet`
 
-| Security Topic | Key Concept | Production Best Practice |
+| Topic | Key Concept | Production Best Practice |
 | :--- | :--- | :--- |
-| **AuthN vs. AuthZ** | AuthN = Who you are (401); AuthZ = What you can do (403). | Check identity first, then authorize against roles/privileges. |
-| **Matchers** | `mvcMatchers()` vs `antMatchers()`. | Always use `mvcMatchers()` / `requestMatchers()` to prevent URL bypasses. |
-| **Custom Auth** | Implement `AuthenticationProvider`. | Override `authenticate()` and delegate password matching to BCrypt. |
-| **Password Hashing**| One-way cryptographic transformation. | Always use `BCryptPasswordEncoder` with built-in salting. |
-| **CSRF Defense** | Secret random token required on state-modifying requests. | Enable for MVC/Thymeleaf; disable for stateless REST with JWT. |
-| **CORS** | Browser security restriction across different origins. | Configure globally via `WebMvcConfigurer` specifying trusted origins. |
+| **AuthN vs AuthZ** | AuthN = Identity (401); AuthZ = Permissions (403). | Authenticate first, then enforce role and authority rules. |
+| **Modern DSL** | Spring Security 6 replaces `antMatchers` with `requestMatchers`. | Use lambda syntax: `.authorizeHttpRequests(auth -> auth.requestMatchers(...))`. |
+| **Password Hashing**| One-way mathematical digest with salt. | Always use `BCryptPasswordEncoder`; never store plaintext or reversible encryption. |
+| **JWT Tokens** | Stateless token with Header, Claims payload, and Signature. | Validate signature and expiration in a custom `OncePerRequestFilter`. |
+| **Method Security** | Fine-grained access control with `@PreAuthorize`. | Enable `@EnableMethodSecurity` and use SpEL expressions: `@PreAuthorize("hasRole('ADMIN')")`. |
+| **CSRF** | Cross-Site Request Forgery via browser auto-attached cookies. | Disable for stateless Bearer header REST APIs; enable if using session/cookies. |
+| **CORS** | Browser restriction across different schemes/hosts/ports. | Configure `CorsConfigurationSource` with explicit allowed origins and methods. |
 
 [⬆ Back to Top](#📑-table-of-contents)

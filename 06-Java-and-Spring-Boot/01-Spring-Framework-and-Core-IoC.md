@@ -9,11 +9,11 @@
 - [1. Introduction to Spring & Historical Evolution](#1-introduction-to-spring--historical-evolution)
 - [2. Why Use Frameworks? (The Chef & Developer Analogy)](#2-why-use-frameworks-the-chef--developer-analogy)
 - [3. Inversion of Control (IoC) & Dependency Injection (DI)](#3-inversion-of-control-ioc--dependency-injection-di)
-- [4. Spring Beans, Context & SpEL](#4-spring-beans-context--spel)
+- [4. Spring Beans & ApplicationContext (SpEL: Optional)](#4-spring-beans--applicationcontext-spel-optional)
 - [5. Spring IoC Container: BeanFactory vs. ApplicationContext](#5-spring-ioc-container-beanfactory-vs-applicationcontext)
 - [6. Defining Beans: `@Component` vs. `@Bean`](#6-defining-beans-component-vs-bean)
 - [7. Bean Lifecycle: `@PostConstruct` and `@PreDestroy`](#7-bean-lifecycle-postconstruct-and-predestroy)
-- [8. Programmatic & Dynamic Bean Registration](#8-programmatic--dynamic-bean-registration)
+- [8. Programmatic & Dynamic Bean Registration (Optional)](#8-programmatic--dynamic-bean-registration-optional)
 - [9. Dependency Wiring: Method Calls, Parameters & `@Autowired`](#9-dependency-wiring-method-calls-parameters--autowired)
 - [10. Bean Disambiguation: Parameter Name, `@Primary` & `@Qualifier`](#10-bean-disambiguation-parameter-name-primary--qualifier)
 - [11. Circular Dependencies & Resolution](#11-circular-dependencies--resolution)
@@ -45,6 +45,8 @@ timeline
     2022 : Spring 6.0 & Spring Boot 3.0 (Java 17 baseline, Jakarta EE 10 namespace)
 ```
 
+> **Visual:** Mermaid — generated from documented Spring architecture timeline.
+
 ### Key Historical Milestones:
 1. **The EJB Complexity Problem (Early 2000s)**:
    - Early J2EE applications relied on **Enterprise JavaBeans (EJBs)** for transactions and persistence.
@@ -53,9 +55,7 @@ timeline
    - Rod Johnson authored *Expert One-on-One J2EE Design and Development*, introducing a simple 30,000-line framework based on plain Java classes (POJOs) and dependency injection. This code formed the foundation of Spring 1.0 in 2004.
 3. **The Java EE to Jakarta EE Namespace Shift**:
    - In 2017, Oracle transferred Java EE to the Eclipse Foundation. Due to trademark restrictions on the "Java" name, the platform was rebranded as **Jakarta EE**.
-   - Package namespaces transitioned from `javax.*` $ightarrow$ `jakarta.*` (e.g., `javax.persistence.*` $ightarrow$ `jakarta.persistence.*`, `javax.validation.*` $ightarrow$ `jakarta.validation.*`).
-
-[⬆ Back to Top](#📑-table-of-contents)
+   - Package namespaces transitioned from `javax.*` ➔ `jakarta.*` (e.g., `javax.persistence.*` ➔ `jakarta.persistence.*`, `javax.validation.*` ➔ `jakarta.validation.*`).
 
 ---
 
@@ -81,6 +81,8 @@ flowchart TD
     end
 ```
 
+> **Visual:** Mermaid — conceptual workflow analogy.
+
 ### The Software Developer Equivalent:
 - **Dev Vicky (No Framework)**: Spends 80% of time writing low-level infrastructure: thread pool handlers, raw JDBC connection pools, socket parsers, security filters, and transaction rollback logic.
 - **Dev Sanjeev (Using Spring Framework)**: Leverages production-grade, pre-built modules (Spring Security, Spring Data, Transaction Manager) and dedicates 100% of effort to **business domain logic**.
@@ -99,13 +101,17 @@ flowchart TD
 | **Spring Cloud** | Distributed system patterns (Service discovery, API Gateway, Circuit Breakers). |
 | **Spring Batch** | Robust bulk data processing and job orchestration. |
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 3. Inversion of Control (IoC) & Dependency Injection (DI)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Container Inverts Control`
+
+### High-Level Spring IoC Architecture
+
+![Spring IoC Container Architecture](https://docs.spring.io/spring-framework/docs/3.1.1.RELEASE/spring-framework-reference/htmlsingle/images/container-magic.png)
+
+> **Visual:** Official Spring Documentation — [Spring Framework IoC Container Reference](https://docs.spring.io/spring-framework/reference/core/beans/introduction.html)
 
 ### Tight Coupling vs. Loose Coupling
 
@@ -122,6 +128,8 @@ flowchart LR
     end
 ```
 
+> **Visual:** Mermaid — generated from documented Spring architecture.
+
 - **Tight Coupling**: A class instantiates its concrete collaborators internally using `new`. If `PetrolEngine` changes or needs to be swapped with `ElectricEngine`, the `Car` class must be modified and recompiled.
 - **Loose Coupling**: A class defines dependencies as interfaces. An external entity—the **Spring IoC Container**—instantiates the appropriate implementation and injects it at runtime.
 
@@ -129,11 +137,9 @@ flowchart LR
 - **Inversion of Control (IoC)**: The high-level **architectural design principle** where the flow of control is inverted: instead of the developer's code controlling object creation and calling the framework, the framework controls object creation and calls your code (the *"Hollywood Principle: Don't call us, we'll call you"*).
 - **Dependency Injection (DI)**: The concrete **design pattern and mechanism** used to implement IoC. The container provides dependencies to an object via constructors, setters, or fields.
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
-## 4. Spring Beans, Context & SpEL
+## 4. Spring Beans & ApplicationContext (SpEL: Optional)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Managed Object Graph`
 
@@ -159,8 +165,6 @@ public class ServerConfig {
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 5. Spring IoC Container: BeanFactory vs. ApplicationContext
@@ -185,14 +189,14 @@ classDiagram
     BeanFactory <|-- ApplicationContext
 ```
 
+> **Visual:** Mermaid — generated from Spring Framework interface hierarchy.
+
 | Feature | `BeanFactory` (`org.springframework.beans`) | `ApplicationContext` (`org.springframework.context`) |
 | :--- | :--- | :--- |
 | **Target Use Case** | Legacy, resource-constrained environments (Mobile/embedded devices). | **Standard enterprise applications** (Always use this). |
 | **Bean Instantiation** | **Lazy** (Beans are created only when `getBean()` is called). | **Eager** by default (Singletons are instantiated during startup). |
 | **Enterprise Features** | Basic DI and bean lifecycle only. | AOP support, i18n Internationalization, Event Publishing, Profiles. |
 | **Common Implementations**| `XmlBeanFactory` (Deprecated). | `AnnotationConfigApplicationContext`, `ClassPathXmlApplicationContext`. |
-
-[⬆ Back to Top](#📑-table-of-contents)
 
 ---
 
@@ -208,6 +212,8 @@ flowchart TD
     Choice -- "Your own project code" --> Comp["@Component / Stereotypes on Class ✅"]
     Choice -- "Third-party library (e.g., AWS SDK, Gson)" --> BeanMeth["@Bean method inside @Configuration class ✅"]
 ```
+
+> **Visual:** Mermaid — bean definition strategy decision flow.
 
 ---
 
@@ -262,8 +268,6 @@ public class ProjectConfig {
 | **Number of Instances**| Creates **one** bean definition per class. | Can create **multiple** beans of the same type with different settings. |
 | **Configuration Logic**| Relies on default/parameterized constructors. | Full programmatic control to execute custom setup logic before return. |
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 7. Bean Lifecycle: `@PostConstruct` and `@PreDestroy`
@@ -287,6 +291,8 @@ sequenceDiagram
     IoC->>JVM: 5. Container closes & releases memory
 ```
 
+> **Visual:** Mermaid — generated from Spring Bean lifecycle specification.
+
 ### Production Example:
 ```java
 @Component
@@ -306,11 +312,9 @@ public class DatabaseConnectionManager {
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
-## 8. Programmatic & Dynamic Bean Registration
+## 8. Programmatic & Dynamic Bean Registration (Optional)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Runtime Bean Registration`
 
@@ -331,8 +335,6 @@ if (System.currentTimeMillis() % 2 == 0) {
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 9. Dependency Wiring: Method Calls, Parameters & `@Autowired`
@@ -345,6 +347,8 @@ Consider two classes from the EazyBytes course: `Person` (Lucy) and `Vehicle`. `
 flowchart LR
     P["Person Bean (Lucy)"] -->|"has-a (wiring)"| V["Vehicle Bean (Toyota)"]
 ```
+
+> **Visual:** Mermaid — collaborating bean association graph.
 
 ### 1. Wiring inside `@Configuration` via Method Call
 ```java
@@ -410,8 +414,6 @@ public class Person {
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 10. Bean Disambiguation: Parameter Name, `@Primary` & `@Qualifier`
@@ -432,6 +434,8 @@ flowchart TD
     Step3 -- "Yes" --> Name["Inject Matching Name Bean ✅"]
     Step3 -- "No" --> Err["Throw NoUniqueBeanDefinitionException ❌"]
 ```
+
+> **Visual:** Mermaid — generated from Spring IoC resolution algorithm.
 
 ---
 
@@ -488,8 +492,6 @@ public class Person {
 }
 ```
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 11. Circular Dependencies & Resolution
@@ -503,6 +505,8 @@ flowchart LR
     P["Person Bean"] -->|"Needs"| V["Vehicle Bean"]
     V -->|"Needs"| P
 ```
+
+> **Visual:** Mermaid — dependency cycle graph.
 
 At startup, Spring fails fast and throws **`UnsatisfiedDependencyException`** / **`BeanCurrentlyInCreationException`**.
 
@@ -520,8 +524,6 @@ At startup, Spring fails fast and throws **`UnsatisfiedDependencyException`** / 
    ```
 3. **Use Setter / Field Injection**: Setter injection allows the container to instantiate both beans first before populating dependencies. (Starting with Spring Boot 2.6+, circular references are **blocked by default**; enable via `spring.main.allow-circular-references=true` only as a legacy workaround).
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 12. Spring Bean Scopes & Race Conditions
@@ -538,6 +540,8 @@ flowchart TD
     Scope -->|Web Request| R["Request: 1 instance per HTTP request lifecycle"]
     Scope -->|Web Session| SS["Session: 1 instance per HTTP user session"]
 ```
+
+> **Visual:** Mermaid — Spring Bean scope options.
 
 ---
 
@@ -578,8 +582,6 @@ public class TableReservationService { // Singleton
 | **Lifecycle Management**| Spring manages both creation & destruction (`@PreDestroy` runs). | Spring creates and wires the bean, then **abandons it** (Garbage Collector handles destruction; `@PreDestroy` does NOT run). |
 | **Ideal For** | Stateless services, repositories, controllers. | Stateful objects, mutable task executions. |
 
-[⬆ Back to Top](#📑-table-of-contents)
-
 ---
 
 ## 13. Eager vs. Lazy Instantiation (`@Lazy`)
@@ -601,6 +603,8 @@ flowchart LR
     end
 ```
 
+> **Visual:** Mermaid — eager vs. lazy initialization lifecycle.
+
 | Dimension | Eager Instantiation (Default) | Lazy Instantiation (`@Lazy`) |
 | :--- | :--- | :--- |
 | **When Created** | Application startup. | First time the bean is accessed. |
@@ -617,8 +621,6 @@ public class HeavyReportGenerator {
     }
 }
 ```
-
-[⬆ Back to Top](#📑-table-of-contents)
 
 ---
 
@@ -644,6 +646,8 @@ flowchart LR
         Aspect -.->|Weaves around| Core2
     end
 ```
+
+> **Visual:** Mermaid — cross-cutting concern decoupling.
 
 ---
 
@@ -673,6 +677,8 @@ flowchart TD
     
     note["5. @Around: Surrounds the method completely.<br>Controls whether to proceed, inspects args, and modifies return value."]
 ```
+
+> **Visual:** Mermaid — generated from Spring AOP advice specification.
 
 ---
 
@@ -721,8 +727,6 @@ public class LoggerAspect {
     }
 }
 ```
-
-[⬆ Back to Top](#📑-table-of-contents)
 
 ---
 

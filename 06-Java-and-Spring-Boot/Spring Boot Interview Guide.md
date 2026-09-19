@@ -920,52 +920,336 @@ public class StudentController {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Servlet vs MVC Layer`
 
-Both intercept HTTP requests, but they operate in completely different lifecycle stages:
+<p align="center">
+  <img src="images/Filter vs Interceptors.png" alt="Filter vs Interceptors Architecture" width="550"/>
+</p>
 
-```mermaid
-flowchart LR
-    Client(["HTTP Request"]) --> Filter["Servlet Filter (Security, CORS, GZIP)\nLow-level Servlet Layer"]
-    Filter --> DS["DispatcherServlet\nFront Controller"]
-    DS --> Interceptor["HandlerInterceptor (preHandle / postHandle)\nSpring MVC Layer"]
-    Interceptor --> Controller["@RestController Controller Method"]
+```
+Client ➔ [Tomcat/Servlet Container] ➔ [Filter Chain] ➔ [DispatcherServlet] ➔ [Interceptor] ➔ [@Controller]
+Client ⇠ [Tomcat/Servlet Container] ⇠ [Filter Chain] ⇠ [DispatcherServlet] ⇠ [Interceptor] ⇠ [@Controller]
 ```
 
-| Dimension | Servlet Filter | Handler Interceptor |
+### 1. Core Architectural Difference
+- **Servlet Filter (`jakarta.servlet.Filter`)**: Servlet container level (Tomcat). Runs **before** `DispatcherServlet`. Unaware of Spring MVC controllers.
+- **Handler Interceptor (`HandlerInterceptor`)**: Spring MVC framework level. Runs **between** `DispatcherServlet` and `@Controller`. Has full access to the target `HandlerMethod` and Spring context.
+
+> 📌 **Placement Shortcut**: **Filter** = Servlet / Container level | **Interceptor** = Spring MVC / Handler level
+
+---
+
+### 2. Servlet Filter (Code & Lifecycle)
+Executes pre-processing on the way in, and post-processing in **reverse order** on the return path.
+
+```java
+@Component
+public class RequestTrackingFilter implements Filter {
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) 
+            throws IOException, ServletException {
+        // 🟢 Pre-processing (Executed on incoming request)
+        req.setAttribute("requestId", UUID.randomUUID().toString());
+        
+        chain.doFilter(req, res); // ⚡ Pass down chain. If omitted, request HALTS!
+        
+        // 🔵 Post-processing (Executed on response return path in REVERSE order)
+    }
+}
+```
+* **Best Used For**: Low-level HTTP tasks — CORS, Request/Correlation IDs, GZIP compression, rate limiting, and Spring Security (`SecurityFilterChain`).
+
+---
+
+### 3. Spring MVC Interceptor (Code & 3 Lifecycle Hooks)
+
+```java
+@Component
+public class TimingAndAuthInterceptor implements HandlerInterceptor {
+    @Override
+    public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler) {
+        // 🟢 1. Runs BEFORE Controller. Return true = continue; false = BLOCK request ❌
+        req.setAttribute("startTime", System.currentTimeMillis());
+        return true; 
+    }
+
+    @Override
+    public void postHandle(HttpServletRequest req, HttpServletResponse res, Object handler, ModelAndView mv) {
+        // 🟡 2. Runs AFTER Controller, BEFORE view rendering / response serialization
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest req, HttpServletResponse res, Object handler, Exception ex) {
+        // 🔵 3. Runs AFTER entire request & view lifecycle is complete (always runs, for cleanup/metrics)
+        long duration = System.currentTimeMillis() - (Long) req.getAttribute("startTime");
+    }
+}
+```
+
+#### Registration via `WebMvcConfigurer`:
+```java
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+    @Autowired private TimingAndAuthInterceptor timingInterceptor;
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(timingInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/public/**");
+    }
+}
+```
+
+---
+
+### 4. Filter vs. Interceptor — Interview Comparison Matrix
+
+| Feature | Servlet Filter | Handler Interceptor |
 |---|---|---|
-| **Ecosystem** | Java Servlet Standard (`jakarta.servlet.Filter`). | Spring MVC Framework (`HandlerInterceptor`). |
-| **Position in Flow** | Executes **before** `DispatcherServlet`. | Executes **after** `DispatcherServlet`, right before the Controller. |
-| **Spring Awareness** | Low-level; does not know which controller will handle the request. | Rich Spring context; has direct access to the target `handler` method object. |
-| **Common Use Cases** | CORS headers, request/response body logging, raw JWT token validation, compression. | Route authorization checks, locale changes, execution timing metrics. |
+| **Ecosystem / Layer** | Java Servlet / Web Container (`jakarta.servlet`) | Spring MVC Framework (`HandlerInterceptor`) |
+| **Execution Point** | **Before** `DispatcherServlet` & Spring MVC | **Between** `DispatcherServlet` & `@Controller` |
+| **Spring Awareness** | Low-level; no access to target Controller | High; receives `Object handler` (`HandlerMethod`) |
+| **Lifecycle Hooks** | Single `doFilter()` (pre & post via `chain`) | 3 hooks: `preHandle()`, `postHandle()`, `afterCompletion()` |
+| **Can Block Request?** | Yes (omit `chain.doFilter()`) | Yes (`preHandle()` returns `false`) |
+| **Modifies View / Model?** | ❌ No | ✅ Yes (in `postHandle()`) |
+| **Registration** | `@Component` / `FilterRegistrationBean` | `WebMvcConfigurer.addInterceptors()` |
+
+---
+
+### 5. Decision Framework: When to Use Which?
+- **Use Filter when**: Concern is container/HTTP-level and agnostic of Spring MVC (CORS, GZIP, raw payload logging/caching, global security filters).
+- **Use Interceptor when**: Concern requires Spring controller awareness (controller execution timing, custom annotation inspection on handler methods, fine-grained URL pattern routing).
 
 ---
 
 ## 22. Cyclic Dependencies & `@Lazy`
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Circular Reference Workaround`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Circular Reference & Resolution`
 
-A **circular dependency** occurs when Bean A requires Bean B, and Bean B requires Bean A (`A ⇄ B`). Spring fails to start and throws `BeanCurrentlyInCreationException`.
+---
+
+### 1. Introduction
+A **Cyclic (Circular) Dependency** occurs when two or more Spring-managed beans depend on each other, forming a closed loop ($A \to B \to A$ or $A \to B \to C \to A$).
 
 ```mermaid
 flowchart LR
-    A["Service A"] -->|Constructor needs| B["Service B"]
-    B -->|Constructor needs| A
+    A["ServiceA"] -->|"depends on"| B["ServiceB"]
+    B -->|"depends on"| A
 ```
 
-### How `@Lazy` Works:
-Placing `@Lazy` on one constructor parameter causes Spring to inject a dynamic proxy instead of the real bean. The real bean is resolved only when its method is called for the first time:
+When constructor injection is used, the Spring IoC container cannot determine which bean to instantiate first. As a result, the application fails on startup with:
+- `BeanCurrentlyInCreationException`
+- `UnsatisfiedDependencyException: Error creating bean with name 'serviceA': Requested bean is currently in creation: Is there an unresolvable circular reference?`
+
+> [!NOTE]
+> Starting with **Spring Boot 2.6+**, circular dependencies are **disabled by default**. The application will fail fast on startup unless explicitly resolved or relaxed.
+
+---
+
+### 2. Code Walkthrough
+Consider two services in an e-commerce order workflow where `OrderService` needs `PaymentService` to verify transactions, and `PaymentService` needs `OrderService` to update order status:
+
 ```java
 @Service
-public class ServiceB {
-    private final ServiceA serviceA;
+public class OrderService {
+    private final PaymentService paymentService;
 
-    public ServiceB(@Lazy ServiceA serviceA) {
-        this.serviceA = serviceA;
+    // Constructor Injection
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
+    }
+
+    public void createOrder() {
+        System.out.println("Creating order...");
+        paymentService.processPayment();
     }
 }
 ```
 
-> [!WARNING]
-> **Architectural Wisdom**: `@Lazy` is a temporary bandage. A circular dependency almost always indicates poor design. The proper fix is to extract shared logic into a separate `ServiceC` or decouple via Spring Events.
+```java
+@Service
+public class PaymentService {
+    private final OrderService orderService;
+
+    // Constructor Injection
+    public PaymentService(OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    public void processPayment() {
+        System.out.println("Processing payment...");
+    }
+}
+```
+
+**Startup Crash Output:**
+```text
+***************************
+APPLICATION FAILED TO START
+***************************
+Description:
+The dependencies of some of the beans in the application context form a cycle:
+┌─────┐
+|  orderService (field private final PaymentService OrderService.paymentService)
+↑     ↓
+|  paymentService (field private final OrderService PaymentService.orderService)
+└─────┘
+```
+
+---
+
+### 3. Cyclic Dependency : Why does it occur ?
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant IoC as Spring ApplicationContext
+    participant A as OrderService
+    participant B as PaymentService
+
+    IoC->>A: 1. Attempt to instantiate OrderService
+    Note over A: Needs PaymentService instance for constructor
+    IoC->>B: 2. Attempt to instantiate PaymentService
+    Note over B: Needs OrderService instance for constructor
+    IoC->>A: 3. Look for OrderService (still in creation!)
+    Note over IoC: DEADLOCK: Neither bean can complete construction
+    IoC-->>IoC: Throw BeanCurrentlyInCreationException
+```
+
+#### Root Causes:
+1. **Instantiation vs. Injection Order**: With constructor injection, a class cannot be instantiated into memory until all constructor parameters are already fully created and provided.
+2. **Tight Coupling & Violation of SRP (Single Responsibility Principle)**: Both classes know too much about each other and share bidirectional dependencies instead of a clean unidirectional flow.
+3. **Spring 3-Level Cache Limitation**: While Spring's 3-level singleton cache (`DefaultSingletonBeanRegistry`) can resolve circular dependencies for *setter / field injection* (by exposing an uninitialized early bean reference), it **cannot** resolve circular dependencies for **constructor injection** because the instance itself cannot even be instantiated.
+
+---
+
+### 4. `@Lazy` Annotation : Fix No. 1
+The `@Lazy` annotation breaks the direct constructor initialization deadlock by instructing Spring to inject a **dynamic proxy (CGLIB proxy)** at startup instead of the actual bean instance.
+
+#### How it Works:
+1. Spring creates a lightweight proxy placeholder for `OrderService` and passes it into `PaymentService`'s constructor.
+2. `PaymentService` completes instantiation.
+3. `OrderService` receives the real `PaymentService` instance and completes instantiation.
+4. When a method is invoked on the proxy for the first time, the proxy delegates the call to the real bean in the ApplicationContext.
+
+```java
+@Service
+public class PaymentService {
+    private final OrderService orderService;
+
+    // Fix: @Lazy injects a CGLIB proxy placeholder
+    public PaymentService(@Lazy OrderService orderService) {
+        this.orderService = orderService;
+    }
+
+    public void processPayment() {
+        System.out.println("Processing payment...");
+        orderService.notifyOrderComplete(); // Real bean called through proxy
+    }
+}
+```
+
+```mermaid
+flowchart TD
+    IoC["Spring Container"] -->|Creates real bean| OS["OrderService"]
+    IoC -->|Injects Proxy placeholder| Proxy["OrderService Proxy"]
+    Proxy -->|Passes to constructor| PS["PaymentService"]
+    PS -->|"Calls method at runtime"| Proxy
+    Proxy -->|"Delegates call to"| OS
+```
+
+> [!TIP]
+> `@Lazy` can be applied either on the constructor parameter (`@Lazy OrderService orderService`) or on the class level (`@Lazy @Service`). Applying it to one side of the circular loop is sufficient to break the cycle.
+
+---
+
+### 5. Design Change : Fix No. 2 (Recommended Best Practice)
+While `@Lazy` fixes the startup crash, it is a **workaround** that hides an underlying architectural flaw. The permanent and clean industry standard solutions are:
+
+#### Approach A: Extract Shared Logic into a Third Service (Mediator / Helper)
+Identify the shared functionality causing the mutual dependency and extract it into a dedicated service (e.g., `OrderTransactionManager` or `NotificationService`).
+
+```mermaid
+flowchart LR
+    OS["OrderService"] --> CS["OrderTransactionManager"]
+    PS["PaymentService"] --> CS
+```
+
+```java
+// 1. Shared Coordinator Service
+@Service
+public class OrderTransactionManager {
+    public void finalizeOrder(Long orderId) {
+        System.out.println("Finalizing order status for: " + orderId);
+    }
+}
+
+// 2. OrderService depends only on PaymentService & Coordinator
+@Service
+public class OrderService {
+    private final PaymentService paymentService;
+    private final OrderTransactionManager transactionManager;
+
+    public OrderService(PaymentService paymentService, OrderTransactionManager transactionManager) {
+        this.paymentService = paymentService;
+        this.transactionManager = transactionManager;
+    }
+}
+
+// 3. PaymentService depends only on Coordinator (Cycle broken!)
+@Service
+public class PaymentService {
+    private final OrderTransactionManager transactionManager;
+
+    public PaymentService(OrderTransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
+    }
+
+    public void processPayment(Long orderId) {
+        // Business logic
+        transactionManager.finalizeOrder(orderId);
+    }
+}
+```
+
+#### Approach B: Decouple via Spring Application Events (`ApplicationEventPublisher`)
+Use event-driven communication to eliminate direct bean references entirely.
+
+```java
+// 1. Define an Event
+public record PaymentCompletedEvent(Long orderId, BigDecimal amount) {}
+
+// 2. Publisher (PaymentService has NO reference to OrderService)
+@Service
+public class PaymentService {
+    private final ApplicationEventPublisher eventPublisher;
+
+    public PaymentService(ApplicationEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    public void processPayment(Long orderId, BigDecimal amount) {
+        System.out.println("Payment processed.");
+        // Publish event asynchronously or synchronously
+        eventPublisher.publishEvent(new PaymentCompletedEvent(orderId, amount));
+    }
+}
+
+// 3. Consumer / Listener (OrderService listens to event)
+@Service
+public class OrderService {
+
+    @EventListener
+    public void handlePaymentCompleted(PaymentCompletedEvent event) {
+        System.out.println("Updating order " + event.orderId() + " to PAID");
+    }
+}
+```
+
+| Strategy | When to Use | Advantage |
+| :--- | :--- | :--- |
+| **`@Lazy` Proxy** | Quick patch / legacy codebases where refactoring is risky | Immediate fix without structural code rewrite |
+| **Extract 3rd Service** | Direct synchronous business flow | Clear responsibility, maintains compile-time safety |
+| **Spring Events** | Side-effects, notifications, decoupled actions | Completely zero coupling between domain services |
 
 ---
 
