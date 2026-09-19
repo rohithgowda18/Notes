@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 
@@ -21,9 +22,14 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
       {/* Drawer */}
       <div className="fixed inset-y-0 left-0 max-w-xs w-full bg-white dark:bg-neutral-900 shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
         <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800">
-          <span className="font-semibold text-sm text-neutral-900 dark:text-neutral-100">
+          <Link
+            to="/note/README.md"
+            onClick={onClose}
+            className="font-semibold text-sm text-neutral-900 dark:text-neutral-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            title="Study Notes Overview"
+          >
             Study Directory
-          </span>
+          </Link>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"

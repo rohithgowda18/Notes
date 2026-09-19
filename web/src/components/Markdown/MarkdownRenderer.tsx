@@ -89,6 +89,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw, rehypeSlug]}
         components={{
+          // Unwrap outer pre from ReactMarkdown since CodeBlock provides its own container
+          pre({ children }) {
+            return <>{children}</>;
+          },
+
           // Code block and Mermaid handling
           code({ className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || "");
@@ -175,34 +180,80 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
           },
 
-          // Images: resolve relative paths and support lightbox view
-          img({ src, alt, width, height, ...props }) {
+          // Images: resolve relative paths, prevent cropping, expand technical diagrams, support full width and lightbox
+          img({ src, alt, ...props }) {
             if (!src) return null;
             const resolvedSrc = resolveAssetPath(currentFilePath, src);
 
+            const isBadgeOrIcon =
+              /badge|shield|icon|logo|avatar|star|flag/i.test(`${alt || ""} ${src || ""}`) ||
+              (props.width && parseInt(String(props.width), 10) <= 64);
+
+            if (isBadgeOrIcon) {
+              return (
+                <img
+                  src={resolvedSrc}
+                  alt={alt || "icon"}
+                  loading="lazy"
+                  className="inline-block align-middle max-w-full h-auto"
+                  style={{ maxHeight: "none", height: "auto" }}
+                />
+              );
+            }
+
+            const isDiagram =
+              /architecture|diagram|flow|workflow|design|system|model|lifecycle|pipeline|component|structure|schema|sequence|topology|overview|chart|graph|microservices|jpa|security|jwt|transaction|scaling|cache|wallet|exchange|payment|database|network|process/i.test(
+                `${alt || ""} ${src || ""}`
+              );
+
             return (
-              <figure className="my-6 text-center group relative inline-block w-full">
-                <div className="relative inline-block overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/80 shadow-sm max-w-full">
-                  <img
-                    src={resolvedSrc}
-                    alt={alt || "Diagram"}
-                    loading="lazy"
-                    className="max-h-[650px] w-auto max-w-full object-contain mx-auto cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.01]"
-                    style={width ? { maxWidth: typeof width === "number" ? `${width}px` : width } : undefined}
-                    onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
-                    {...props}
-                  />
-                  <button
-                    onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
-                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-900/70 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-neutral-900 shadow-md"
-                    title="Enlarge image"
-                    aria-label="Enlarge image"
-                  >
-                    <Maximize2 className="w-4 h-4" />
-                  </button>
+              <figure className="my-8 w-full flex flex-col items-center select-none overflow-visible">
+                <div className="w-full flex justify-center items-center overflow-x-auto overflow-y-visible py-1">
+                  <div className="relative group w-full flex justify-center items-center overflow-visible">
+                    <img
+                      src={resolvedSrc}
+                      alt={alt || "Technical Architecture Diagram"}
+                      loading="lazy"
+                      className={`block h-auto cursor-zoom-in rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-800 transition-transform duration-150 hover:scale-[1.002] ${
+                        isDiagram ? "w-full max-w-[1100px]" : "w-auto max-w-full"
+                      }`}
+                      style={{
+                        width: isDiagram
+                          ? "100%"
+                          : props.width && !String(props.width).includes("%")
+                          ? `${props.width}px`
+                          : "auto",
+                        maxWidth: isDiagram ? "1100px" : "100%",
+                        height: "auto",
+                        maxHeight: "none",
+                        objectFit: "contain",
+                      }}
+                      onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.style.display = "none";
+                        const parent = target.parentElement;
+                        if (parent && !parent.querySelector(".img-fallback")) {
+                          const fallback = document.createElement("div");
+                          fallback.className =
+                            "img-fallback p-4 my-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 text-xs text-neutral-500";
+                          fallback.textContent = `Image could not be loaded (${src})`;
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-900/75 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-neutral-900 shadow-md"
+                      title="Click to enlarge diagram"
+                      aria-label="Click to enlarge diagram"
+                    >
+                      <Maximize2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 {alt && (
-                  <figcaption className="mt-2 text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                  <figcaption className="mt-2.5 text-xs text-neutral-500 dark:text-neutral-400 font-medium text-center">
                     {alt}
                   </figcaption>
                 )}

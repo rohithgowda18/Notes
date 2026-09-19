@@ -209,13 +209,85 @@
   border: 1px solid rgba(156, 163, 175, 0.25);
 }
 
-/* Images */
+/* Clean Code Block Surface & Line Resets - Zero borders between lines */
+.markdown-body pre,
+.markdown-body code,
+.markdown-body .code-block {
+  text-decoration: none !important;
+}
+
+.markdown-body pre *,
+.markdown-body code *,
+.markdown-body .code-block *,
+.markdown-body .syntax-highlight *,
+.markdown-body .code-line,
+.markdown-body span.token,
+.markdown-body span.linenumber,
+.markdown-body [class*="react-syntax-highlighter"] {
+  border-top: none !important;
+  border-bottom: none !important;
+  text-decoration: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.markdown-body pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  overflow: visible;
+  line-height: 1.65;
+  font-size: 14.5px;
+}
+
+.markdown-body pre code {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 14.5px !important;
+  line-height: 1.65 !important;
+}
+
+/* Mermaid diagrams clean surface */
+.markdown-body .mermaid,
+.markdown-body .mermaid * {
+  border-top: none !important;
+  border-bottom: none !important;
+  text-decoration: none !important;
+}
+
+/* Non-Cropping Responsive Images & Architecture Diagrams */
 .markdown-body img {
-  max-width: 100%;
-  height: auto;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  object-fit: contain !important;
   border-radius: 8px;
-  margin: 2rem auto;
+  margin: 1.5rem auto;
   border: 1px solid rgba(156, 163, 175, 0.2);
-  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.08);
   display: block;
 }
+
+.markdown-body figure {
+  margin: 2rem 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.markdown-body .image-container,
+.markdown-body .image-scroll-container,
+.markdown-body div[align="center"] {
+  width: 100% !important;
+  height: auto !important;
+  overflow-x: auto;
+  overflow-y: visible;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+

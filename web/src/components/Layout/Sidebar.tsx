@@ -11,7 +11,8 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { useRepo } from "../../context/RepoContext";
-import type { RepoFolder } from "../../types";
+import type { RepoFile, RepoFolder } from "../../types";
+import { getFolderTargetRoute } from "../../utils/navigation";
 
 interface SidebarProps {
   onItemClick?: () => void;
@@ -32,6 +33,7 @@ interface FolderTreeItemProps {
   onToggleFolder: (folderPath: string, level: number) => void;
   onItemClick?: () => void;
   currentPath: string;
+  allFiles: RepoFile[];
 }
 
 const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
@@ -41,6 +43,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
   onToggleFolder,
   onItemClick,
   currentPath,
+  allFiles,
 }) => {
   const isOpen =
     expandedFolders[folder.path] !== undefined
@@ -49,26 +52,45 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
 
   return (
     <div className="space-y-0.5">
-      {/* Folder Row */}
-      <button
-        onClick={() => onToggleFolder(folder.path, level)}
-        className="flex items-center justify-between w-full px-2 py-1.5 rounded-lg text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-800/70 transition-colors cursor-pointer text-left"
-        title={folder.name}
-      >
-        <div className="flex items-center gap-1.5 truncate min-w-0">
+      {/* Folder Row: chevron toggles, folder label navigates to folder's note */}
+      <div className="flex items-center justify-between w-full px-1 py-1 rounded-lg text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/70 transition-colors group">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFolder(folder.path, level);
+          }}
+          className="p-1 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
+          title={isOpen ? "Collapse folder" : "Expand folder"}
+          aria-label={isOpen ? "Collapse folder" : "Expand folder"}
+        >
           {isOpen ? (
-            <ChevronDown className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <ChevronDown className="w-3.5 h-3.5 shrink-0" />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
           )}
+        </button>
+
+        <Link
+          to={getFolderTargetRoute(folder.path, allFiles)}
+          onClick={() => {
+            if (!isOpen) {
+              onToggleFolder(folder.path, level);
+            }
+            if (onItemClick) {
+              onItemClick();
+            }
+          }}
+          className="flex-1 flex items-center gap-1.5 min-w-0 py-0.5 truncate text-neutral-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
+          title={`Open ${folder.name}`}
+        >
           {isOpen ? (
             <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
           ) : (
             <Folder className="w-4 h-4 text-amber-500 shrink-0" />
           )}
           <span className="truncate">{folder.name}</span>
-        </div>
-      </button>
+        </Link>
+      </div>
 
       {/* Folder Children */}
       {isOpen && (
@@ -113,6 +135,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
               onToggleFolder={onToggleFolder}
               onItemClick={onItemClick}
               currentPath={currentPath}
+              allFiles={allFiles}
             />
           ))}
         </div>
@@ -211,9 +234,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className="w-72 shrink-0 border-r border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col select-none">
       {/* Sidebar Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
-        <span className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400">
+        <Link
+          to="/note/README.md"
+          className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+          title="Go to Study Notes Overview"
+        >
           Study Library
-        </span>
+        </Link>
         {onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
@@ -250,6 +277,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onToggleFolder={toggleFolder}
                 onItemClick={onItemClick}
                 currentPath={currentPath}
+                allFiles={tree.allFiles}
               />
             ))}
 

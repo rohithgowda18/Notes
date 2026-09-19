@@ -12,10 +12,13 @@ import {
   Loader2,
   ChevronRight as BreadcrumbChevron,
   Folder,
+  ArrowLeft,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { GITHUB_RAW_BASE } from "../../config/github";
 import { isLocalFallbackActive } from "../../services/github";
+import { useRepo } from "../../context/RepoContext";
+import { getFolderTargetRoute, getParentFolderPath } from "../../utils/navigation";
 
 // Configure pdfjs worker to run in browser
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
@@ -206,7 +209,9 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { allFiles } = useRepo();
   const fileName = filePath.split("/").pop() || "Document.pdf";
+  const parentFolderPath = getParentFolderPath(filePath);
   const isLocal = isLocalFallbackActive();
   const pdfUrl = isLocal
     ? `/api/local-file?path=${encodeURIComponent(filePath)}`
@@ -332,21 +337,37 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
     <div className="flex-1 w-full h-full flex flex-col min-w-0 bg-white dark:bg-neutral-950 overflow-hidden">
       {/* Top Compact PDF Toolbar */}
       <div className="w-full shrink-0 border-b border-neutral-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-900/95 backdrop-blur-md px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 text-xs select-none z-10 shadow-xs">
-        {/* Left: Breadcrumbs & Document Name */}
+        {/* Left: Breadcrumbs, Back Link & Document Name */}
         <div className="flex items-center gap-1.5 min-w-0 font-sans truncate">
+          {parentFolderPath && (
+            <Link
+              to={getFolderTargetRoute(parentFolderPath, allFiles)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs text-neutral-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors mr-1 shrink-0"
+              title={`Back to ${parentFolderPath.split("/").pop()}`}
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Back</span>
+            </Link>
+          )}
+
           <Link
-            to="/"
-            className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white shrink-0 hidden sm:inline"
+            to="/note/README.md"
+            className="text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 shrink-0 hidden sm:inline font-medium"
+            title="Study Notes Overview"
           >
             Study Library
           </Link>
           {pathParts.length > 1 && (
             <>
               <BreadcrumbChevron className="w-3.5 h-3.5 text-neutral-400 shrink-0 hidden sm:inline" />
-              <div className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 truncate hidden md:flex">
+              <Link
+                to={getFolderTargetRoute(pathParts[0], allFiles)}
+                className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 truncate hidden md:flex"
+                title={`Open ${pathParts[0]} notes`}
+              >
                 <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                 <span className="truncate">{pathParts[0]}</span>
-              </div>
+              </Link>
             </>
           )}
           <BreadcrumbChevron className="w-3.5 h-3.5 text-neutral-400 shrink-0" />

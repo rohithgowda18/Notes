@@ -74,7 +74,14 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <Link to="/" className="flex items-center gap-2.5 group">
+        <Link
+          to="/note/README.md"
+          onClick={() => {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          className="flex items-center gap-2.5 group cursor-pointer"
+          title="Study Notes Overview"
+        >
           <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
             <BookOpen className="w-3.5 h-3.5" />
           </div>

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { RefreshCw, ChevronRight, Folder, AlertCircle } from "lucide-react";
+import { RefreshCw, ChevronRight, Folder, AlertCircle, ArrowLeft } from "lucide-react";
 import { fetchRawMarkdown } from "../services/github";
 import { useRepo } from "../context/RepoContext";
 import { MarkdownRenderer } from "../components/Markdown/MarkdownRenderer";
 import { PrevNextNav } from "../components/Navigation/PrevNextNav";
 import type { RepoFile, RepoFolder } from "../types";
+import { getFolderTargetRoute } from "../utils/navigation";
 
 const SCROLL_POS_PREFIX = "study_notes_scroll_";
 
@@ -99,32 +100,54 @@ export const NotePage: React.FC = () => {
     <div className="flex-1 flex justify-center w-full min-w-0">
       {/* Central Reading Column (Two-column layout, max-w ~1100px) */}
       <div className="flex-1 max-w-[1100px] px-6 sm:px-12 md:px-16 py-8 md:py-12 min-w-0">
-        {/* Subtle Breadcrumb Navigation */}
-        <nav className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mb-6 font-sans flex-wrap">
-          <Link to="/" className="hover:text-neutral-800 dark:hover:text-neutral-200">
-            Study Library
-          </Link>
-          {pathParts.map((part, index) => {
-            const isLast = index === pathParts.length - 1;
-            const isFolder = !isLast;
+        {/* Breadcrumb & Folder Back Navigation */}
+        <div className="flex flex-col gap-2 mb-6">
+          {parentFolderPath && (
+            <Link
+              to={getFolderTargetRoute(parentFolderPath, allFiles)}
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group w-fit cursor-pointer"
+              title={`Back to ${parentFolderPath.split("/").pop()}`}
+            >
+              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back to {parentFolderPath.split("/").pop()}</span>
+            </Link>
+          )}
 
-            return (
-              <React.Fragment key={index}>
-                <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-                {isFolder ? (
-                  <div className="flex items-center gap-1">
-                    <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    <span>{part}</span>
-                  </div>
-                ) : (
-                  <span className="font-semibold text-neutral-800 dark:text-neutral-200 truncate">
-                    {part.replace(/\.(md|markdown)$/i, "")}
-                  </span>
-                )}
-              </React.Fragment>
-            );
-          })}
-        </nav>
+          <nav className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 font-sans flex-wrap">
+            <Link
+              to="/note/README.md"
+              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
+              title="Study Library Root"
+            >
+              Study Library
+            </Link>
+            {pathParts.map((part, index) => {
+              const isLast = index === pathParts.length - 1;
+              const isFolder = !isLast;
+              const subFolderPath = pathParts.slice(0, index + 1).join("/");
+
+              return (
+                <React.Fragment key={index}>
+                  <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+                  {isFolder ? (
+                    <Link
+                      to={getFolderTargetRoute(subFolderPath, allFiles)}
+                      className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                      title={`Open ${part} notes`}
+                    >
+                      <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>{part}</span>
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-neutral-800 dark:text-neutral-200 truncate max-w-sm sm:max-w-md">
+                      {part.replace(/\.(md|markdown)$/i, "")}
+                    </span>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </nav>
+        </div>
 
         {/* Error State */}
         {error && (

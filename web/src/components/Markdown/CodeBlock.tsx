@@ -76,12 +76,22 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
           style={theme === "dark" ? oneDark : oneLight}
           customStyle={{
             margin: 0,
-            padding: "1rem 1.25rem",
+            padding: "1.1rem 1.35rem",
             fontSize: "14.5px",
             lineHeight: "1.65",
             borderRadius: 0,
+            border: "none",
             backgroundColor: theme === "dark" ? "#11141d" : "#fafafa",
             fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          }}
+          codeTagProps={{
+            style: {
+              fontSize: "14.5px",
+              lineHeight: "1.65",
+              fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              background: "transparent",
+              border: "none",
+            },
           }}
           showLineNumbers={lineCount > 1}
           lineNumberStyle={{
@@ -90,6 +100,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
             color: theme === "dark" ? "#525e75" : "#94a3b8",
             textAlign: "right",
             userSelect: "none",
+            border: "none",
           }}
           wrapLongLines={false}
         >
