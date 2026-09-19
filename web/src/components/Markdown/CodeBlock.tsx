@@ -4,6 +4,35 @@ import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/pris
 import { Check, Copy } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
+// Override oneDark and oneLight to eliminate any background on inner code element
+const cleanDarkTheme: Record<string, React.CSSProperties> = {
+  ...(oneDark as Record<string, React.CSSProperties>),
+  'code[class*="language-"]': {
+    ...((oneDark as Record<string, React.CSSProperties>)['code[class*="language-"]'] || {}),
+    background: "transparent",
+    backgroundColor: "transparent",
+  },
+  'pre[class*="language-"]': {
+    ...((oneDark as Record<string, React.CSSProperties>)['pre[class*="language-"]'] || {}),
+    background: "transparent",
+    backgroundColor: "transparent",
+  },
+};
+
+const cleanLightTheme: Record<string, React.CSSProperties> = {
+  ...(oneLight as Record<string, React.CSSProperties>),
+  'code[class*="language-"]': {
+    ...((oneLight as Record<string, React.CSSProperties>)['code[class*="language-"]'] || {}),
+    background: "transparent",
+    backgroundColor: "transparent",
+  },
+  'pre[class*="language-"]': {
+    ...((oneLight as Record<string, React.CSSProperties>)['pre[class*="language-"]'] || {}),
+    background: "transparent",
+    backgroundColor: "transparent",
+  },
+};
+
 interface CodeBlockProps {
   language?: string;
   value: string;
@@ -73,7 +102,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
       <div className="overflow-x-auto text-[14.5px] leading-relaxed font-mono">
         <SyntaxHighlighter
           language={normalizedLang}
-          style={theme === "dark" ? oneDark : oneLight}
+          style={theme === "dark" ? cleanDarkTheme : cleanLightTheme}
           customStyle={{
             margin: 0,
             padding: "1.1rem 1.35rem",
