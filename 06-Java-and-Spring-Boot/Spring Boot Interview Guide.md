@@ -763,35 +763,156 @@ public class OrderService {
 
 ---
 
-## 20. `@Lookup` Annotation (Singleton with Prototype Dependency)
+## 20. `@Lookup` Annotation (Prototype Inside Singleton)
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Prototype Inside Singleton`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Dynamic Prototype Lookup`
 
-### The Problem:
-Spring creates a **Singleton bean once**. If that Singleton holds a reference to a **Prototype bean**, the Prototype bean is also created only once during initialization. Calling a method on the Singleton will **never generate a new Prototype instance**!
+### The Problem: The Scope Mismatch Dilemma
+In Spring, bean scopes define **how many instances** are created and **when** they are created:
+- **Singleton (Default)**: Created once at application startup; the same instance is shared across the entire `ApplicationContext`.
+- **Prototype (`@Scope("prototype")`)**: Created on-demand every time the bean is requested from the Spring container.
 
-### The Solution:
-`@Lookup` tells Spring to override a getter method using dynamic CGLIB byte-buddy proxies to fetch a fresh instance from the `ApplicationContext` on every invocation.
+When a **Prototype bean is directly injected into a Singleton bean**, a scope mismatch occurs:
 
+```mermaid
+flowchart TD
+    subgraph Startup ["Application Startup (One-Time Execution)"]
+        S["Singleton Controller Created"] --> Need["Requires Prototype Dependency"]
+        Need --> P1["Prototype Instance #1 Created & Injected"]
+    end
+
+    subgraph RuntimeCalls ["Runtime API Requests"]
+        R1["Request 1"] --> S
+        R2["Request 2"] --> S
+        R3["Request 3"] --> S
+        S -->|Always uses same reference| P1
+    end
+```
+
+#### What Happens Under the Hood:
+1. At application startup, Spring instantiates the singleton bean (`StudentController`).
+2. Spring resolves its dependencies and creates **one instance** of the prototype bean (`Student #1`) to inject into the controller.
+3. Because the singleton is created only once, dependency injection occurs **only once**.
+4. On subsequent requests (`/student`), the controller reuses the same initial reference (`Student #1`).
+5. **Result**: The prototype bean unintentionally behaves like a **singleton**!
+
+---
+
+### The Solution: `@Lookup` Method Injection
+`@Lookup` tells Spring to dynamically fetch a fresh prototype instance from the `ApplicationContext` on **every method invocation**, rather than holding onto a single static reference.
+
+#### 1. The Prototype Bean
 ```java
 @Component
 @Scope("prototype")
-public class HeavyTask {
-    // Unique state per execution
+public class Student {
+    public Student() {
+        System.out.println("Student bean created: " + hashCode());
+    }
 }
+```
 
-@Component
-public abstract class TaskProcessor { // Singleton
+#### 2. The Singleton Bean with `@Lookup`
+You can implement `@Lookup` in two ways:
 
-    public void runJob() {
-        HeavyTask task = getFreshTask(); // Fresh prototype instance every time!
-        // execute task
+##### Approach A: Concrete Method with Dummy Return
+```java
+@RestController
+public class StudentController {
+
+    @GetMapping("/student")
+    public int getStudentHashCode() {
+        Student student = getStudent(); // Returns a fresh instance every time!
+        return student.hashCode();
+    }
+
+    // Spring intercepts and overrides this method
+    @Lookup
+    public Student getStudent() {
+        return null; // Never executed; Spring proxy intercepts the call
+    }
+}
+```
+
+##### Approach B: Abstract Method (Cleaner & Idiomatic)
+Because Spring provides the actual implementation at runtime, you can declare the method and class as `abstract`, eliminating the dummy `return null`:
+
+```java
+@RestController
+public abstract class StudentController {
+
+    @GetMapping("/student")
+    public int getStudentHashCode() {
+        return getStudent().hashCode(); // Fresh prototype instance every request
     }
 
     @Lookup
-    protected abstract HeavyTask getFreshTask();
+    public abstract Student getStudent(); // Spring implements this method
 }
 ```
+
+---
+
+### How `@Lookup` Works Internally (CGLIB Subclassing)
+You might wonder: *"Why doesn't `return null` throw a `NullPointerException`?"*
+
+At runtime, Spring uses **CGLIB byte-code generation** to create a dynamic proxy subclass of your bean that overrides the `@Lookup` method:
+
+```java
+// Conceptual representation of what Spring generates at runtime
+public class StudentControllerSpringProxy extends StudentController {
+    
+    @Autowired
+    private ApplicationContext applicationContext;
+
+    @Override
+    public Student getStudent() {
+        // Asks the Spring container for a fresh prototype bean on every call
+        return applicationContext.getBean(Student.class);
+    }
+}
+```
+
+When you call `getStudent()`, you are executing the CGLIB proxy's overridden method, which calls `applicationContext.getBean(Student.class)`. Because `Student` is marked `@Scope("prototype")`, Spring returns a brand new instance every time:
+```text
+Request 1 -> getStudent() -> Student created: 1845621
+Request 2 -> getStudent() -> Student created: 7492813
+Request 3 -> getStudent() -> Student created: 3958102
+```
+
+---
+
+### Modern Alternative: `ObjectProvider<T>`
+In modern Spring Boot (Spring 4.3+), you can also achieve this cleanly without proxies or `@Lookup` using **`ObjectProvider<T>`**:
+
+```java
+@RestController
+public class StudentController {
+
+    private final ObjectProvider<Student> studentProvider;
+
+    public StudentController(ObjectProvider<Student> studentProvider) {
+        this.studentProvider = studentProvider;
+    }
+
+    @GetMapping("/student")
+    public int getStudentHashCode() {
+        // getObject() asks the context for a fresh prototype instance
+        return studentProvider.getObject().hashCode();
+    }
+}
+```
+
+---
+
+### High-Yield Interview Q&A
+
+| Interview Question | Precise Technical Answer |
+| :--- | :--- |
+| **Why does injecting a Prototype into a Singleton fail?** | Dependency injection occurs only once during singleton initialization. The singleton holds a permanent reference to the initial prototype instance. |
+| **How does `@Lookup` fix this?** | It uses **CGLIB dynamic subclassing** to override the method and dynamically call `applicationContext.getBean(Class)` on each invocation. |
+| **Why doesn't `return null` cause a NPE?** | The original method body is never executed; Spring's CGLIB proxy intercepts the method call and delegates to the container. |
+| **`@Lookup` vs `ApplicationContextAware`?** | Implementing `ApplicationContextAware` directly couples your code to the Spring Framework API. `@Lookup` keeps your classes clean and decoupled. |
 
 ---
 
