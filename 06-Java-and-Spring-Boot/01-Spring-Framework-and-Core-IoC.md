@@ -111,7 +111,7 @@ flowchart TD
 
 ![Spring IoC Container Architecture](https://docs.spring.io/spring-framework/docs/3.1.1.RELEASE/spring-framework-reference/htmlsingle/images/container-magic.png)
 
-> **Visual:** Official Spring Documentation — [Spring Framework IoC Container Reference](https://docs.spring.io/spring-framework/reference/core/beans/introduction.html)
+> **Source:** Spring Framework Documentation
 
 ### Tight Coupling vs. Loose Coupling
 

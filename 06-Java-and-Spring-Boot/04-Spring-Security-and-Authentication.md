@@ -38,7 +38,7 @@ Spring Security intercepts web requests through a series of ordered servlet filt
 
 ![Spring Security FilterChain Architecture](https://docs.spring.io/spring-security/reference/_images/servlet/architecture/securityfilterchain.png)
 
-> **Visual:** Official Spring Documentation — [Spring Security Servlet Architecture Reference](https://docs.spring.io/spring-security/reference/servlet/architecture.html)
+> **Source:** Spring Security Documentation
 
 ```mermaid
 flowchart LR
