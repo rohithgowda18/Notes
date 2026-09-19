@@ -190,6 +190,42 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
     }
   }
 
+  // 1. Try static tree.json first (baked into build for zero-config Vercel deployment)
+  try {
+    const staticRes = await fetch("/tree.json");
+    if (staticRes.ok) {
+      const staticData = await staticRes.json();
+      if (staticData.files && staticData.files.length > 0) {
+        const tree = buildTreeFromItems(staticData.files);
+        const now = Date.now();
+        sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
+        sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+        sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
+        return { tree, lastSynced: now, isLocal: true };
+      }
+    }
+  } catch {
+    // Continue to dev endpoint or GitHub
+  }
+
+  // 2. Try local dev endpoint if on dev server
+  if (import.meta.env.DEV) {
+    try {
+      const localRes = await fetch("/api/local-tree");
+      if (localRes.ok) {
+        const localData = await localRes.json();
+        const tree = buildTreeFromItems(localData.files || []);
+        const now = Date.now();
+        sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
+        sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+        sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
+        return { tree, lastSynced: now, isLocal: true };
+      }
+    } catch {
+      // Continue to GitHub API
+    }
+  }
+
   const token = getStoredGitHubToken();
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
@@ -217,21 +253,6 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
       return { tree, lastSynced: now, isLocal: false };
     }
 
-    // If GitHub returns 404 (private repo or bad branch) or 403 (rate limit), attempt local dev fallback
-    console.warn(`GitHub API returned status ${response.status}. Attempting local workspace fallback...`);
-    const localRes = await fetch("/api/local-tree");
-    if (localRes.ok) {
-      const localData = await localRes.json();
-      const tree = buildTreeFromItems(localData.files || []);
-
-      const now = Date.now();
-      sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
-      sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
-      sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
-
-      return { tree, lastSynced: now, isLocal: true };
-    }
-
     if (response.status === 403) {
       throw new Error("GitHub API rate limit exceeded. Please provide a GitHub Personal Access Token.");
     }
@@ -240,21 +261,6 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
     }
     throw new Error(`Failed to fetch repository tree: ${response.statusText}`);
   } catch (err: any) {
-    // Attempt local fallback if network failed or GitHub threw
-    try {
-      const localRes = await fetch("/api/local-tree");
-      if (localRes.ok) {
-        const localData = await localRes.json();
-        const tree = buildTreeFromItems(localData.files || []);
-        const now = Date.now();
-        sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
-        sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
-        sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
-        return { tree, lastSynced: now, isLocal: true };
-      }
-    } catch {
-      // Local fallback unavailable
-    }
     throw err;
   }
 }
@@ -272,7 +278,21 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
     }
   }
 
-  // During local development or when fallback is active, read directly from local workspace
+  // 1. Try static /notes/ path first (Vercel CDN deployment)
+  try {
+    const staticRes = await fetch(`/notes/${encodeURI(filePath)}`);
+    if (staticRes.ok) {
+      const text = await staticRes.text();
+      if (!text.trim().startsWith("<!DOCTYPE html") && !text.trim().startsWith("<html")) {
+        sessionStorage.setItem(cacheKey, text);
+        return text;
+      }
+    }
+  } catch {
+    // Continue
+  }
+
+  // 2. In local dev server, read directly from local workspace
   if (import.meta.env.DEV || isLocalFallbackActive()) {
     try {
       const localRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
@@ -301,7 +321,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
       return content;
     }
   } catch (e) {
-    console.warn("Raw GitHub fetch failed, attempting local fallback", e);
+    console.warn("Raw GitHub fetch failed", e);
   }
 
   // Fallback to local server if on dev

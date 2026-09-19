@@ -6,7 +6,6 @@ import rehypeRaw from "rehype-raw";
 import { Link } from "react-router-dom";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidRenderer } from "./MermaidRenderer";
-import { GITHUB_RAW_BASE } from "../../config/github";
 import { isLocalFallbackActive } from "../../services/github";
 import { Maximize2, X } from "lucide-react";
 
@@ -46,12 +45,12 @@ function resolveAssetPath(currentFilePath: string, assetPath: string): string {
   }
 
   const resolvedPath = baseSegments.join("/");
-  const isLocal = isLocalFallbackActive();
+  const isLocalDev = import.meta.env.DEV && isLocalFallbackActive();
 
-  if (isLocal) {
+  if (isLocalDev) {
     return `/api/local-file?path=${encodeURIComponent(resolvedPath)}`;
   } else {
-    return `${GITHUB_RAW_BASE}/${encodeURI(resolvedPath)}`;
+    return `/notes/${encodeURI(resolvedPath)}`;
   }
 }
 

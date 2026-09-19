@@ -1,0 +1,538 @@
+{
+  "files": [
+    {
+      "path": "01-Operating-Systems/Last Minute Notes – Operating Systems - GeeksforGeeks.pdf",
+      "name": "Last Minute Notes – Operating Systems - GeeksforGeeks.pdf",
+      "type": "pdf",
+      "size": 3204523
+    },
+    {
+      "path": "01-Operating-Systems/Operating Systems 30 Interview Questions.pdf",
+      "name": "Operating Systems 30 Interview Questions.pdf",
+      "type": "pdf",
+      "size": 1524696
+    },
+    {
+      "path": "01-Operating-Systems/Operating-System-Interview-Questions.pdf",
+      "name": "Operating-System-Interview-Questions.pdf",
+      "type": "pdf",
+      "size": 176318
+    },
+    {
+      "path": "01-Operating-Systems/OS_Full_Notes.pdf",
+      "name": "OS_Full_Notes.pdf",
+      "type": "pdf",
+      "size": 2531662
+    },
+    {
+      "path": "01-Operating-Systems/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 1828
+    },
+    {
+      "path": "02-DBMS/DBMS INTERVIEW QUESTION.pdf",
+      "name": "DBMS INTERVIEW QUESTION.pdf",
+      "type": "pdf",
+      "size": 1677369
+    },
+    {
+      "path": "02-DBMS/DBMS_Full_Notes.pdf",
+      "name": "DBMS_Full_Notes.pdf",
+      "type": "pdf",
+      "size": 5676638
+    },
+    {
+      "path": "02-DBMS/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 2215
+    },
+    {
+      "path": "02-DBMS/SQL-Advanced-Syntax-CheatSheet.md",
+      "name": "SQL-Advanced-Syntax-CheatSheet.md",
+      "type": "markdown",
+      "size": 9996
+    },
+    {
+      "path": "02-DBMS/SQL-High-Value-Query-Patterns.md",
+      "name": "SQL-High-Value-Query-Patterns.md",
+      "type": "markdown",
+      "size": 11566
+    },
+    {
+      "path": "03-Computer-Networks/01-Comprehensive-Guide/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 38575
+    },
+    {
+      "path": "03-Computer-Networks/Computer Networking Notes for Tech Placements.pdf",
+      "name": "Computer Networking Notes for Tech Placements.pdf",
+      "type": "pdf",
+      "size": 217038
+    },
+    {
+      "path": "03-Computer-Networks/Computer_Networks_Placement_Notes.pdf",
+      "name": "Computer_Networks_Placement_Notes.pdf",
+      "type": "pdf",
+      "size": 23183
+    },
+    {
+      "path": "03-Computer-Networks/Networking-Interview-Questions.pdf",
+      "name": "Networking-Interview-Questions.pdf",
+      "type": "pdf",
+      "size": 312561
+    },
+    {
+      "path": "03-Computer-Networks/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 2210
+    },
+    {
+      "path": "04-OOPs-and-Design-Patterns/Design_Patterns_Placement_Notes.pdf",
+      "name": "Design_Patterns_Placement_Notes.pdf",
+      "type": "pdf",
+      "size": 221316
+    },
+    {
+      "path": "04-OOPs-and-Design-Patterns/OOPS-Concepts-in-Java.pdf",
+      "name": "OOPS-Concepts-in-Java.pdf",
+      "type": "pdf",
+      "size": 1059697
+    },
+    {
+      "path": "04-OOPs-and-Design-Patterns/OOPs-Interview-Questions.pdf",
+      "name": "OOPs-Interview-Questions.pdf",
+      "type": "pdf",
+      "size": 435738
+    },
+    {
+      "path": "04-OOPs-and-Design-Patterns/OOPS-Notes.md",
+      "name": "OOPS-Notes.md",
+      "type": "markdown",
+      "size": 9215
+    },
+    {
+      "path": "04-OOPs-and-Design-Patterns/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 2151
+    },
+    {
+      "path": "05-DSA/DSA Quick Revision Guide.pdf",
+      "name": "DSA Quick Revision Guide.pdf",
+      "type": "pdf",
+      "size": 2506155
+    },
+    {
+      "path": "05-DSA/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 1778
+    },
+    {
+      "path": "05-DSA/Sorting-Algorithms.md",
+      "name": "Sorting-Algorithms.md",
+      "type": "markdown",
+      "size": 17046
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/01-Spring-Framework-and-Core-IoC.md",
+      "name": "01-Spring-Framework-and-Core-IoC.md",
+      "type": "markdown",
+      "size": 28893
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/02-Spring-Boot-and-Web-MVC.md",
+      "name": "02-Spring-Boot-and-Web-MVC.md",
+      "type": "markdown",
+      "size": 29465
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/03-Data-Persistence-Spring-Data-JPA.md",
+      "name": "03-Data-Persistence-Spring-Data-JPA.md",
+      "type": "markdown",
+      "size": 29927
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/04-Spring-Security-and-Authentication.md",
+      "name": "04-Spring-Security-and-Authentication.md",
+      "type": "markdown",
+      "size": 20667
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/05-Spring-REST-Microservices-and-Production.md",
+      "name": "05-Spring-REST-Microservices-and-Production.md",
+      "type": "markdown",
+      "size": 32570
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/java Programming.pdf",
+      "name": "java Programming.pdf",
+      "type": "pdf",
+      "size": 1581560
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/Java Streams.md",
+      "name": "Java Streams.md",
+      "type": "markdown",
+      "size": 7660
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/Maven.md",
+      "name": "Maven.md",
+      "type": "markdown",
+      "size": 9469
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 3705
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/Spring Boot Complete Notes.pdf",
+      "name": "Spring Boot Complete Notes.pdf",
+      "type": "pdf",
+      "size": 48508247
+    },
+    {
+      "path": "06-Java-and-Spring-Boot/Spring Boot Interview Guide.md",
+      "name": "Spring Boot Interview Guide.md",
+      "type": "markdown",
+      "size": 84851
+    },
+    {
+      "path": "07-Backend-Engineering/Backend Scaling & Performance - Part 1.md",
+      "name": "Backend Scaling & Performance - Part 1.md",
+      "type": "markdown",
+      "size": 10730
+    },
+    {
+      "path": "07-Backend-Engineering/Backend Scaling & Performance - Part 2.md",
+      "name": "Backend Scaling & Performance - Part 2.md",
+      "type": "markdown",
+      "size": 9989
+    },
+    {
+      "path": "07-Backend-Engineering/Concurrency & Parallelism.md",
+      "name": "Concurrency & Parallelism.md",
+      "type": "markdown",
+      "size": 21071
+    },
+    {
+      "path": "07-Backend-Engineering/Docker CheatSheet ApnaCollege.pdf",
+      "name": "Docker CheatSheet ApnaCollege.pdf",
+      "type": "pdf",
+      "size": 134297
+    },
+    {
+      "path": "07-Backend-Engineering/Docker.md",
+      "name": "Docker.md",
+      "type": "markdown",
+      "size": 37100
+    },
+    {
+      "path": "07-Backend-Engineering/Elastic Search.md",
+      "name": "Elastic Search.md",
+      "type": "markdown",
+      "size": 27966
+    },
+    {
+      "path": "07-Backend-Engineering/Error Handling and Building Fault Tolerant Systems.md",
+      "name": "Error Handling and Building Fault Tolerant Systems.md",
+      "type": "markdown",
+      "size": 30683
+    },
+    {
+      "path": "07-Backend-Engineering/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 3053
+    },
+    {
+      "path": "07-Backend-Engineering/Real-Time Backend Systems.md",
+      "name": "Real-Time Backend Systems.md",
+      "type": "markdown",
+      "size": 17780
+    },
+    {
+      "path": "07-Backend-Engineering/Security.md",
+      "name": "Security.md",
+      "type": "markdown",
+      "size": 9197
+    },
+    {
+      "path": "07-Backend-Engineering/Task queues and background jobs.md",
+      "name": "Task queues and background jobs.md",
+      "type": "markdown",
+      "size": 7967
+    },
+    {
+      "path": "07-Backend-Engineering/Webhooks.md",
+      "name": "Webhooks.md",
+      "type": "markdown",
+      "size": 20590
+    },
+    {
+      "path": "08-System-Design/01. Scaling/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 9909
+    },
+    {
+      "path": "08-System-Design/02. Back Of the Envelope Estimation/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 3574
+    },
+    {
+      "path": "08-System-Design/03. System Design Framework/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 3942
+    },
+    {
+      "path": "08-System-Design/04. Rate Limiter/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 4761
+    },
+    {
+      "path": "08-System-Design/05. Consistent Hashing/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 4592
+    },
+    {
+      "path": "08-System-Design/06. Key-Value Store/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 11767
+    },
+    {
+      "path": "08-System-Design/07. Unique-Id Generator/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 3919
+    },
+    {
+      "path": "08-System-Design/08. URL Shortener/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 4810
+    },
+    {
+      "path": "08-System-Design/09. Web Crawler/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 6554
+    },
+    {
+      "path": "08-System-Design/10. Notification System/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 5531
+    },
+    {
+      "path": "08-System-Design/11. News Feed System/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 5357
+    },
+    {
+      "path": "08-System-Design/12. Chat System/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 7871
+    },
+    {
+      "path": "08-System-Design/13. Search Autocomplete/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 6957
+    },
+    {
+      "path": "08-System-Design/14. Youtube/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 8141
+    },
+    {
+      "path": "08-System-Design/15. Google Drive/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 8941
+    },
+    {
+      "path": "08-System-Design/16. Proximity Service/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 12761
+    },
+    {
+      "path": "08-System-Design/17. Nearby Friends/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 13731
+    },
+    {
+      "path": "08-System-Design/18. Google Maps/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 17610
+    },
+    {
+      "path": "08-System-Design/19. Distributed Message Queue/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 29270
+    },
+    {
+      "path": "08-System-Design/20. Metrics Monitoring and Alerting System/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 23376
+    },
+    {
+      "path": "08-System-Design/21. Ad Click Event Aggregation/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 25979
+    },
+    {
+      "path": "08-System-Design/22. Hotel Reservation System/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 22021
+    },
+    {
+      "path": "08-System-Design/23. Distributed Email Service/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 16103
+    },
+    {
+      "path": "08-System-Design/24. S3-like Object Storage/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 21405
+    },
+    {
+      "path": "08-System-Design/25. Real-time Gaming Leaderboard/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 17791
+    },
+    {
+      "path": "08-System-Design/26. Payment System/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 17462
+    },
+    {
+      "path": "08-System-Design/27.  Digital Wallet/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 22241
+    },
+    {
+      "path": "08-System-Design/28. Stock Exchange/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 26435
+    },
+    {
+      "path": "08-System-Design/Readme.md",
+      "name": "Readme.md",
+      "type": "markdown",
+      "size": 5765
+    },
+    {
+      "path": "09-Projects/Drive Verify - Vehicle Registration & Fraud Verification.md",
+      "name": "Drive Verify - Vehicle Registration & Fraud Verification.md",
+      "type": "markdown",
+      "size": 14583
+    },
+    {
+      "path": "09-Projects/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 2963
+    },
+    {
+      "path": "09-Projects/XMARs Interview Questions & Answers.md",
+      "name": "XMARs Interview Questions & Answers.md",
+      "type": "markdown",
+      "size": 13085
+    },
+    {
+      "path": "09-Projects/XMARS.md",
+      "name": "XMARS.md",
+      "type": "markdown",
+      "size": 34068
+    },
+    {
+      "path": "09-Projects/YT_ChatBot - RAG Video-Mind AI Revision.md",
+      "name": "YT_ChatBot - RAG Video-Mind AI Revision.md",
+      "type": "markdown",
+      "size": 10329
+    },
+    {
+      "path": "MongoDB Handbook.pdf",
+      "name": "MongoDB Handbook.pdf",
+      "type": "pdf",
+      "size": 300077
+    },
+    {
+      "path": "README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 13200
+    },
+    {
+      "path": "spring-boot-microservices-notes/01-fundamentals.md",
+      "name": "01-fundamentals.md",
+      "type": "markdown",
+      "size": 20774
+    },
+    {
+      "path": "spring-boot-microservices-notes/02-service-communication.md",
+      "name": "02-service-communication.md",
+      "type": "markdown",
+      "size": 25374
+    },
+    {
+      "path": "spring-boot-microservices-notes/03-service-discovery.md",
+      "name": "03-service-discovery.md",
+      "type": "markdown",
+      "size": 24920
+    },
+    {
+      "path": "spring-boot-microservices-notes/04-api-gateway.md",
+      "name": "04-api-gateway.md",
+      "type": "markdown",
+      "size": 24983
+    },
+    {
+      "path": "spring-boot-microservices-notes/05-resilience-fault-tolerance.md",
+      "name": "05-resilience-fault-tolerance.md",
+      "type": "markdown",
+      "size": 16661
+    },
+    {
+      "path": "spring-boot-microservices-notes/06-observability.md",
+      "name": "06-observability.md",
+      "type": "markdown",
+      "size": 13391
+    },
+    {
+      "path": "spring-boot-microservices-notes/README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 5906
+    }
+  ]
+}

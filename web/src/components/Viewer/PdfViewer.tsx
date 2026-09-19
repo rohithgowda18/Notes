@@ -15,7 +15,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { GITHUB_RAW_BASE } from "../../config/github";
 import { isLocalFallbackActive } from "../../services/github";
 import { useRepo } from "../../context/RepoContext";
 import { getFolderTargetRoute, getParentFolderPath } from "../../utils/navigation";
@@ -212,10 +211,10 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
   const { allFiles } = useRepo();
   const fileName = filePath.split("/").pop() || "Document.pdf";
   const parentFolderPath = getParentFolderPath(filePath);
-  const isLocal = isLocalFallbackActive();
-  const pdfUrl = isLocal
+  const isLocalDev = import.meta.env.DEV && isLocalFallbackActive();
+  const pdfUrl = isLocalDev
     ? `/api/local-file?path=${encodeURIComponent(filePath)}`
-    : `${GITHUB_RAW_BASE}/${encodeURI(filePath)}`;
+    : `/notes/${encodeURI(filePath)}`;
 
   // 1. Fetch & Load PDF Document
   useEffect(() => {
