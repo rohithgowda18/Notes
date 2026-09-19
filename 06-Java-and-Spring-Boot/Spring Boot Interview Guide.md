@@ -616,127 +616,64 @@ Transaction propagation determines what happens when a transactional method is c
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Default vs Explicit Bean`
 
-### The Problem: Ambiguous Dependency Injection
-By default, Spring resolves dependencies **by type** (`byType`). When an interface has two or more bean implementations registered in the `ApplicationContext`, Spring's `DefaultListableBeanFactory` cannot determine which bean to inject.
-
-At application startup during context refresh, Spring fails fast and throws:
-```text
-org.springframework.beans.factory.NoUniqueBeanDefinitionException: 
-No qualifying bean of type 'com.example.NotificationService' available: 
-expected single matching bean but found 2: emailNotificationService, smsNotificationService
-```
-
----
-
-### Spring's Disambiguation Resolution Order
+When multiple beans implement the same interface, Spring cannot decide which bean to inject and throws a `NoUniqueBeanDefinitionException`.
 
 ```mermaid
 flowchart TD
-    Start["Spring encounters dependency by type (e.g., NotificationService)"] --> CheckCandidates{"How many matching beans exist?"}
-    CheckCandidates -- "Exactly 1" --> Inject["Inject Bean ✅"]
-    CheckCandidates -- "2 or more" --> CheckQualifier{"Is @Qualifier present at injection point?"}
-    
-    CheckQualifier -- "Yes" --> MatchQualifier{"Exact bean name/qualifier matches?"}
-    MatchQualifier -- "Yes" --> InjectQ["Inject Specified Bean (Overrides @Primary) ✅"]
-    MatchQualifier -- "No" --> Err1["Throw NoSuchBeanDefinitionException ❌"]
-    
-    CheckQualifier -- "No" --> CheckPrimary{"Is exactly one bean marked @Primary?"}
-    CheckPrimary -- "Yes" --> InjectP["Inject Default @Primary Bean ✅"]
-    CheckPrimary -- "Multiple @Primary" --> Err2["Throw NoUniqueBeanDefinitionException: Multiple primary beans ❌"]
-    CheckPrimary -- "Zero @Primary" --> CheckName{"Does parameter name match a bean name?"}
-    
-    CheckName -- "Yes" --> InjectName["Inject Bean by Name (Fallback) ✅"]
-    CheckName -- "No" --> Err3["Throw NoUniqueBeanDefinitionException ❌"]
+    Candidate["Multiple Matching Beans Found"] --> CheckQ{"Is @Qualifier present?"}
+    CheckQ -- "Yes" --> Q["Inject by Specific Name (Highest Priority) ✅"]
+    CheckQ -- "No" --> CheckP{"Is one marked @Primary?"}
+    CheckP -- "Yes" --> P["Inject Default @Primary Bean ✅"]
+    CheckP -- "No" --> Err["Throw NoUniqueBeanDefinitionException ❌"]
 ```
 
----
+### Standard Tutorial Example: `PaymentService`
 
-### Technical Comparison: `@Primary` vs. `@Qualifier`
-
-| Architectural Dimension | `@Primary` | `@Qualifier` |
-| :--- | :--- | :--- |
-| **Placement Level** | **Bean Definition Level** (`@Component`, `@Service`, or `@Bean` method) | **Injection Point Level** (Constructor parameter, method param, or field) |
-| **Control Model** | **Producer-side Default**: The bean author declares: *"If no one specifies, use me as default."* | **Consumer-side Override**: The injection point declares: *"Regardless of defaults, give me this exact bean."* |
-| **Target Mechanism** | Designates a single fallback bean when type matching yields multiple candidates. | Matches target bean by explicit identifier (bean name or custom qualifier string). |
-| **Precedence** | **Lower Precedence** (Overridden whenever `@Qualifier` is present). | **Highest Precedence** (Explicitly overrides `@Primary`). |
-| **Multiple Declaration Failure** | If $>1$ candidates have `@Primary`, startup fails with `NoUniqueBeanDefinitionException`. | If qualifier identifier doesn't exist, startup fails with `NoSuchBeanDefinitionException`. |
-
----
-
-### Production Code Implementation
-
-#### 1. The Interface
 ```java
-public interface NotificationService {
-    void sendNotification(String message, String recipient);
+// 1. Interface
+public interface PaymentService {
+    void pay(double amount);
 }
-```
 
-#### 2. Multiple Implementations with `@Primary` and Custom Bean Names
-```java
-// Default Implementation (Producer designates this as the primary fallback)
+// 2. Default Bean marked with @Primary
 @Component
 @Primary
-public class EmailNotificationService implements NotificationService {
-    @Override
-    public void sendNotification(String message, String recipient) {
-        System.out.println("Sending Email to " + recipient + ": " + message);
-    }
+public class CreditCardPaymentService implements PaymentService {
+    public void pay(double amount) { System.out.println("Paid with Credit Card: " + amount); }
 }
 
-// Alternative Implementation (Explicitly named bean)
-@Component("smsNotificationService")
-public class SmsNotificationService implements NotificationService {
-    @Override
-    public void sendNotification(String message, String recipient) {
-        System.out.println("Sending SMS to " + recipient + ": " + message);
-    }
+// 3. Alternative Bean
+@Component("upiPayment")
+public class UpiPaymentService implements PaymentService {
+    public void pay(double amount) { System.out.println("Paid with UPI: " + amount); }
 }
-```
 
-#### 3. Injection Points Demonstrating Precedence
-
-```java
+// 4. Injected into Service
 @Service
 public class OrderService {
-    private final NotificationService defaultService;
-    private final NotificationService urgentService;
+    private final PaymentService defaultPayment;
+    private final PaymentService fastPayment;
 
-    // Constructor Injection
     public OrderService(
-        // Case A: No @Qualifier -> Spring picks @Primary (EmailNotificationService)
-        NotificationService defaultService,
-
-        // Case B: Explicit @Qualifier -> Overrides @Primary and injects SmsNotificationService
-        @Qualifier("smsNotificationService") NotificationService urgentService
+        PaymentService defaultPayment,                         // Injects CreditCardPaymentService (@Primary)
+        @Qualifier("upiPayment") PaymentService fastPayment    // Injects UpiPaymentService (@Qualifier overrides @Primary)
     ) {
-        this.defaultService = defaultService;
-        this.urgentService = urgentService;
-    }
-
-    public void processOrder() {
-        defaultService.sendNotification("Order confirmed", "alice@example.com"); // Uses Email
-        urgentService.sendNotification("OTP: 492011", "+1-555-0199");          // Uses SMS
+        this.defaultPayment = defaultPayment;
+        this.fastPayment = fastPayment;
     }
 }
 ```
 
----
+### Key Differences & Precedence
 
-### Key Interview Gotchas & Edge Cases
+| Feature | `@Primary` | `@Qualifier` |
+| :--- | :--- | :--- |
+| **Where to Put** | On the **Bean class** (`@Component`, `@Bean`) | At the **Injection point** (Constructor/Field) |
+| **Purpose** | Defines the **default fallback** implementation | Defines an **explicit selection** by name |
+| **Precedence** | Lower (`@Qualifier` always overrides it) | **Highest priority** |
 
-1. **Precedence Hierarchy**:
-   $$\text{@Qualifier at Injection Point} \;\;>\;\; \text{@Primary at Bean Definition} \;\;>\;\; \text{Variable Name Fallback}$$
-2. **Two Beans with `@Primary`**:
-   - If both `EmailNotificationService` and `SmsNotificationService` are annotated with `@Primary`, Spring cannot arbitrate and throws `NoUniqueBeanDefinitionException: more than one 'primary' bean found among candidates`.
-3. **Custom Qualifier Annotations**:
-   - Instead of hardcoding string literals (`@Qualifier("sms")`), enterprise applications create custom meta-annotations with `@Qualifier` for compile-time safety:
-     ```java
-     @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE})
-     @Retention(RetentionPolicy.RUNTIME)
-     @Qualifier
-     public @interface SmsChannel {}
-     ```
+> [!TIP]
+> **Precedence Order**: `@Qualifier` > `@Primary` > Matching by variable name.
 
 ---
 
@@ -744,144 +681,85 @@ public class OrderService {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Constructor vs Setter vs Field`
 
-### Context: What is Dependency Injection (DI)?
-In standard Java, you create objects manually with the `new` keyword. In Spring, the **Inversion of Control (IoC) Container** creates, manages, and stores objects (called **Beans**) marked with stereotype annotations (`@Component`, `@Service`, `@RestController`). 
+Dependency Injection (DI) allows Spring's IoC container to create and supply beans to your classes instead of using `new`. Spring supports **three injection styles**:
 
-**Dependency Injection (DI)** is the process where Spring supplies these managed beans to the classes that depend on them. There are **three primary ways** to perform dependency injection in Spring Boot.
-
----
-
-### The 3 Injection Types Explained
-
-#### 1. Field Injection
-Spring injects the dependency directly into the class field using Java reflection, bypassing constructors and setters.
+### 1. Field Injection (❌ Avoid in Production)
+Injects dependencies directly into private fields using Java reflection.
 
 ```java
-@RestController
-public class EmployeeController {
-
-    // Injected directly into the private field via reflection
+@Service
+public class OrderService {
     @Autowired
-    private Employee employee;
+    private PaymentService paymentService; // Injected via reflection
 
-    // Optional dependency: Spring won't fail if Employee bean is missing
-    @Autowired(required = false)
-    private Department department;
-
-    @GetMapping("/employee")
-    public Employee getEmployee() {
-        return employee;
-    }
+    @Autowired(required = false)           // Optional dependency (null if bean missing)
+    private DiscountService discountService;
 }
 ```
-
-- **Characteristics**:
-  - **Mutability**: The field cannot be declared `final`, meaning the dependency reference can be reassigned or modified at runtime.
-  - **Optional Dependencies (`required = false`)**: If `@Autowired(required = false)` is set and no matching bean exists in the IoC container, Spring starts normally and leaves the field `null`. Without `required = false`, Spring throws `NoSuchBeanDefinitionException` on startup.
-  - **Drawbacks**: Relies on reflection, hides class dependencies from external callers, and makes isolated unit testing difficult (requires Spring Test Context or Mockito reflection hacks).
+- **Why developers use it**: Short and convenient syntax.
+- **Why it's discouraged**:
+  - **Mutable**: Fields cannot be `final`.
+  - **Hard to Unit Test**: You cannot pass mock objects without reflection or starting the full Spring context.
 
 ---
 
-#### 2. Setter Injection
-Spring injects dependencies by calling public setter methods annotated with `@Autowired` after bean instantiation.
+### 2. Setter Injection (Use for Optional Dependencies)
+Injects dependencies via public setter methods after bean creation.
 
 ```java
-@RestController
-public class EmployeeController {
+@Service
+public class OrderService {
+    private PaymentService paymentService;
 
-    private Employee employee;
-
-    // Injected via public setter method
-    @Autowired
-    public void setEmployee(Employee employee) {
-        this.employee = employee;
-    }
-
-    // Optional dependency configured on setter
-    @Autowired(required = false)
-    public void setDepartment(Department department) {
-        this.department = department;
-    }
-
-    @GetMapping("/employee")
-    public Employee getEmployee() {
-        return employee;
+    @Autowired(required = false) // Best for optional or reconfigurable dependencies
+    public void setPaymentService(PaymentService paymentService) {
+        this.paymentService = paymentService;
     }
 }
 ```
-
-- **Characteristics**:
-  - **Mutability**: Like field injection, dependencies remain mutable. The reference can be updated, reconfigured, or reinjected at runtime.
-  - **Optional Dependencies**: Best suited for non-mandatory, optional dependencies where individual setters can have `@Autowired(required = false)`.
-  - **Drawbacks**: Allows partial or incomplete object state if a required setter is never invoked before a business method executes.
+- **Best Use Case**: Ideal for optional dependencies that can be reconfigured or changed at runtime.
+- **Drawback**: Allows the object to exist in an incomplete state if the setter is not called.
 
 ---
 
-#### 3. Constructor Injection (✅ Industry Best Practice)
-Spring injects dependencies through the class constructor during object instantiation.
+### 3. Constructor Injection (✅ Recommended Best Practice)
+Injects dependencies through the constructor during object instantiation.
 
 ```java
-@RestController
-public class EmployeeController {
+// Pattern A: Standard Constructor Injection (Spring 4.3+ @Autowired is optional)
+@Service
+public class OrderService {
+    private final PaymentService paymentService; // 1. 'final' guarantees immutability
 
-    // 1. Declared as 'final' to guarantee true immutability
-    private final Employee employee;
-
-    // 2. Spring 4.3+: @Autowired is OPTIONAL if class has only one constructor
-    public EmployeeController(Employee employee) {
-        this.employee = employee;
+    public OrderService(PaymentService paymentService) {
+        this.paymentService = paymentService;
     }
+}
 
-    @GetMapping("/employee")
-    public Employee getEmployee() {
-        return employee;
-    }
+// Pattern B: Most Used in Real Projects & Tutorials (with Lombok)
+@Service
+@RequiredArgsConstructor // Automatically creates constructor for all 'final' fields!
+public class OrderService {
+    private final PaymentService paymentService;
+    private final NotificationService notificationService;
 }
 ```
 
-- **Characteristics**:
-  - **Immutability (`final`)**: Fields can be declared `final`. Once instantiated, the reference **cannot be reassigned** (`cannot assign a value to final variable`). This ensures thread-safe, immutable state.
-  - **Guaranteed Completeness**: The class cannot be instantiated without all required dependencies provided, eliminating `NullPointerException` risks.
-  - **Single Constructor Rule**: Since Spring 4.3, if a class has only one constructor, the `@Autowired` annotation can be omitted entirely.
-  - **Testing Friendly**: You can write pure JUnit tests without Spring containers:
-    ```java
-    EmployeeController controller = new EmployeeController(new MockEmployee());
-    ```
+- **Why Constructor Injection is the Industry Standard**:
+  1. **True Immutability**: Fields are marked **`final`** and cannot be modified after object construction.
+  2. **No NullPointerExceptions**: Guarantees all mandatory dependencies are present before the bean is created.
+  3. **Trivial Unit Testing**: You can test without Spring using plain Java: `new OrderService(new MockPaymentService())`.
 
 ---
 
-### Technical Comparison Matrix
+### Summary Comparison
 
-```mermaid
-flowchart TD
-    subgraph Comparison ["Dependency Injection Trade-Offs"]
-        CI["Constructor Injection"] -->|Guarantees| IMMUT["Immutability ('final' fields) ✅"]
-        CI -->|Mandatory| REQ["Mandatory Dependencies Enforced ✅"]
-        
-        SI["Setter Injection"] -->|Supports| RECONFIG["Runtime Reconfiguration & Mutability"]
-        SI -->|Ideal for| OPT["Optional Dependencies (@Autowired(required=false)) ✅"]
-        
-        FI["Field Injection"] -->|Simplicity| CLEAN["Compact Code syntax"]
-        FI -->|Drawback| REF["Hides Dependencies & Breaks POJO Testing ❌"]
-    end
-```
-
-| Dimension | Constructor Injection | Setter Injection | Field Injection |
+| Feature | Constructor Injection | Setter Injection | Field Injection |
 | :--- | :--- | :--- | :--- |
-| **Immutability** | **Yes** (Supports `final` fields) | **No** (Must be mutable) | **No** (Must be mutable) |
-| **Dependency Requirement** | **Mandatory** dependencies | **Optional** / reconfigurable | Both (via `required=false`) |
-| **`@Autowired(required=false)`** | Complex (Needs `Optional<T>` or `@Nullable`) | **Directly on setter method** | **Directly on field** |
-| **Testing Ease (POJO)** | **Trivial** (`new Controller(mock)`) | Moderate (Requires calling setter) | **Hard** (Requires reflection/Spring runner) |
-| **Circular Dependency** | **Fails fast** at startup (`BeanCurrentlyInCreationException`) | Tolerates / masks cycles | Tolerates / masks cycles |
-| **Spring Team Recommendation** | **Official Best Practice** | Use for optional dependencies only | **Discouraged** in production |
-
----
-
-### High-Yield Interview Takeaway: When to Use Which?
-
-1. **For Mandatory Dependencies**: Always use **Constructor Injection**. It guarantees immutability with `final`, prevents null pointer exceptions, and facilitates clean unit testing.
-2. **For Optional / Non-Mandatory Dependencies**: Use **Setter Injection** with `@Autowired(required = false)` or use `Optional<T>` in the constructor.
-3. **Field Injection**: Keep it strictly for simple rapid prototypes or test classes; avoid in enterprise production code because it violates encapsulation and complicates test isolation.
+| **Immutability** | ✅ **Yes** (`final` fields) | ❌ No (mutable) | ❌ No (mutable) |
+| **Best For** | **Mandatory** dependencies | **Optional** (`required = false`) | Quick prototypes only |
+| **Testing** | Easy (Plain Java POJO) | Medium (Call setters) | Hard (Needs reflection) |
+| **Recommendation** | **Best Practice** | Use when optional | **Avoid** |
 
 ---
 
