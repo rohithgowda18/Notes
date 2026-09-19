@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
+import rehypeRaw from "rehype-raw";
 import { Link } from "react-router-dom";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidRenderer } from "./MermaidRenderer";
@@ -14,22 +15,79 @@ interface MarkdownRendererProps {
   currentFilePath: string;
 }
 
+/**
+ * Resolve relative asset paths (images, diagrams) relative to current Markdown file location
+ */
+function resolveAssetPath(currentFilePath: string, assetPath: string): string {
+  if (!assetPath) return assetPath;
+  if (
+    assetPath.startsWith("http://") ||
+    assetPath.startsWith("https://") ||
+    assetPath.startsWith("data:")
+  ) {
+    return assetPath;
+  }
+
+  const pathParts = currentFilePath.split("/");
+  const currentDir = pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "";
+
+  const cleanRel = assetPath.replace(/\\/g, "/");
+  const baseSegments = currentDir ? currentDir.split("/").filter(Boolean) : [];
+  const relSegments = cleanRel.split("/").filter(Boolean);
+
+  for (const seg of relSegments) {
+    if (seg === ".") {
+      continue;
+    } else if (seg === "..") {
+      baseSegments.pop();
+    } else {
+      baseSegments.push(seg);
+    }
+  }
+
+  const resolvedPath = baseSegments.join("/");
+  const isLocal = isLocalFallbackActive();
+
+  if (isLocal) {
+    return `/api/local-file?path=${encodeURIComponent(resolvedPath)}`;
+  } else {
+    return `${GITHUB_RAW_BASE}/${encodeURI(resolvedPath)}`;
+  }
+}
+
+/**
+ * Resolve relative link paths for Markdown notes and PDFs
+ */
+function resolveLinkPath(currentFilePath: string, href: string): string {
+  const pathParts = currentFilePath.split("/");
+  const currentDir = pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "";
+  const baseSegments = currentDir ? currentDir.split("/").filter(Boolean) : [];
+  const relSegments = href.replace(/\\/g, "/").split("/").filter(Boolean);
+
+  for (const seg of relSegments) {
+    if (seg === ".") {
+      continue;
+    } else if (seg === "..") {
+      baseSegments.pop();
+    } else {
+      baseSegments.push(seg);
+    }
+  }
+
+  return baseSegments.join("/");
+}
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   currentFilePath,
 }) => {
   const [lightboxImg, setLightboxImg] = useState<{ src: string; alt: string } | null>(null);
 
-  // Extract directory path for relative asset resolution
-  const pathParts = currentFilePath.split("/");
-  const currentDir = pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "";
-  const isLocal = isLocalFallbackActive();
-
   return (
     <div className="markdown-body dark:text-neutral-200">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSlug]}
+        rehypePlugins={[rehypeRaw, rehypeSlug]}
         components={{
           // Code block and Mermaid handling
           code({ className, children, ...props }) {
@@ -81,19 +139,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             }
 
             // Internal Markdown or PDF links
-            if (href.endsWith(".md") || href.endsWith(".markdown") || href.endsWith(".pdf")) {
-              let targetPath = href;
-              if (href.startsWith("./")) {
-                targetPath = href.substring(2);
-              }
-              if (!targetPath.startsWith("/") && currentDir) {
-                targetPath = `${currentDir}/${targetPath}`;
-              } else if (targetPath.startsWith("/")) {
-                targetPath = targetPath.substring(1);
-              }
-
-              const isPdf = targetPath.endsWith(".pdf");
-              const route = isPdf ? `/pdf/${encodeURIComponent(targetPath)}` : `/note/${encodeURIComponent(targetPath)}`;
+            const lowerHref = href.toLowerCase();
+            if (
+              lowerHref.endsWith(".md") ||
+              lowerHref.endsWith(".markdown") ||
+              lowerHref.endsWith(".pdf")
+            ) {
+              const targetPath = resolveLinkPath(currentFilePath, href);
+              const isPdf = targetPath.toLowerCase().endsWith(".pdf");
+              const route = isPdf
+                ? `/pdf/${encodeURIComponent(targetPath)}`
+                : `/note/${encodeURIComponent(targetPath)}`;
 
               return (
                 <Link
@@ -120,31 +176,19 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
           },
 
           // Images: resolve relative paths and support lightbox view
-          img({ src, alt, ...props }) {
+          img({ src, alt, width, height, ...props }) {
             if (!src) return null;
-            let resolvedSrc = src;
-
-            if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("data:")) {
-              let cleanPath = src.startsWith("./") ? src.substring(2) : src;
-              if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
-
-              const fullRelPath = currentDir ? `${currentDir}/${cleanPath}` : cleanPath;
-
-              if (isLocal) {
-                resolvedSrc = `/api/local-file?path=${encodeURIComponent(fullRelPath)}`;
-              } else {
-                resolvedSrc = `${GITHUB_RAW_BASE}/${encodeURI(fullRelPath)}`;
-              }
-            }
+            const resolvedSrc = resolveAssetPath(currentFilePath, src);
 
             return (
               <figure className="my-6 text-center group relative inline-block w-full">
-                <div className="relative inline-block overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 shadow-sm max-w-full">
+                <div className="relative inline-block overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/80 shadow-sm max-w-full">
                   <img
                     src={resolvedSrc}
                     alt={alt || "Diagram"}
                     loading="lazy"
-                    className="max-h-[550px] w-auto max-w-full object-contain mx-auto cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.01]"
+                    className="max-h-[650px] w-auto max-w-full object-contain mx-auto cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.01]"
+                    style={width ? { maxWidth: typeof width === "number" ? `${width}px` : width } : undefined}
                     onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
                     {...props}
                   />
@@ -152,6 +196,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                     onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
                     className="absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-900/70 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-neutral-900 shadow-md"
                     title="Enlarge image"
+                    aria-label="Enlarge image"
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>

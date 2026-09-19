@@ -75,8 +75,19 @@ function localNotesPlugin() {
           }
 
           const content = fs.readFileSync(safePath)
-          if (filePath.endsWith('.pdf')) {
+          const lower = filePath.toLowerCase()
+          if (lower.endsWith('.pdf')) {
             res.setHeader('Content-Type', 'application/pdf')
+          } else if (lower.endsWith('.png')) {
+            res.setHeader('Content-Type', 'image/png')
+          } else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+            res.setHeader('Content-Type', 'image/jpeg')
+          } else if (lower.endsWith('.gif')) {
+            res.setHeader('Content-Type', 'image/gif')
+          } else if (lower.endsWith('.svg')) {
+            res.setHeader('Content-Type', 'image/svg+xml')
+          } else if (lower.endsWith('.webp')) {
+            res.setHeader('Content-Type', 'image/webp')
           } else {
             res.setHeader('Content-Type', 'text/plain; charset=utf-8')
           }
