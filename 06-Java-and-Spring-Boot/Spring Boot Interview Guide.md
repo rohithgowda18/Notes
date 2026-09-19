@@ -616,23 +616,127 @@ Transaction propagation determines what happens when a transactional method is c
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Default vs Explicit Bean`
 
-When two or more beans implement the exact same interface, Spring cannot guess which one to inject and throws a `NoUniqueBeanDefinitionException`.
+### The Problem: Ambiguous Dependency Injection
+By default, Spring resolves dependencies **by type** (`byType`). When an interface has two or more bean implementations registered in the `ApplicationContext`, Spring's `DefaultListableBeanFactory` cannot determine which bean to inject.
 
-```mermaid
-flowchart LR
-    Interface["NotificationService (Interface)"]
-    B1["EmailNotificationService\n(@Primary)"] --> Interface
-    B2["SmsNotificationService\n(@Service('sms'))"] --> Interface
-
-    Consumer1["OrderService (No annotation)"] -->|Injects Default| B1
-    Consumer2["AlertService (@Qualifier('sms'))"] -->|Explicitly Injects| B2
+At application startup during context refresh, Spring fails fast and throws:
+```text
+org.springframework.beans.factory.NoUniqueBeanDefinitionException: 
+No qualifying bean of type 'com.example.NotificationService' available: 
+expected single matching bean but found 2: emailNotificationService, smsNotificationService
 ```
 
-- **`@Primary`**: Marks one implementation as the **default choice** when no specific bean name is requested.
-- **`@Qualifier("beanName")`**: Provides **explicit selection** at the injection point by specifying the exact bean identifier.
+---
 
-> [!NOTE]
-> **Precedence Rule**: If a class uses `@Qualifier("smsService")`, it **overrides** any bean marked with `@Primary`.
+### Spring's Disambiguation Resolution Order
+
+```mermaid
+flowchart TD
+    Start["Spring encounters dependency by type (e.g., NotificationService)"] --> CheckCandidates{"How many matching beans exist?"}
+    CheckCandidates -- "Exactly 1" --> Inject["Inject Bean ✅"]
+    CheckCandidates -- "2 or more" --> CheckQualifier{"Is @Qualifier present at injection point?"}
+    
+    CheckQualifier -- "Yes" --> MatchQualifier{"Exact bean name/qualifier matches?"}
+    MatchQualifier -- "Yes" --> InjectQ["Inject Specified Bean (Overrides @Primary) ✅"]
+    MatchQualifier -- "No" --> Err1["Throw NoSuchBeanDefinitionException ❌"]
+    
+    CheckQualifier -- "No" --> CheckPrimary{"Is exactly one bean marked @Primary?"}
+    CheckPrimary -- "Yes" --> InjectP["Inject Default @Primary Bean ✅"]
+    CheckPrimary -- "Multiple @Primary" --> Err2["Throw NoUniqueBeanDefinitionException: Multiple primary beans ❌"]
+    CheckPrimary -- "Zero @Primary" --> CheckName{"Does parameter name match a bean name?"}
+    
+    CheckName -- "Yes" --> InjectName["Inject Bean by Name (Fallback) ✅"]
+    CheckName -- "No" --> Err3["Throw NoUniqueBeanDefinitionException ❌"]
+```
+
+---
+
+### Technical Comparison: `@Primary` vs. `@Qualifier`
+
+| Architectural Dimension | `@Primary` | `@Qualifier` |
+| :--- | :--- | :--- |
+| **Placement Level** | **Bean Definition Level** (`@Component`, `@Service`, or `@Bean` method) | **Injection Point Level** (Constructor parameter, method param, or field) |
+| **Control Model** | **Producer-side Default**: The bean author declares: *"If no one specifies, use me as default."* | **Consumer-side Override**: The injection point declares: *"Regardless of defaults, give me this exact bean."* |
+| **Target Mechanism** | Designates a single fallback bean when type matching yields multiple candidates. | Matches target bean by explicit identifier (bean name or custom qualifier string). |
+| **Precedence** | **Lower Precedence** (Overridden whenever `@Qualifier` is present). | **Highest Precedence** (Explicitly overrides `@Primary`). |
+| **Multiple Declaration Failure** | If $>1$ candidates have `@Primary`, startup fails with `NoUniqueBeanDefinitionException`. | If qualifier identifier doesn't exist, startup fails with `NoSuchBeanDefinitionException`. |
+
+---
+
+### Production Code Implementation
+
+#### 1. The Interface
+```java
+public interface NotificationService {
+    void sendNotification(String message, String recipient);
+}
+```
+
+#### 2. Multiple Implementations with `@Primary` and Custom Bean Names
+```java
+// Default Implementation (Producer designates this as the primary fallback)
+@Component
+@Primary
+public class EmailNotificationService implements NotificationService {
+    @Override
+    public void sendNotification(String message, String recipient) {
+        System.out.println("Sending Email to " + recipient + ": " + message);
+    }
+}
+
+// Alternative Implementation (Explicitly named bean)
+@Component("smsNotificationService")
+public class SmsNotificationService implements NotificationService {
+    @Override
+    public void sendNotification(String message, String recipient) {
+        System.out.println("Sending SMS to " + recipient + ": " + message);
+    }
+}
+```
+
+#### 3. Injection Points Demonstrating Precedence
+
+```java
+@Service
+public class OrderService {
+    private final NotificationService defaultService;
+    private final NotificationService urgentService;
+
+    // Constructor Injection
+    public OrderService(
+        // Case A: No @Qualifier -> Spring picks @Primary (EmailNotificationService)
+        NotificationService defaultService,
+
+        // Case B: Explicit @Qualifier -> Overrides @Primary and injects SmsNotificationService
+        @Qualifier("smsNotificationService") NotificationService urgentService
+    ) {
+        this.defaultService = defaultService;
+        this.urgentService = urgentService;
+    }
+
+    public void processOrder() {
+        defaultService.sendNotification("Order confirmed", "alice@example.com"); // Uses Email
+        urgentService.sendNotification("OTP: 492011", "+1-555-0199");          // Uses SMS
+    }
+}
+```
+
+---
+
+### Key Interview Gotchas & Edge Cases
+
+1. **Precedence Hierarchy**:
+   $$\text{@Qualifier at Injection Point} \;\;>\;\; \text{@Primary at Bean Definition} \;\;>\;\; \text{Variable Name Fallback}$$
+2. **Two Beans with `@Primary`**:
+   - If both `EmailNotificationService` and `SmsNotificationService` are annotated with `@Primary`, Spring cannot arbitrate and throws `NoUniqueBeanDefinitionException: more than one 'primary' bean found among candidates`.
+3. **Custom Qualifier Annotations**:
+   - Instead of hardcoding string literals (`@Qualifier("sms")`), enterprise applications create custom meta-annotations with `@Qualifier` for compile-time safety:
+     ```java
+     @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.TYPE})
+     @Retention(RetentionPolicy.RUNTIME)
+     @Qualifier
+     public @interface SmsChannel {}
+     ```
 
 ---
 
