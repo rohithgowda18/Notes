@@ -148,11 +148,6 @@ While JPA is standard for OLTP CRUD, `JdbcTemplate` is superior in specific scen
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `JPA Spec Hibernate`
 
-### JPA & Hibernate Architecture Layers
-
-![Spring Data JPA and Hibernate Architecture](images/jpa-architecture.jpg)
-
-
 ```mermaid
 flowchart TD
     App["Spring Boot Application Layer"] --> SpringData["Spring Data JPA (Repository Abstraction)"]
@@ -561,9 +556,6 @@ flowchart TD
 
 ### 2. Transaction Propagation:
 Defines transaction boundaries when one `@Transactional` method calls another:
-
-![Spring Transaction Propagation Behavior](images/transaction-propagation.png)
-
 
 | Propagation | Behavior |
 | :--- | :--- |

@@ -330,11 +330,6 @@ public class ReactiveDataService {
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Distributed Architecture Pillars`
 
-### Microservices Ecosystem Architecture
-
-![Spring Cloud Microservices Architecture](images/microservices-architecture.jpg)
-
-
 ### Monolith vs. Microservices
 
 ```mermaid

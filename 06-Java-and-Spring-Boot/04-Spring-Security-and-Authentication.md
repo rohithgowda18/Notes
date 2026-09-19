@@ -32,14 +32,6 @@ Spring Security intercepts web requests through a series of ordered servlet filt
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-security</artifactId>
 </dependency>
-```
-
-### Official SecurityFilterChain Architecture
-
-![Spring Security FilterChain Architecture](https://docs.spring.io/spring-security/reference/_images/servlet/architecture/securityfilterchain.png)
-
-> **Source:** Spring Security Documentation
-
 ```mermaid
 flowchart LR
     Client(["Client Request"]) --> DFP["DelegatingFilterProxy"]
@@ -224,11 +216,6 @@ public class SecurityBeansConfig {
 ## 7. JWT (JSON Web Token) Stateless Authentication
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Stateless JWT Token`
-
-### JWT Stateless Authentication Architecture
-
-![Spring Security JWT Stateless Authentication Architecture](images/jwt-authentication-flow.jpg)
-
 
 ### 1. Complete JWT Authentication Workflow:
 

@@ -105,12 +105,6 @@ flowchart TD
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Container Inverts Control`
 
-### High-Level Spring IoC Architecture
-
-![Spring IoC Container Architecture](https://docs.spring.io/spring-framework/docs/3.1.1.RELEASE/spring-framework-reference/htmlsingle/images/container-magic.png)
-
-> **Source:** Spring Framework Documentation
-
 ### Tight Coupling vs. Loose Coupling
 
 ```mermaid

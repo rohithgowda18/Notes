@@ -39,7 +39,6 @@ Client (Browser/App)  <---[ "Here is data" ]----  Server
 A **Webhook** flips this completely. It is **Server-to-Server communication** where an external service calls *your* server directly when an event occurs:
 
 ![Webhook Architecture Overview](images/01-webhook-architecture.svg)
-> **Source:** [GitHub Docs — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
 
 ### Why can't the user's browser just tell our backend?
 Suppose a customer buys a subscription on your site. The payment happens on Stripe's checkout. Why can't the user's browser simply tell our server *"Hey, I paid!"*?
@@ -56,7 +55,6 @@ Suppose a customer buys a subscription on your site. The payment happens on Stri
 What if we didn't have webhooks? Our backend would have to repeatedly ask Stripe: *"Is payment done yet? Is it done now? What about now?"* (This is called **Polling**).
 
 ![API Short Polling vs Webhook Push](images/02-polling-vs-webhook.svg)
-> **Source:** [Stripe Webhooks Documentation](https://docs.stripe.com/webhooks)
 
 ### Why Polling Fails at Scale:
 * **Annoying Latency**: If you check every 30 seconds, the user waits an average of 15 seconds after paying before their account unlocks.
@@ -88,7 +86,6 @@ We give Stripe our URL once. Stripe calls us **immediately** the moment payment 
 A webhook is nothing more than a standard **HTTP POST request** with a JSON body and special headers:
 
 ![Anatomy of an Inbound Webhook HTTP Request](images/04-webhook-anatomy.svg)
-> **Source:** [GitHub Docs — Webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
 
 ```http
 POST /hooks/github HTTP/1.1
@@ -156,7 +153,6 @@ If your server blindly trusts this, the hacker gets free access!
 ## 7. The HMAC Signature & The "Raw Body" Rule
 
 ![HMAC-SHA256 Signature Verification](images/07-hmac-verification.svg)
-> **Source:** [GitHub Docs — Validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
 
 ### How HMAC Works:
 1. When you register your webhook, you and the provider share a secret password (e.g. `whsec_secret123`).
@@ -212,7 +208,6 @@ If your server blindly calls this, the hacker could steal your AWS passwords!
 In cloud networking, acknowledgments can drop:
 
 ![Duplicate Delivery & Database Idempotency Flow](images/10-idempotency-flow.svg)
-> **Source:** [Stripe Webhooks Documentation](https://docs.stripe.com/webhooks)
 
 ### The Solution: Idempotency (Save the Event ID)
 Store the unique `event_id` in your database in the **same transaction** as your work:
@@ -239,7 +234,6 @@ Events can arrive out of order due to retries:
 ## 12. Automatic Retries, Exponential Backoff & Jitter
 
 ![Webhook Retry Schedule with Exponential Backoff and Jitter](images/12-retry-exponential-backoff.svg)
-> **Source:** [Stripe Webhooks documentation](https://docs.stripe.com/webhooks)
 
 When your server is down or returning errors, providers retry with **Exponential Backoff**:
 * **Attempt 1**: Wait 5 seconds
@@ -254,7 +248,6 @@ When your server is down or returning errors, providers retry with **Exponential
 ## 13. The "Thin Receiver" Pattern (Handling Huge Traffic Spikes)
 
 ![Thin Receiver Ingress Architecture](images/13-thin-receiver-queue.svg)
-> **Source:** [Stripe Webhooks documentation](https://docs.stripe.com/webhooks)
 
 On the 1st of every month, Stripe renews millions of subscriptions at once.  
 If your webhook controller verifies signatures, runs 5 heavy database queries, and sends emails synchronously, your server will freeze and time out!
@@ -277,7 +270,6 @@ When you need to emit webhooks to customers:
 2. A separate background event processing service reads from the outbox table and dispatches messages to an SQS queue or customer endpoint.
 
 ![AWS Transactional Outbox Pattern architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/images/guide-img/48f618e4-d8ad-490f-982b-7b304dbf76c9/images/506e16e3-b26d-4067-b13e-d800bfaca7e0.png)
-> **Source:** [AWS Prescriptive Guidance — Transactional Outbox Pattern](https://docs.aws.amazon.com/en_en/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)
 
 ![Transactional Outbox Architecture Diagram](images/14-transactional-outbox-aws.svg)
 

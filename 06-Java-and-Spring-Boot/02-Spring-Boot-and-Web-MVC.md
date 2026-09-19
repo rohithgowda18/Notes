@@ -178,10 +178,6 @@ flowchart LR
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Tomcat Servlets Pipeline`
 
-### Servlet Filter vs. HandlerInterceptor Pipeline Architecture
-
-![Servlet Filter vs Spring HandlerInterceptor Architecture](images/filter-vs-interceptor.png)
-
 In Java web applications, the **Servlet Container (e.g., Embedded Apache Tomcat)** accepts raw HTTP TCP connections and converts them into Java objects (`HttpServletRequest` and `HttpServletResponse`).
 
 ```mermaid
@@ -210,12 +206,6 @@ flowchart LR
 ## 6. Spring MVC 7-Step Request Lifecycle (`DispatcherServlet`)
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `DispatcherServlet 7 Steps`
-
-### Official DispatcherServlet Architecture
-
-![Spring MVC DispatcherServlet Architecture](https://docs.spring.io/spring-framework/docs/3.1.1.RELEASE/spring-framework-reference/htmlsingle/images/mvc.png)
-
-> **Source:** Spring Framework Documentation
 
 The core internal flow of every incoming web request follows **7 distinct steps**:
 
