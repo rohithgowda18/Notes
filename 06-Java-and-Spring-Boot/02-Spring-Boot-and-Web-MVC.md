@@ -38,12 +38,11 @@ flowchart TD
         C4 --> C5["Spend hours debugging ClassLoader conflicts"]
     end
     subgraph SpringBoot ["Spring Boot Approach (Modern)"]
-        B1["Select Starters (spring-boot-starter-web)"] --> B2["Run public static void main(String[] args)"]
+        B1["Select Starters (spring-boot-starter-web)"] --> B2["Run public static void main(String(array) args)"]
         B2 --> B3["Embedded Tomcat starts in 2 seconds ✅"]
     end
 ```
 
-> **Visual:** Mermaid — developer workflow comparison.
 
 ### Spring Framework vs. Spring Boot:
 
@@ -80,7 +79,6 @@ flowchart TD
     SBA --> A3["@ComponentScan<br>(Scans current package & sub-packages for @Component)"]
 ```
 
-> **Visual:** Mermaid — meta-annotation decomposition.
 
 ### 1. `@SpringBootConfiguration`
 An enhanced specialization of Spring's standard `@Configuration`. Marks the class as a source of bean definitions for the Spring IoC container.
@@ -167,7 +165,6 @@ flowchart LR
     FileChange["Code Changed in IDE (Ctrl+S)"] --> Trigger["DevTools Restarts JVM in < 1 second! ⚡"]
 ```
 
-> **Visual:** Mermaid — dual classloader restart architecture.
 
 ### Key Benefits:
 1. **Dual ClassLoader Restart**: Discards and rebuilds only the project classes (`Restart ClassLoader`), restarting the JVM in milliseconds without reloading heavy third-party JARs.
@@ -198,7 +195,6 @@ flowchart LR
     Service --> Response["HTTP Response"]
 ```
 
-> **Visual:** Mermaid — servlet filter vs. interceptor request pipeline.
 
 ### Differences Between Servlet Filters and Spring Interceptors:
 
@@ -247,7 +243,6 @@ sequenceDiagram
     Tomcat-->>Client: Returns HTTP 201 Created + JSON payload ✅
 ```
 
-> **Visual:** Mermaid — Spring MVC request lifecycle sequence.
 
 ### The 5 Core Spring MVC Components:
 1. **`DispatcherServlet`**: The central **Front Controller** orchestrating all requests.
@@ -288,7 +283,6 @@ flowchart TD
     Codes --> S5xx["5xx Server Errors: 500 Internal Server Error, 502 Bad Gateway, 503 Service Unavailable"]
 ```
 
-> **Visual:** Mermaid — HTTP status code classification.
 
 - **`200 OK`**: Standard success response for `GET`, `PUT`, or `PATCH`.
 - **`201 Created`**: Resource successfully created via `POST`. Should include `Location` header.
@@ -383,7 +377,6 @@ flowchart LR
     Controller -->|StudentResponse (DTO)| Client
 ```
 
-> **Visual:** Mermaid — entity vs. DTO request-response boundaries.
 
 ### Why APIs Must NOT Expose JPA Entities Directly:
 
@@ -478,7 +471,6 @@ flowchart TD
     DTO --> Client["Returns consistent JSON error structure + HTTP status code ✅"]
 ```
 
-> **Visual:** Mermaid — centralized exception interception flow.
 
 ---
 
@@ -633,7 +625,6 @@ flowchart LR
     Javac --> Bytecode["User.class<br>(Contains getters, setters, equals, hashCode, toString)"]
 ```
 
-> **Visual:** Mermaid — compile-time annotation processing pipeline.
 
 ### Core Lombok Annotations:
 

@@ -6,6 +6,17 @@ interface MermaidRendererProps {
   chart: string;
 }
 
+/**
+ * Sanitize nested square brackets inside quoted node labels ["...[...]..."]
+ * which break Mermaid's flowchart parser.
+ */
+function sanitizeMermaidChart(rawChart: string): string {
+  return rawChart.replace(/\["([^"]*)"\]/g, (_match, innerText) => {
+    const sanitized = innerText.replace(/\[/g, "(").replace(/\]/g, ")");
+    return `["${sanitized}"]`;
+  });
+}
+
 export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>("");
@@ -26,7 +37,8 @@ export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart }) => {
     async function renderChart() {
       try {
         setError(null);
-        const { svg: renderedSvg } = await mermaid.render(id, chart.trim());
+        const cleanChart = sanitizeMermaidChart(chart.trim());
+        const { svg: renderedSvg } = await mermaid.render(id, cleanChart);
         if (isMounted) {
           setSvg(renderedSvg);
         }

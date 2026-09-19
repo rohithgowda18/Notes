@@ -58,7 +58,6 @@ flowchart TD
     end
 ```
 
-> **Visual:** Mermaid — boilerplate elimination comparison.
 
 ---
 
@@ -111,12 +110,11 @@ public class StudentJdbcDao {
 
 ```mermaid
 flowchart LR
-    RS["ResultSet Row: [student_id: 101, full_name: 'Lucy']"] --> RM{"RowMapper Implementation"}
+    RS["ResultSet Row: (student_id: 101, full_name: 'Lucy')"] --> RM{"RowMapper Implementation"}
     RM -->|Custom Manual Extraction| POJO1["Student(id=101, name='Lucy')"]
     RM -->|BeanPropertyRowMapper (Reflection)| POJO2["Student(id=101, name='Lucy')"]
 ```
 
-> **Visual:** Mermaid — ResultSet object mapping strategies.
 
 - **Custom `RowMapper<T>`**: Full control when database column names do not match Java fields:
   ```java
@@ -154,7 +152,6 @@ While JPA is standard for OLTP CRUD, `JdbcTemplate` is superior in specific scen
 
 ![Spring Data JPA and Hibernate Architecture](images/jpa-architecture.jpg)
 
-> **Visual:** Technical Diagram — Spring Data JPA, Jakarta Persistence API, Hibernate ORM, and JDBC Driver layered architecture.
 
 ```mermaid
 flowchart TD
@@ -165,7 +162,6 @@ flowchart TD
     JDBC --> DB[("Relational Database (MySQL, PostgreSQL, Oracle)")]
 ```
 
-> **Visual:** Mermaid — Spring Data JPA layered architecture.
 
 ### Key Conceptual Distinctions:
 1. **Object-Relational Mapping (ORM)**: The technique of mapping Java object models directly to relational database tables, eliminating manual SQL.
@@ -191,7 +187,6 @@ stateDiagram-v2
     Removed --> [*] : Transaction Commit (SQL DELETE executed)
 ```
 
-> **Visual:** Mermaid — JPA entity lifecycle state transitions.
 
 ### Entity States & Behavior:
 
@@ -284,7 +279,6 @@ classDiagram
     PagingAndSortingRepository <|-- JpaRepository
 ```
 
-> **Visual:** Mermaid — Spring Data repository contract hierarchy.
 
 ### Interface Responsibilities:
 1. **`Repository<T, ID>`**: Top-level marker interface with zero methods.
@@ -307,7 +301,6 @@ flowchart LR
     Parser --> SQL["SELECT * FROM students WHERE last_name = ? AND age >= ?"]
 ```
 
-> **Visual:** Mermaid — derived query method parsing pipeline.
 
 ### Common Derived Query Keywords:
 
@@ -386,12 +379,11 @@ flowchart TD
     subgraph Relationships ["JPA Relationship Types"]
         O2O["@OneToOne: Student <---> StudentProfile"]
         O2M["@OneToMany: Classroom (1) ---> Students (Many)"]
-        M2O["@ManyToOne: Students (Many) ---> Classroom (1) [Child owns Foreign Key]"]
-        M2M["@ManyToMany: Students (Many) <---> Courses (Many) [Requires Join Table]"]
+        M2O["@ManyToOne: Students (Many) ---> Classroom (1) (Child owns Foreign Key)"]
+        M2M["@ManyToMany: Students (Many) <---> Courses (Many) (Requires Join Table)"]
     end
 ```
 
-> **Visual:** Mermaid — JPA relationship taxonomy.
 
 ---
 
@@ -433,7 +425,6 @@ flowchart LR
     JT --- C["COURSES Table"]
 ```
 
-> **Visual:** Mermaid — relational join table mapping.
 
 ```java
 @Entity
@@ -486,7 +477,6 @@ sequenceDiagram
     Note over App,DB: Severe Performance Bottleneck: 101 SQL queries executed!
 ```
 
-> **Visual:** Mermaid — N+1 query explosion sequence.
 
 ---
 
@@ -527,7 +517,6 @@ flowchart LR
     Delete["repo.delete(order)"] -.->|"Automatically deletes"| Child
 ```
 
-> **Visual:** Mermaid — entity state cascading propagation.
 
 ### Cascade Types:
 - **`CascadeType.PERSIST`**: `save(parent)` automatically saves unsaved children.
@@ -558,7 +547,6 @@ flowchart TD
     Decision -- "Success" --> Commit["3. Commit Transaction & Flush Changes ✅"]
 ```
 
-> **Visual:** Mermaid — Spring transactional interceptor lifecycle.
 
 ---
 
@@ -576,7 +564,6 @@ Defines transaction boundaries when one `@Transactional` method calls another:
 
 ![Spring Transaction Propagation Behavior](images/transaction-propagation.png)
 
-> **Visual:** Technical Diagram — Spring Transaction Propagation boundaries (`REQUIRED`, `REQUIRES_NEW`, `NESTED`).
 
 | Propagation | Behavior |
 | :--- | :--- |
@@ -614,7 +601,6 @@ flowchart LR
     Repo --> Res["Page<Student> or Slice<Student>"]
 ```
 
-> **Visual:** Mermaid — pagination and chunking workflow.
 
 ### `Page<T>` vs. `Slice<T>`:
 
@@ -649,7 +635,6 @@ flowchart TD
     User --> Write["Inserts populated entity into DB table ✅"]
 ```
 
-> **Visual:** Mermaid — JPA auditing interception pipeline.
 
 ```java
 // 1. Base Auditable Class

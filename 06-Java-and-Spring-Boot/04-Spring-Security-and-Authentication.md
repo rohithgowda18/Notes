@@ -51,7 +51,6 @@ flowchart LR
     F3 --> DS["DispatcherServlet -> @RestController ✅"]
 ```
 
-> **Visual:** Mermaid — Spring Security filter pipeline flow.
 
 ### Filter Chain Mechanics:
 1. **`DelegatingFilterProxy`**: A standard Servlet filter registered with the servlet container (Tomcat) that delegates all filtering logic to Spring-managed beans.
@@ -79,7 +78,6 @@ flowchart TD
     AuthN --> AuthZ
 ```
 
-> **Visual:** Mermaid — AuthN vs. AuthZ lifecycle stages.
 
 - **HTTP 401 Unauthorized**: The caller has **not provided valid authentication credentials** (or token is expired/missing). The system does not know who they are.
 - **HTTP 403 Forbidden**: The caller is **successfully authenticated**, but their account **lacks permission/role** to access the requested resource.
@@ -169,7 +167,6 @@ sequenceDiagram
     Filter-->>Client: Returns JWT Token / HTTP 200 OK ✅
 ```
 
-> **Visual:** Mermaid — Spring Security authentication architecture sequence.
 
 ### Core Components:
 1. **`SecurityContextHolder`**: ThreadLocal storage storing details of the current security context.
@@ -206,7 +203,6 @@ flowchart LR
     end
 ```
 
-> **Visual:** Mermaid — cryptographic transformation comparison.
 
 ### Key Rules:
 - **Passwords are NEVER decrypted during login**: The server hashes the raw password provided in the login attempt using the stored salt and compares the two hashes.
@@ -233,7 +229,6 @@ public class SecurityBeansConfig {
 
 ![Spring Security JWT Stateless Authentication Architecture](images/jwt-authentication-flow.jpg)
 
-> **Visual:** Technical Diagram — Spring Security 6 JWT Stateless Authentication Architecture (Login, Token Generation, Bearer Validation, and Security Context Population).
 
 ### 1. Complete JWT Authentication Workflow:
 
@@ -252,7 +247,6 @@ flowchart TD
     Validate -- "Invalid / Expired" --> Reject["12. Return HTTP 401 Unauthorized ❌"]
 ```
 
-> **Visual:** Mermaid — end-to-end stateless JWT authentication flow.
 
 ---
 
@@ -376,7 +370,6 @@ sequenceDiagram
     Bank->>Bank: 4. Sees valid session cookie -> Transfers funds! 💥
 ```
 
-> **Visual:** Mermaid — CSRF vulnerability execution sequence.
 
 ---
 
@@ -428,7 +421,6 @@ flowchart LR
     App -->|Requests resource with Bearer Token| ResourceServer["Resource Server<br>(Our Spring Boot REST API)"]
 ```
 
-> **Visual:** Mermaid — OAuth2 & OpenID Connect ecosystem roles.
 
 ### Core Concepts:
 1. **OAuth 2.0**: An **authorization framework** enabling third-party apps to obtain limited access to an HTTP service on behalf of a user (Delegated Authorization).

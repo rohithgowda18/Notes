@@ -45,7 +45,6 @@ timeline
     2022 : Spring 6.0 & Spring Boot 3.0 (Java 17 baseline, Jakarta EE 10 namespace)
 ```
 
-> **Visual:** Mermaid — generated from documented Spring architecture timeline.
 
 ### Key Historical Milestones:
 1. **The EJB Complexity Problem (Early 2000s)**:
@@ -81,7 +80,6 @@ flowchart TD
     end
 ```
 
-> **Visual:** Mermaid — conceptual workflow analogy.
 
 ### The Software Developer Equivalent:
 - **Dev Vicky (No Framework)**: Spends 80% of time writing low-level infrastructure: thread pool handlers, raw JDBC connection pools, socket parsers, security filters, and transaction rollback logic.
@@ -128,7 +126,6 @@ flowchart LR
     end
 ```
 
-> **Visual:** Mermaid — generated from documented Spring architecture.
 
 - **Tight Coupling**: A class instantiates its concrete collaborators internally using `new`. If `PetrolEngine` changes or needs to be swapped with `ElectricEngine`, the `Car` class must be modified and recompiled.
 - **Loose Coupling**: A class defines dependencies as interfaces. An external entity—the **Spring IoC Container**—instantiates the appropriate implementation and injects it at runtime.
@@ -189,7 +186,6 @@ classDiagram
     BeanFactory <|-- ApplicationContext
 ```
 
-> **Visual:** Mermaid — generated from Spring Framework interface hierarchy.
 
 | Feature | `BeanFactory` (`org.springframework.beans`) | `ApplicationContext` (`org.springframework.context`) |
 | :--- | :--- | :--- |
@@ -213,7 +209,6 @@ flowchart TD
     Choice -- "Third-party library (e.g., AWS SDK, Gson)" --> BeanMeth["@Bean method inside @Configuration class ✅"]
 ```
 
-> **Visual:** Mermaid — bean definition strategy decision flow.
 
 ---
 
@@ -291,7 +286,6 @@ sequenceDiagram
     IoC->>JVM: 5. Container closes & releases memory
 ```
 
-> **Visual:** Mermaid — generated from Spring Bean lifecycle specification.
 
 ### Production Example:
 ```java
@@ -348,7 +342,6 @@ flowchart LR
     P["Person Bean (Lucy)"] -->|"has-a (wiring)"| V["Vehicle Bean (Toyota)"]
 ```
 
-> **Visual:** Mermaid — collaborating bean association graph.
 
 ### 1. Wiring inside `@Configuration` via Method Call
 ```java
@@ -435,7 +428,6 @@ flowchart TD
     Step3 -- "No" --> Err["Throw NoUniqueBeanDefinitionException ❌"]
 ```
 
-> **Visual:** Mermaid — generated from Spring IoC resolution algorithm.
 
 ---
 
@@ -506,7 +498,6 @@ flowchart LR
     V -->|"Needs"| P
 ```
 
-> **Visual:** Mermaid — dependency cycle graph.
 
 At startup, Spring fails fast and throws **`UnsatisfiedDependencyException`** / **`BeanCurrentlyInCreationException`**.
 
@@ -541,7 +532,6 @@ flowchart TD
     Scope -->|Web Session| SS["Session: 1 instance per HTTP user session"]
 ```
 
-> **Visual:** Mermaid — Spring Bean scope options.
 
 ---
 
@@ -603,7 +593,6 @@ flowchart LR
     end
 ```
 
-> **Visual:** Mermaid — eager vs. lazy initialization lifecycle.
 
 | Dimension | Eager Instantiation (Default) | Lazy Instantiation (`@Lazy`) |
 | :--- | :--- | :--- |
@@ -647,7 +636,6 @@ flowchart LR
     end
 ```
 
-> **Visual:** Mermaid — cross-cutting concern decoupling.
 
 ---
 
@@ -678,7 +666,6 @@ flowchart TD
     note["5. @Around: Surrounds the method completely.<br>Controls whether to proceed, inspects args, and modifies return value."]
 ```
 
-> **Visual:** Mermaid — generated from Spring AOP advice specification.
 
 ---
 

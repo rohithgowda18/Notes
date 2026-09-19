@@ -4,18 +4,27 @@ import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/pris
 import { Check, Copy } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 
-// Override oneDark and oneLight to eliminate any background on inner code element
+const CODE_FONT_STACK =
+  '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
+
+// Override oneDark and oneLight to eliminate any background on inner code element and enforce typography
 const cleanDarkTheme: Record<string, React.CSSProperties> = {
   ...(oneDark as Record<string, React.CSSProperties>),
   'code[class*="language-"]': {
     ...((oneDark as Record<string, React.CSSProperties>)['code[class*="language-"]'] || {}),
     background: "transparent",
     backgroundColor: "transparent",
+    fontFamily: "inherit",
+    fontSize: "inherit",
+    lineHeight: "inherit",
   },
   'pre[class*="language-"]': {
     ...((oneDark as Record<string, React.CSSProperties>)['pre[class*="language-"]'] || {}),
     background: "transparent",
     backgroundColor: "transparent",
+    fontFamily: CODE_FONT_STACK,
+    fontSize: "15px",
+    lineHeight: "1.65",
   },
 };
 
@@ -25,11 +34,17 @@ const cleanLightTheme: Record<string, React.CSSProperties> = {
     ...((oneLight as Record<string, React.CSSProperties>)['code[class*="language-"]'] || {}),
     background: "transparent",
     backgroundColor: "transparent",
+    fontFamily: "inherit",
+    fontSize: "inherit",
+    lineHeight: "inherit",
   },
   'pre[class*="language-"]': {
     ...((oneLight as Record<string, React.CSSProperties>)['pre[class*="language-"]'] || {}),
     background: "transparent",
     backgroundColor: "transparent",
+    fontFamily: CODE_FONT_STACK,
+    fontSize: "15px",
+    lineHeight: "1.65",
   },
 };
 
@@ -69,13 +84,11 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
   const normalizedLang = langMap[rawLang] || rawLang || "text";
   const displayLang = (rawLang || "code").toUpperCase();
 
-  const lineCount = value.trimEnd().split("\n").length;
-
   return (
-    <div className="w-full my-6 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-[#11141d] overflow-hidden shadow-xs">
+    <div className="code-block w-full my-6 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-[#11141d] overflow-hidden shadow-xs">
       {/* Code Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-neutral-100/90 dark:bg-[#161b26] border-b border-neutral-200 dark:border-neutral-800/80 select-none">
-        <span className="text-[11px] font-mono font-bold tracking-wider text-neutral-600 dark:text-neutral-300">
+      <div className="code-header flex items-center justify-between px-3 py-2 bg-neutral-100/90 dark:bg-[#161b26] border-b border-neutral-200 dark:border-neutral-800/80 select-none">
+        <span className="text-[11px] font-mono font-semibold tracking-wider text-neutral-600 dark:text-neutral-300">
           {displayLang}
         </span>
         <button
@@ -99,26 +112,28 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
       </div>
 
       {/* Code Viewport with Horizontal Scroll */}
-      <div className="overflow-x-auto text-[14.5px] leading-relaxed font-mono">
+      <div className="code-content overflow-x-auto w-full">
         <SyntaxHighlighter
           language={normalizedLang}
           style={theme === "dark" ? cleanDarkTheme : cleanLightTheme}
           customStyle={{
             margin: 0,
-            padding: "1.1rem 1.35rem",
-            fontSize: "14.5px",
+            padding: "16px 18px",
+            fontSize: "15px",
             lineHeight: "1.65",
             borderRadius: 0,
             border: "none",
             backgroundColor: theme === "dark" ? "#11141d" : "#fafafa",
-            fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            fontFamily: CODE_FONT_STACK,
+            width: "100%",
+            boxSizing: "border-box",
           }}
           codeTagProps={{
             className: "syntax-highlighter-code",
             style: {
-              fontSize: "14.5px",
-              lineHeight: "1.65",
-              fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+              fontSize: "inherit",
+              lineHeight: "inherit",
+              fontFamily: "inherit",
               background: "transparent",
               backgroundColor: "transparent",
               border: "none",
@@ -126,9 +141,10 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
               padding: "0px",
               boxShadow: "none",
               display: "block",
+              width: "100%",
             },
           }}
-          showLineNumbers={lineCount > 1}
+          showLineNumbers={true}
           lineNumberStyle={{
             minWidth: "2.5em",
             paddingRight: "1.25em",
@@ -138,6 +154,10 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
             border: "none",
             background: "transparent",
             backgroundColor: "transparent",
+            fontFamily: "inherit",
+            fontSize: "inherit",
+            lineHeight: "inherit",
+            fontStyle: "normal",
           }}
           wrapLongLines={false}
         >

@@ -44,7 +44,6 @@ flowchart TD
     HMC -->|JSON Serialized Payload| Client
 ```
 
-> **Visual:** Mermaid — REST client-server request and serialization flow.
 
 ---
 
@@ -145,7 +144,6 @@ flowchart LR
     Controller -->|JSON (ProductResponse)| Client
 ```
 
-> **Visual:** Mermaid — DTO transformation and isolation boundary.
 
 ---
 
@@ -193,7 +191,6 @@ flowchart LR
     Jackson --> JSON["Output JSON<br>{ 'full_name': 'Alice' }<br>(password excluded!)"]
 ```
 
-> **Visual:** Mermaid — Jackson transformation and property filtering.
 
 ---
 
@@ -244,7 +241,6 @@ timeline
     2023 : RestClient (Spring 6.0 / Boot 3 - Modern synchronous fluent API)
 ```
 
-> **Visual:** Mermaid — HTTP client evolution in the Spring ecosystem.
 
 ---
 
@@ -338,7 +334,6 @@ public class ReactiveDataService {
 
 ![Spring Cloud Microservices Architecture](images/microservices-architecture.jpg)
 
-> **Visual:** Technical Diagram — Spring Cloud Microservices Architecture with API Gateway, Eureka Service Registry, Config Server, Dedicated Databases, and Circuit Breakers.
 
 ### Monolith vs. Microservices
 
@@ -350,16 +345,15 @@ flowchart TD
     subgraph Microservices ["Microservices Architecture"]
         GW["API Gateway (Spring Cloud Gateway)"]
         SR["Service Registry (Eureka / Consul)"]
-        GW --> MS1["Order Service<br>[(Order DB)]"]
-        GW --> MS2["Payment Service<br>[(Payment DB)]"]
-        GW --> MS3["Inventory Service<br>[(Inventory DB)]"]
+        GW --> MS1["Order Service<br>(Order DB)"]
+        GW --> MS2["Payment Service<br>(Payment DB)"]
+        GW --> MS3["Inventory Service<br>(Inventory DB)"]
         MS1 -.->|Register / Lookup| SR
         MS2 -.->|Register / Lookup| SR
         MS3 -.->|Register / Lookup| SR
     end
 ```
 
-> **Visual:** Mermaid — Monolith vs. Microservices core topology.
 
 ---
 
@@ -396,7 +390,6 @@ stateDiagram-v2
     HalfOpen --> Open: Trial requests fail ❌
 ```
 
-> **Visual:** Mermaid — Circuit breaker state transition lifecycle.
 
 * **Closed**: Requests flow normally to the downstream service.
 * **Open**: Requests fail fast immediately without calling the failing downstream service. A fallback response is returned.
@@ -421,7 +414,6 @@ flowchart TD
     end
 ```
 
-> **Visual:** Mermaid — Spring Boot configuration property precedence.
 
 ---
 
@@ -512,7 +504,6 @@ flowchart TD
     App -->|spring.profiles.active=prod| Prod["application-prod.yml<br>(AWS RDS MySQL, Connection Pooling, INFO Logs)"]
 ```
 
-> **Visual:** Mermaid — Multi-environment profile isolation.
 
 ---
 
@@ -564,12 +555,11 @@ flowchart TD
     LogLine --- F2["Log Level: INFO (ERROR, WARN, INFO, DEBUG, TRACE)"]
     LogLine --- F3["PID: 15084 (Operating System Process ID)"]
     LogLine --- F4["Separator: --- (Marks start of log message)"]
-    LogLine --- F5["Thread: [main] (Executing thread name)"]
+    LogLine --- F5["Thread: (main) (Executing thread name)"]
     LogLine --- F6["Logger Name: c.e.order.service.OrderService (Class name)"]
     LogLine --- F7["Message: Processing payment for order ID: 1045"]
 ```
 
-> **Visual:** Mermaid — Console log format breakdown.
 
 ---
 
@@ -679,7 +669,6 @@ flowchart TD
     end
 ```
 
-> **Visual:** Mermaid — Spring Boot testing pyramid and scope.
 
 ---
 

@@ -191,9 +191,13 @@
   background-color: rgba(156, 163, 175, 0.025);
 }
 
+:root {
+  --code-font: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
 /* Subtle, readable Inline Code - ONLY targets .inline-code */
 .markdown-body .inline-code {
-  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--code-font);
   font-size: 0.88em;
   font-weight: 500;
   padding: 0.2em 0.45em;
@@ -228,28 +232,81 @@
   box-shadow: none !important;
 }
 
-.markdown-body pre {
+/* Unified Code Block Typography System */
+.code-block {
+  width: 100% !important;
+}
+
+.code-block .code-header {
+  padding: 8px 12px;
+}
+
+.code-block .code-content {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.code-block pre,
+.markdown-body pre,
+.markdown-body pre[class*="language-"] {
   margin: 0 !important;
-  padding: 0 !important;
+  padding: 16px 18px !important;
+  font-family: var(--code-font) !important;
+  font-size: 15px !important;
+  line-height: 1.65 !important;
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
-  overflow: visible;
-  line-height: 1.65;
-  font-size: 14.5px;
+  overflow-x: auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
+@media (max-width: 640px) {
+  .code-block pre,
+  .markdown-body pre,
+  .markdown-body pre[class*="language-"] {
+    font-size: 14px !important;
+  }
+}
+
+.code-block pre code,
 .markdown-body pre code,
 .markdown-body code.syntax-highlighter-code,
 .markdown-body code[class*="language-"] {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
   background: transparent !important;
   background-color: transparent !important;
   border: none !important;
   padding: 0 !important;
   border-radius: 0 !important;
-  font-size: 14.5px !important;
-  line-height: 1.65 !important;
   display: block !important;
+  width: 100% !important;
+}
+
+/* Syntax Tokens and Line Numbers must strictly inherit typography */
+.markdown-body .token,
+.markdown-body .syntax-token,
+.markdown-body span[class*="token"],
+.markdown-body span[class*="token"] *,
+.code-line-number,
+.react-syntax-highlighter-line-number,
+.linenumber,
+span[class*="linenumber"] {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  font-style: normal !important;
+}
+
+/* Comments can have italic font-style while preserving identical family, size, line-height */
+.markdown-body .token.comment {
+  font-family: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  font-style: italic !important;
 }
 
 /* Mermaid diagrams clean surface */
