@@ -1123,7 +1123,10 @@ public interface UserMapper {
 
 ## 29. Input Validation & `@Valid`
 
-> 💡 **Quick Revision Anchor (2-3 Words)**: `Declarative Bean Validation`
+> 💡 **Quick Revision Anchor (2-3 Words)**: `Declarative Input Validation`
+
+### Why Declarative Validation?
+Writing manual `if (user.getName() == null)` or `if (password.length() < 6)` checks in controllers creates messy boilerplate. Spring Boot provides declarative validation via the standard Java Bean Validation specification (`jakarta.validation`), backed by **Hibernate Validator**.
 
 ```xml
 <dependency>
@@ -1132,40 +1135,183 @@ public interface UserMapper {
 </dependency>
 ```
 
-### Annotating Request DTOs
-```java
-public record UserCreateRequest(
-    @NotBlank(message = "Username cannot be empty")
-    @Size(min = 3, max = 20, message = "Username must be 3-20 characters")
-    String username,
+> [!IMPORTANT]
+> **Enabling Validation**: You **must** annotate the request body with **`@Valid`** (e.g., `@Valid @RequestBody UserDTO user`). Without `@Valid`, Spring completely ignores all validation annotations on the DTO!
 
-    @NotBlank(message = "Email is required")
-    @Email(message = "Must be a valid email address")
-    String email,
+---
 
-    @Min(value = 18, message = "Must be at least 18 years old")
-    int age
-) {}
+### Core Built-in Validation Annotations
+
+```mermaid
+flowchart TD
+    subgraph TextNull ["String & Null Checks"]
+        NN["@NotNull: Not null (Allows '' and ' ')"]
+        NE["@NotEmpty: Not null & length > 0 (Allows ' ')"]
+        NB["@NotBlank: Not null & trimmed length > 0 (Strictest)"]
+    end
+    subgraph Numbers ["Numeric & Size Checks"]
+        SZ["@Size(min, max): String length or Collection size"]
+        MM["@Min, @Max: Numeric boundaries (e.g., age)"]
+        PN["@Positive, @Negative: Numeric signs (e.g., salary)"]
+        DG["@Digits(integer=6, fraction=2): Decimal places"]
+    end
+    subgraph Formats ["Formats & Dates"]
+        EM["@Email: Valid email structure (local@domain)"]
+        PT["@Pattern(regexp): Custom regular expression"]
+        PF["@Past, @Future: Temporal date/time checks"]
+    end
 ```
 
-### Triggering Validation in Controller
+#### Annotation Breakdown & Differences:
+
+| Annotation | Applicable Types | Accepts `null`? | Key Rule |
+| :--- | :--- | :---: | :--- |
+| **`@NotNull`** | Any Object | ❌ No | Value cannot be `null`. (Allows empty string `""` or whitespace `" "`). |
+| **`@NotEmpty`** | String, Collection, Map, Array | ❌ No | Must not be `null` and `size > 0`. (Allows whitespace `" "`). |
+| **`@NotBlank`** | String | ❌ No | Must not be `null` and trimmed length $> 0$. (Rejects `null`, `""`, and `" "`). |
+| **`@Size(min, max)`** | String, Collection, Map, Array | ✅ Yes | Length or element count must be within `[min, max]`. |
+| **`@Min(v)`, `@Max(v)`** | Numeric (`int`, `long`, `BigDecimal`) | ✅ Yes | Value must be $\ge$ min or $\le$ max. |
+| **`@Positive`** | Numeric | ✅ Yes | Value must be strictly $> 0$. |
+| **`@Digits(int, frac)`**| Numeric / `BigDecimal` | ✅ Yes | Max integer digits and max fraction digits. |
+| **`@Email`** | String | ✅ Yes | Must have valid email structure (`local@domain`). |
+| **`@Pattern(regexp)`** | String | ✅ Yes | Must match specified regular expression. |
+| **`@Past` / `@Future`** | `LocalDate`, `Date`, `Instant` | ✅ Yes | Must be in the past or future relative to current time. |
+
+> [!TIP]
+> Notice that annotations like `@Size`, `@Min`, `@Email`, and `@Pattern` consider `null` valid! If a field is mandatory, always pair them with **`@NotNull`** or **`@NotBlank`**.
+
+---
+
+### Standard Tutorial DTO & Controller Example
+
 ```java
-@PostMapping("/users")
-public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserCreateRequest request) {
-    return ResponseEntity.status(HttpStatus.CREATED).body(userService.create(request));
+public class UserCreateRequest {
+
+    @NotBlank(message = "Name cannot be blank")
+    private String name;
+
+    @NotBlank(message = "Password cannot be blank")
+    @Size(min = 6, max = 20, message = "Password must be 6 to 20 characters")
+    private String password;
+
+    @Min(value = 18, message = "Age must be at least 18")
+    @Max(value = 60, message = "Age cannot exceed 60")
+    private int age;
+
+    @Positive(message = "Salary must be positive")
+    private double salary;
+
+    @Digits(integer = 6, fraction = 2, message = "Balance max 6 digits and 2 decimals")
+    private BigDecimal accountBalance;
+
+    @Email(message = "Invalid email format")
+    private String email;
+
+    @Pattern(
+        regexp = "^[A-Za-z0-9._%+-]+@thecuriouscoder\\.com$",
+        message = "Corporate email must end with @thecuriouscoder.com"
+    )
+    private String corporateEmail;
+
+    @Past(message = "Date of birth must be in the past")
+    private LocalDate dateOfBirth;
+
+    // Collection validation: Must not be null AND must have at least 1 element
+    @NotNull(message = "Hobbies list cannot be null")
+    @Size(min = 1, message = "Must specify at least one hobby")
+    private List<String> hobbies;
+
+    // Getters and Setters
 }
 ```
 
-### Centralized Validation Exception Handler
-When validation fails, Spring throws `MethodArgumentNotValidException`. Intercept it cleanly:
+#### The Controller
 ```java
-@ExceptionHandler(MethodArgumentNotValidException.class)
-public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
-    Map<String, String> errors = new HashMap<>();
-    ex.getBindingResult().getFieldErrors().forEach(error ->
-        errors.put(error.getField(), error.getDefaultMessage())
-    );
-    return ResponseEntity.badRequest().body(errors);
+@RestController
+@RequestMapping("/users")
+public class UserController {
+
+    @PostMapping
+    public ResponseEntity<String> createUser(@Valid @RequestBody UserCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body("User created successfully");
+    }
+}
+```
+
+---
+
+### Centralized Validation Exception Handling (`@RestControllerAdvice`)
+When validation fails on a `@Valid` parameter, Spring throws **`MethodArgumentNotValidException`**. Instead of returning a raw 500 error or unstructured payload, intercept it globally and return a clean map of `{ fieldName: errorMessage }`:
+
+```java
+@RestControllerAdvice
+public class GlobalValidationExceptionHandler {
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST) // Returns HTTP 400 Bad Request
+    public Map<String, String> handleValidationExceptions(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        
+        ex.getBindingResult().getFieldErrors().forEach(error -> 
+            errors.put(error.getField(), error.getDefaultMessage())
+        );
+        
+        return errors;
+    }
+}
+```
+
+#### Example Client JSON Error Response (`HTTP 400 Bad Request`):
+```json
+{
+  "name": "Name cannot be blank",
+  "age": "Age must be at least 18",
+  "corporateEmail": "Corporate email must end with @thecuriouscoder.com"
+}
+```
+
+---
+
+### Creating Custom Validation Annotations (3-Step Framework)
+When built-in annotations don't satisfy complex business logic (e.g., validating Indian phone numbers), you can create a custom constraint in 3 simple steps:
+
+#### Step 1: Define the Annotation
+```java
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Constraint(validatedBy = PhoneNumberValidator.class) // Links to the validator implementation
+public @interface ValidPhoneNumber {
+    String message() default "Invalid phone number format";
+    Class<?>[] groups() default {};
+    Class<? extends Payload>[] payload() default {};
+}
+```
+
+#### Step 2: Implement `ConstraintValidator`
+```java
+public class PhoneNumberValidator implements ConstraintValidator<ValidPhoneNumber, String> {
+
+    // Regex: Optional '+91-' prefix, first digit 6-9, followed by 9 digits
+    private static final String PHONE_REGEX = "^(\\+91-?)?[6-9]\\d{9}$";
+
+    @Override
+    public boolean isValid(String phoneNumber, ConstraintValidatorContext context) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return false; // Fail validation if null or blank
+        }
+        return phoneNumber.matches(PHONE_REGEX);
+    }
+}
+```
+
+#### Step 3: Apply the Custom Annotation on DTO
+```java
+public class UserCreateRequest {
+
+    @ValidPhoneNumber(message = "Phone number must be a valid 10-digit Indian mobile number")
+    private String phoneNumber;
+
+    // Getters and Setters
 }
 ```
 
