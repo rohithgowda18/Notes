@@ -108,7 +108,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             const isInline = !className && !codeString.includes("\n");
             if (isInline) {
               return (
-                <code className={className} {...props}>
+                <code className={`inline-code ${className || ""}`.trim()} {...props}>
                   {children}
                 </code>
               );

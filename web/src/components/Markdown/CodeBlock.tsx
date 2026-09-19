@@ -85,12 +85,18 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
             fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
           }}
           codeTagProps={{
+            className: "syntax-highlighter-code",
             style: {
               fontSize: "14.5px",
               lineHeight: "1.65",
               fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
               background: "transparent",
+              backgroundColor: "transparent",
               border: "none",
+              borderRadius: "0px",
+              padding: "0px",
+              boxShadow: "none",
+              display: "block",
             },
           }}
           showLineNumbers={lineCount > 1}
@@ -101,6 +107,8 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }
             textAlign: "right",
             userSelect: "none",
             border: "none",
+            background: "transparent",
+            backgroundColor: "transparent",
           }}
           wrapLongLines={false}
         >
