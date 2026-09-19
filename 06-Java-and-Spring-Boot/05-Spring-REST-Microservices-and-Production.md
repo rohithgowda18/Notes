@@ -40,7 +40,7 @@ flowchart TD
         R --> DB[(Database)]
     end
     Client --> DS
-    RC -->|ResponseEntity.ok(dto)| HMC
+    RC -->|"ResponseEntity.ok(dto)"| HMC
     HMC -->|JSON Serialized Payload| Client
 ```
 
@@ -136,12 +136,12 @@ Never expose JPA Entities directly through `@RestController` endpoints:
 
 ```mermaid
 flowchart LR
-    Client["Client App"] -->|JSON (CreateProductRequest)| Controller["@RestController"]
+    Client["Client App"] -->|"JSON (CreateProductRequest)"| Controller["@RestController"]
     Controller -->|Maps to Entity| Service["ProductService (Domain Layer)"]
     Service -->|Persists Entity| Repo["ProductRepository"]
     Repo -->|JPA Entity| Service
     Service -->|Maps to ProductResponse DTO| Controller
-    Controller -->|JSON (ProductResponse)| Client
+    Controller -->|"JSON (ProductResponse)"| Client
 ```
 
 

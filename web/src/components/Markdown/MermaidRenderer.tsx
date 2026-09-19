@@ -7,14 +7,23 @@ interface MermaidRendererProps {
 }
 
 /**
- * Sanitize nested square brackets inside quoted node labels ["...[...]..."]
- * which break Mermaid's flowchart parser.
+ * Sanitize Mermaid chart syntax issues before rendering:
+ * 1. Nested square brackets inside quoted node labels ["...[...]..."]
+ * 2. Unquoted edge labels containing parentheses |...(...) ...|
  */
 function sanitizeMermaidChart(rawChart: string): string {
-  return rawChart.replace(/\["([^"]*)"\]/g, (_match, innerText) => {
-    const sanitized = innerText.replace(/\[/g, "(").replace(/\]/g, ")");
-    return `["${sanitized}"]`;
+  // 1. Sanitize nested brackets in node labels
+  let sanitized = rawChart.replace(/\["([^"]*)"\]/g, (_match, innerText) => {
+    const clean = innerText.replace(/\[/g, "(").replace(/\]/g, ")");
+    return `["${clean}"]`;
   });
+
+  // 2. Wrap unquoted edge labels containing parentheses |...(...) ...| in double quotes
+  sanitized = sanitized.replace(/\|([^"|\r\n]*\([^"|\r\n]*\)[^"|\r\n]*)\|/g, (_match, inner) => {
+    return `|"${inner.trim()}"|`;
+  });
+
+  return sanitized;
 }
 
 export const MermaidRenderer: React.FC<MermaidRendererProps> = ({ chart }) => {

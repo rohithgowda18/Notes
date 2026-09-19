@@ -49,8 +49,8 @@ A stream pipeline consists of three distinct phases:
 
 ```mermaid
 flowchart LR
-    Source[1. Source: List, Array, I/O Channel] --> Inter[2. Intermediate Ops: filter, map, sorted (Lazy)]
-    Inter --> Term[3. Terminal Op: collect, reduce, count (Executes Pipeline)]
+    Source["1. Source: List, Array, I/O Channel"] --> Inter["2. Intermediate Ops: filter, map, sorted (Lazy)"]
+    Inter --> Term["3. Terminal Op: collect, reduce, count (Executes Pipeline)"]
 ```
 
 > [!IMPORTANT]

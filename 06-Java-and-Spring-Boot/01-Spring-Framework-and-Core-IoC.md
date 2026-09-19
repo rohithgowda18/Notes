@@ -116,7 +116,7 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph TightCoupling ["Tight Coupling (Standard Java)"]
-        Car1["Car"] -->|new PetrolEngine()| PE["PetrolEngine (Hardcoded)"]
+        Car1["Car"] -->|"new PetrolEngine()"| PE["PetrolEngine (Hardcoded)"]
     end
     subgraph LooseCoupling ["Loose Coupling (Spring IoC)"]
         Car2["Car"] --> Inter["<< Engine >> (Interface)"]

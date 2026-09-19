@@ -112,7 +112,7 @@ public class StudentJdbcDao {
 flowchart LR
     RS["ResultSet Row: (student_id: 101, full_name: 'Lucy')"] --> RM{"RowMapper Implementation"}
     RM -->|Custom Manual Extraction| POJO1["Student(id=101, name='Lucy')"]
-    RM -->|BeanPropertyRowMapper (Reflection)| POJO2["Student(id=101, name='Lucy')"]
+    RM -->|"BeanPropertyRowMapper (Reflection)"| POJO2["Student(id=101, name='Lucy')"]
 ```
 
 

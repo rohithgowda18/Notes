@@ -191,8 +191,8 @@ Update DB ──▶ Invalidate / Delete Cache Key
 
 ```mermaid
 flowchart TD
-    Client --> Local[L1: In-Memory Local Cache (Caffeine/Guava, < 1ms)]
-    Local -- Miss --> Dist[L2: Distributed Shared Cache (Redis Cluster, 1-3ms)]
+    Client --> Local["L1: In-Memory Local Cache (Caffeine/Guava, < 1ms)"]
+    Local -- Miss --> Dist["L2: Distributed Shared Cache (Redis Cluster, 1-3ms)"]
     Dist -- Miss --> DB[(Primary Database, 10-50ms)]
 ```
 

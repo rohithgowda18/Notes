@@ -369,12 +369,12 @@ A **Data Transfer Object (DTO)** is an object carrying data between processes (C
 
 ```mermaid
 flowchart LR
-    Client(["Client (Browser/App)"]) -->|StudentCreateRequest (DTO)| Controller["StudentController"]
+    Client(["Client (Browser/App)"]) -->|"StudentCreateRequest (DTO)"| Controller["StudentController"]
     Controller -->|Converts DTO to Entity| Service["StudentService"]
-    Service -->|Student (JPA Entity)| Repository["StudentRepository"]
+    Service -->|"Student (JPA Entity)"| Repository["StudentRepository"]
     Repository --> DB[("Database Table")]
     Service -->|Converts Entity to DTO| Controller
-    Controller -->|StudentResponse (DTO)| Client
+    Controller -->|"StudentResponse (DTO)"| Client
 ```
 
 
