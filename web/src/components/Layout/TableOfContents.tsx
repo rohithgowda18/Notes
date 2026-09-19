@@ -10,23 +10,22 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ content }) => 
   const [headings, setHeadings] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState<string>("");
 
-  // Extract headings from markdown content
+  // Extract headings from markdown text
   useEffect(() => {
     const lines = content.split("\n");
     const extracted: TocItem[] = [];
 
-    // Simple heading parser
     for (const line of lines) {
       const match = line.match(/^(#{1,3})\s+(.+)$/);
       if (match) {
         const level = match[1].length;
         const rawText = match[2].trim();
 
-        // Strip markdown links or formatting from heading text
+        // Strip markdown links and formatting
         const text = rawText
-          .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // strip links
-          .replace(/[*_`]/g, "") // strip formatting
-          .replace(/^[0-9.]+\s*/, ""); // optional prefix
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+          .replace(/[*_`]/g, "")
+          .replace(/^[0-9.]+\s*/, "");
 
         // Generate slug matching rehype-slug
         const id = rawText
@@ -45,12 +44,12 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ content }) => 
     setHeadings(extracted);
   }, [content]);
 
-  // Scroll spy to highlight active heading
+  // Scroll spy to highlight active section
   useEffect(() => {
     if (headings.length === 0) return;
 
     const handleScroll = () => {
-      const scrollPosition = window.scrollY + 120;
+      const scrollPosition = window.scrollY + 130;
 
       for (let i = headings.length - 1; i >= 0; i--) {
         const el = document.getElementById(headings[i].id);
@@ -79,7 +78,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ content }) => 
     e.preventDefault();
     const el = document.getElementById(id);
     if (el) {
-      const yOffset = -85;
+      const yOffset = -80;
       const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: "smooth" });
       history.pushState(null, "", `#${id}`);
@@ -88,16 +87,20 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ content }) => 
   };
 
   return (
-    <nav className="w-64 shrink-0 hidden xl:block pl-6 pr-2 py-4 sticky top-16 max-h-[calc(100vh-4.5rem)] overflow-y-auto text-sm">
-      <div className="flex items-center gap-2 pb-2 mb-3 text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-800">
-        <AlignLeft className="w-3.5 h-3.5" />
-        <span>On this page</span>
+    <nav className="w-64 shrink-0 hidden xl:block pl-6 pr-2 py-6 sticky top-14 max-h-[calc(100vh-3.5rem)] overflow-y-auto text-sm select-none">
+      <div className="flex items-center gap-2 pb-2 mb-3 text-[11px] font-bold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-800">
+        <AlignLeft className="w-3.5 h-3.5 text-blue-500" />
+        <span>ON THIS PAGE</span>
       </div>
       <ul className="space-y-1.5 text-[13px] leading-snug">
         {headings.map((item) => {
           const isActive = activeId === item.id;
           const indentClass =
-            item.level === 1 ? "pl-0 font-medium" : item.level === 2 ? "pl-3" : "pl-6 text-xs";
+            item.level === 1
+              ? "pl-0 font-medium"
+              : item.level === 2
+              ? "pl-3 text-neutral-600 dark:text-neutral-400"
+              : "pl-6 text-xs text-neutral-500 dark:text-neutral-400";
 
           return (
             <li key={item.id} className={indentClass}>
@@ -107,7 +110,7 @@ export const TableOfContents: React.FC<TableOfContentsProps> = ({ content }) => 
                 className={`block py-1 transition-colors duration-150 line-clamp-1 ${
                   isActive
                     ? "text-blue-600 dark:text-blue-400 font-semibold"
-                    : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200"
+                    : "hover:text-neutral-900 dark:hover:text-neutral-100"
                 }`}
                 title={item.text}
               >

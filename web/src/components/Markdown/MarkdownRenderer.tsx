@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSlug from "rehype-slug";
@@ -6,6 +6,8 @@ import { Link } from "react-router-dom";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidRenderer } from "./MermaidRenderer";
 import { GITHUB_RAW_BASE } from "../../config/github";
+import { isLocalFallbackActive } from "../../services/github";
+import { Maximize2, X } from "lucide-react";
 
 interface MarkdownRendererProps {
   content: string;
@@ -16,9 +18,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   currentFilePath,
 }) => {
-  // Extract folder directory for relative assets resolution
+  const [lightboxImg, setLightboxImg] = useState<{ src: string; alt: string } | null>(null);
+
+  // Extract directory path for relative asset resolution
   const pathParts = currentFilePath.split("/");
   const currentDir = pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "";
+  const isLocal = isLocalFallbackActive();
 
   return (
     <div className="markdown-body dark:text-neutral-200">
@@ -36,7 +41,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               return <MermaidRenderer chart={codeString} />;
             }
 
-            // Check if inline code
+            // Inline code detection
             const isInline = !className && !codeString.includes("\n");
             if (isInline) {
               return (
@@ -49,11 +54,20 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             return <CodeBlock language={language} value={codeString} />;
           },
 
-          // Link rewriting for internal repo navigation
+          // Wrap tables in responsive scroll container
+          table({ children, ...props }) {
+            return (
+              <div className="markdown-table-wrapper">
+                <table {...props}>{children}</table>
+              </div>
+            );
+          },
+
+          // Links rewriting for internal notes and anchors
           a({ href, children, ...props }) {
             if (!href) return <a {...props}>{children}</a>;
 
-            // Anchor links on page
+            // Anchor links
             if (href.startsWith("#")) {
               return (
                 <a
@@ -66,9 +80,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               );
             }
 
-            // Internal Markdown or PDF file links
+            // Internal Markdown or PDF links
             if (href.endsWith(".md") || href.endsWith(".markdown") || href.endsWith(".pdf")) {
-              // Normalize relative path
               let targetPath = href;
               if (href.startsWith("./")) {
                 targetPath = href.substring(2);
@@ -106,7 +119,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
           },
 
-          // Images: resolve relative paths to GitHub raw content URL
+          // Images: resolve relative paths and support lightbox view
           img({ src, alt, ...props }) {
             if (!src) return null;
             let resolvedSrc = src;
@@ -115,25 +128,44 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
               let cleanPath = src.startsWith("./") ? src.substring(2) : src;
               if (cleanPath.startsWith("/")) cleanPath = cleanPath.substring(1);
 
-              if (currentDir) {
-                resolvedSrc = `${GITHUB_RAW_BASE}/${encodeURI(currentDir)}/${encodeURI(cleanPath)}`;
+              const fullRelPath = currentDir ? `${currentDir}/${cleanPath}` : cleanPath;
+
+              if (isLocal) {
+                resolvedSrc = `/api/local-file?path=${encodeURIComponent(fullRelPath)}`;
               } else {
-                resolvedSrc = `${GITHUB_RAW_BASE}/${encodeURI(cleanPath)}`;
+                resolvedSrc = `${GITHUB_RAW_BASE}/${encodeURI(fullRelPath)}`;
               }
             }
 
             return (
-              <img
-                src={resolvedSrc}
-                alt={alt || "Illustration"}
-                loading="lazy"
-                className="rounded-lg border border-neutral-200 dark:border-neutral-800 shadow-sm mx-auto my-6 max-h-[550px] object-contain"
-                {...props}
-              />
+              <figure className="my-6 text-center group relative inline-block w-full">
+                <div className="relative inline-block overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 shadow-sm max-w-full">
+                  <img
+                    src={resolvedSrc}
+                    alt={alt || "Diagram"}
+                    loading="lazy"
+                    className="max-h-[550px] w-auto max-w-full object-contain mx-auto cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.01]"
+                    onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
+                    {...props}
+                  />
+                  <button
+                    onClick={() => setLightboxImg({ src: resolvedSrc, alt: alt || "Diagram" })}
+                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-neutral-900/70 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-neutral-900 shadow-md"
+                    title="Enlarge image"
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                </div>
+                {alt && (
+                  <figcaption className="mt-2 text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+                    {alt}
+                  </figcaption>
+                )}
+              </figure>
             );
           },
 
-          // Headings with anchor link support
+          // Headings with anchor links
           h1({ id, children }) {
             return (
               <h1 id={id} className="group scroll-mt-20 relative">
@@ -142,7 +174,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                   <a
                     href={`#${id}`}
                     className="opacity-0 group-hover:opacity-100 ml-2 text-neutral-400 dark:text-neutral-500 hover:text-blue-500 transition-opacity text-base no-underline"
-                    aria-label="Link to this section"
+                    aria-label="Link to section"
                   >
                     #
                   </a>
@@ -158,7 +190,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                   <a
                     href={`#${id}`}
                     className="opacity-0 group-hover:opacity-100 ml-2 text-neutral-400 dark:text-neutral-500 hover:text-blue-500 transition-opacity text-base no-underline"
-                    aria-label="Link to this section"
+                    aria-label="Link to section"
                   >
                     #
                   </a>
@@ -174,7 +206,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                   <a
                     href={`#${id}`}
                     className="opacity-0 group-hover:opacity-100 ml-2 text-neutral-400 dark:text-neutral-500 hover:text-blue-500 transition-opacity text-sm no-underline"
-                    aria-label="Link to this section"
+                    aria-label="Link to section"
                   >
                     #
                   </a>
@@ -186,6 +218,28 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       >
         {content}
       </ReactMarkdown>
+
+      {/* Lightbox Modal for enlarged image inspection */}
+      {lightboxImg && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/85 backdrop-blur-sm cursor-zoom-out animate-in fade-in duration-150"
+          onClick={() => setLightboxImg(null)}
+        >
+          <button
+            onClick={() => setLightboxImg(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-neutral-800/80 text-white hover:bg-neutral-700 cursor-pointer"
+            title="Close image"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={lightboxImg.src}
+            alt={lightboxImg.alt}
+            className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import type { RepoFile, RepoTree } from "../types";
-import { clearStudyCache, fetchRepositoryTree } from "../services/github";
+import {
+  clearStudyCache,
+  fetchRepositoryTree,
+  getStoredGitHubToken,
+  setStoredGitHubToken,
+} from "../services/github";
 
 interface RepoContextType {
   tree: RepoTree | null;
@@ -8,6 +13,9 @@ interface RepoContextType {
   loading: boolean;
   error: string | null;
   lastSynced: number | null;
+  isLocal: boolean;
+  token: string;
+  updateToken: (token: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -18,6 +26,8 @@ export const RepoProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastSynced, setLastSynced] = useState<number | null>(null);
+  const [isLocal, setIsLocal] = useState<boolean>(false);
+  const [token, setToken] = useState<string>(getStoredGitHubToken());
 
   const loadTree = useCallback(async (forceRefresh = false) => {
     setLoading(true);
@@ -29,8 +39,9 @@ export const RepoProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await fetchRepositoryTree(forceRefresh);
       setTree(result.tree);
       setLastSynced(result.lastSynced);
+      setIsLocal(result.isLocal);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load study notes from GitHub";
+      const message = err instanceof Error ? err.message : "Failed to load study notes";
       setError(message);
     } finally {
       setLoading(false);
@@ -45,6 +56,15 @@ export const RepoProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await loadTree(true);
   }, [loadTree]);
 
+  const updateToken = useCallback(
+    async (newToken: string) => {
+      setStoredGitHubToken(newToken);
+      setToken(newToken);
+      await loadTree(true);
+    },
+    [loadTree]
+  );
+
   return (
     <RepoContext.Provider
       value={{
@@ -53,6 +73,9 @@ export const RepoProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         error,
         lastSynced,
+        isLocal,
+        token,
+        updateToken,
         refresh,
       }}
     >

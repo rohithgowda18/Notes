@@ -1,25 +1,67 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { BookOpen, FileText, Folder, ArrowRight, Sparkles, RefreshCw } from "lucide-react";
+import {
+  BookOpen,
+  FileText,
+  Folder,
+  ArrowRight,
+  Sparkles,
+  RefreshCw,
+  Key,
+  HardDrive,
+  Globe,
+  Check,
+} from "lucide-react";
 import { useRepo } from "../context/RepoContext";
 import { GITHUB_OWNER, GITHUB_REPO, GITHUB_BRANCH } from "../config/github";
 import type { RepoFile, RepoFolder } from "../types";
 
 export const HomePage: React.FC = () => {
-  const { tree, loading, error, refresh } = useRepo();
+  const { tree, loading, error, refresh, isLocal, token, updateToken } = useRepo();
+  const [showTokenInput, setShowTokenInput] = useState<boolean>(false);
+  const [tokenValue, setTokenValue] = useState<string>(token);
+  const [savingToken, setSavingToken] = useState<boolean>(false);
+  const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
 
   const totalNotes = tree?.allFiles.filter((f: RepoFile) => f.type === "markdown").length || 0;
   const totalPdfs = tree?.allFiles.filter((f: RepoFile) => f.type === "pdf").length || 0;
   const totalFolders = tree?.folders.length || 0;
 
+  const handleSaveToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingToken(true);
+    try {
+      await updateToken(tokenValue);
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
   return (
     <div className="flex-1 max-w-5xl mx-auto px-4 sm:px-8 py-8 md:py-12 w-full">
       {/* Hero Header */}
       <div className="mb-10 pb-8 border-b border-neutral-200 dark:border-neutral-800">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 mb-4">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Synced with GitHub: {GITHUB_BRANCH}</span>
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Target: {GITHUB_OWNER}/{GITHUB_REPO} ({GITHUB_BRANCH})</span>
+          </div>
+
+          {isLocal ? (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+              <HardDrive className="w-3.5 h-3.5" />
+              <span>Active: Local Workspace Fallback</span>
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              <Globe className="w-3.5 h-3.5" />
+              <span>Active: Live GitHub API</span>
+            </div>
+          )}
         </div>
+
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50 mb-3">
           Personal Study Library
         </h1>
@@ -51,10 +93,60 @@ export const HomePage: React.FC = () => {
               <strong>{totalPdfs}</strong> PDF Handbooks
             </span>
           </div>
+
+          <button
+            onClick={() => setShowTokenInput((prev) => !prev)}
+            className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 underline ml-auto cursor-pointer"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span>{token ? "Update GitHub Token" : "Connect Private Repo"}</span>
+          </button>
         </div>
+
+        {/* GitHub Token Config Box */}
+        {showTokenInput && (
+          <form
+            onSubmit={handleSaveToken}
+            className="mt-6 p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/80 space-y-3"
+          >
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-1.5">
+                <Key className="w-3.5 h-3.5 text-blue-500" />
+                <span>GitHub Personal Access Token (for Private Repositories)</span>
+              </label>
+              <span className="text-[11px] text-neutral-400">Stored safely in your browser only</span>
+            </div>
+            <p className="text-xs text-neutral-500 dark:text-neutral-400">
+              If your repository <code className="font-mono text-[11px]">{GITHUB_OWNER}/{GITHUB_REPO}</code> is private on GitHub, create a fine-grained or classic token with <strong>repo</strong> (read-only) scope and paste it here:
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="password"
+                value={tokenValue}
+                onChange={(e) => setTokenValue(e.target.value)}
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx (Leave empty to clear)"
+                className="flex-1 px-3 py-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-xs text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                type="submit"
+                disabled={savingToken}
+                className="px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+              >
+                {savedSuccess ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Saved!</span>
+                  </>
+                ) : (
+                  <span>Save & Sync</span>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
-      {/* Error state */}
+      {/* Error state if neither GitHub nor local works */}
       {error && (
         <div className="mb-8 p-4 rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 text-sm flex items-center justify-between">
           <div>

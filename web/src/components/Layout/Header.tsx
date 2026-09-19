@@ -7,6 +7,7 @@ import {
   Search,
   RefreshCw,
   Menu,
+  PanelLeft,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useRepo } from "../../context/RepoContext";
@@ -15,9 +16,14 @@ import { GITHUB_OWNER, GITHUB_REPO } from "../../config/github";
 interface HeaderProps {
   onOpenSearch: () => void;
   onToggleMobileNav: () => void;
+  onToggleSidebar?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onToggleMobileNav }) => {
+export const Header: React.FC<HeaderProps> = ({
+  onOpenSearch,
+  onToggleMobileNav,
+  onToggleSidebar,
+}) => {
   const { theme, toggleTheme } = useTheme();
   const { refresh, loading, lastSynced } = useRepo();
   const [timeAgo, setTimeAgo] = useState<string>("just now");
@@ -44,9 +50,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onToggleMobileNav 
   }, [lastSynced]);
 
   return (
-    <header className="sticky top-0 z-40 w-full h-14 border-b border-neutral-200 dark:border-neutral-800 bg-white/85 dark:bg-neutral-900/85 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between">
-      {/* Left: Mobile Hamburger & Logo */}
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-40 w-full h-14 border-b border-neutral-200 dark:border-neutral-800 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between">
+      {/* Left: Sidebar toggles & Brand Logo */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Mobile menu toggle */}
         <button
           onClick={onToggleMobileNav}
           className="p-1.5 rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 lg:hidden cursor-pointer"
@@ -55,40 +62,47 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onToggleMobileNav 
           <Menu className="w-5 h-5" />
         </button>
 
+        {/* Desktop sidebar collapse toggle */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="hidden lg:flex p-1.5 rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+            title="Toggle Sidebar"
+            aria-label="Toggle Sidebar"
+          >
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        )}
+
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
-            <BookOpen className="w-4 h-4" />
+          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
+            <BookOpen className="w-3.5 h-3.5" />
           </div>
-          <div className="flex flex-col">
-            <span className="font-semibold text-sm tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-              Study Notes
-            </span>
-            <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono hidden sm:inline">
-              {GITHUB_OWNER}/{GITHUB_REPO}
-            </span>
-          </div>
+          <span className="font-semibold text-sm tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+            Study Notes
+          </span>
         </Link>
       </div>
 
-      {/* Middle: Search bar trigger */}
+      {/* Middle: Search input trigger */}
       <div className="flex-1 max-w-md mx-4 hidden md:block">
         <button
           onClick={onOpenSearch}
-          className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800/60 hover:border-neutral-300 dark:hover:border-neutral-700 text-xs text-neutral-400 dark:text-neutral-500 transition-all cursor-pointer shadow-2xs"
+          className="w-full flex items-center justify-between px-3.5 py-1.5 rounded-lg border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-850 hover:border-neutral-300 dark:hover:border-neutral-700 text-xs text-neutral-400 dark:text-neutral-500 transition-all cursor-pointer shadow-2xs"
         >
-          <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5" />
-            <span>Search notes, topics, or PDFs...</span>
+          <div className="flex items-center gap-2 truncate">
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Search notes, headings, and code...</span>
           </div>
-          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded text-neutral-500 dark:text-neutral-300">
+          <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-white dark:bg-neutral-700 border border-neutral-200 dark:border-neutral-600 rounded text-neutral-500 dark:text-neutral-300 shrink-0">
             Ctrl K
           </kbd>
         </button>
       </div>
 
-      {/* Right Controls: Refresh, Mobile Search, Theme Toggle, GitHub Link */}
+      {/* Right Controls: Search, Refresh, Theme Toggle, GitHub */}
       <div className="flex items-center gap-1.5 sm:gap-2">
-        {/* Mobile Search Icon */}
+        {/* Mobile Search button */}
         <button
           onClick={onOpenSearch}
           className="p-2 rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden cursor-pointer"
@@ -98,7 +112,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onToggleMobileNav 
           <Search className="w-4 h-4" />
         </button>
 
-        {/* Refresh Notes with synced timestamp */}
+        {/* Refresh Notes with relative timestamp */}
         <button
           onClick={refresh}
           disabled={loading}
@@ -107,12 +121,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onToggleMobileNav 
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-500" : ""}`} />
           <span className="hidden sm:inline">Refresh</span>
-          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 hidden lg:inline">
+          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 hidden xl:inline">
             ({timeAgo})
           </span>
         </button>
 
-        {/* Dark Mode Toggle */}
+        {/* Theme Toggle */}
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
@@ -122,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch, onToggleMobileNav 
           {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
         </button>
 
-        {/* GitHub Repository External Link */}
+        {/* GitHub Repository Link */}
         <a
           href={`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`}
           target="_blank"

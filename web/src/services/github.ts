@@ -9,14 +9,32 @@ import type { FileType, RepoFile, RepoFolder, RepoTree } from "../types";
 const TREE_CACHE_KEY = "study_notes_tree_cache";
 const TREE_CACHE_TIMESTAMP_KEY = "study_notes_tree_timestamp";
 const CONTENT_CACHE_PREFIX = "study_note_content_";
+const TOKEN_STORAGE_KEY = "study_notes_github_token";
+const FALLBACK_MODE_KEY = "study_notes_local_fallback";
 
 interface GitHubTreeItem {
   path: string;
   mode: string;
   type: "blob" | "tree";
-  sha: string;
+  sha?: string;
   size?: number;
-  url: string;
+  url?: string;
+}
+
+export function getStoredGitHubToken(): string {
+  return localStorage.getItem(TOKEN_STORAGE_KEY) || GITHUB_TOKEN || "";
+}
+
+export function setStoredGitHubToken(token: string): void {
+  if (token.trim()) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, token.trim());
+  } else {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }
+}
+
+export function isLocalFallbackActive(): boolean {
+  return sessionStorage.getItem(FALLBACK_MODE_KEY) === "true";
 }
 
 function getFileType(path: string): FileType {
@@ -28,23 +46,131 @@ function getFileType(path: string): FileType {
 
 function shouldIgnorePath(path: string): boolean {
   const lower = path.toLowerCase();
-  // Ignore git files, web app code, and dotfiles
   if (lower.startsWith(".git") || lower.startsWith(".github") || lower.startsWith("web/")) {
     return true;
   }
-  // Ignore node_modules
   if (lower.includes("node_modules/")) {
     return true;
   }
   return false;
 }
 
+interface FolderBuilderNode {
+  name: string;
+  path: string;
+  files: RepoFile[];
+  subfolderMap: Map<string, FolderBuilderNode>;
+}
+
+function buildTreeFromItems(items: Array<{ path: string; name?: string; type?: string; size?: number }>): RepoTree {
+  const allFiles: RepoFile[] = [];
+  const rootFiles: RepoFile[] = [];
+  const rootFolderMap = new Map<string, FolderBuilderNode>();
+  const seenPaths = new Set<string>();
+
+  for (const item of items) {
+    if (!item.path) continue;
+    const normalizedPath = item.path.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+
+    if (shouldIgnorePath(normalizedPath)) {
+      continue;
+    }
+
+    const type = getFileType(normalizedPath);
+    if (type !== "markdown" && type !== "pdf") {
+      continue;
+    }
+
+    if (seenPaths.has(normalizedPath)) {
+      continue;
+    }
+    seenPaths.add(normalizedPath);
+
+    const pathParts = normalizedPath.split("/");
+    const fileName = item.name || pathParts[pathParts.length - 1];
+
+    const file: RepoFile = {
+      path: normalizedPath,
+      name: fileName,
+      type,
+      size: item.size,
+    };
+
+    allFiles.push(file);
+
+    if (pathParts.length === 1) {
+      rootFiles.push(file);
+    } else {
+      let currentMap = rootFolderMap;
+      let currentPath = "";
+
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        const folderName = pathParts[i];
+        currentPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+
+        if (!currentMap.has(folderName)) {
+          currentMap.set(folderName, {
+            name: folderName,
+            path: currentPath,
+            files: [],
+            subfolderMap: new Map(),
+          });
+        }
+
+        const folderNode = currentMap.get(folderName)!;
+        if (i === pathParts.length - 2) {
+          folderNode.files.push(file);
+        } else {
+          currentMap = folderNode.subfolderMap;
+        }
+      }
+    }
+  }
+
+  // Convert builder nodes to RepoFolder recursively with natural sorting
+  function convertToRepoFolder(node: FolderBuilderNode): RepoFolder {
+    const subfolders = Array.from(node.subfolderMap.values())
+      .map(convertToRepoFolder)
+      .sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+      );
+
+    const files = node.files.sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+    );
+
+    return {
+      name: node.name,
+      path: node.path,
+      files,
+      subfolders,
+    };
+  }
+
+  const folders = Array.from(rootFolderMap.values())
+    .map(convertToRepoFolder)
+    .sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+    );
+
+  rootFiles.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+  );
+
+  allFiles.sort((a, b) =>
+    a.path.localeCompare(b.path, undefined, { numeric: true, sensitivity: "base" })
+  );
+
+  return { folders, rootFiles, allFiles };
+}
+
 /**
- * Fetch GitHub repository tree with local storage caching
+ * Fetch GitHub repository tree with local storage caching and dev fallback
  */
 export async function fetchRepositoryTree(forceRefresh = false): Promise<{
   tree: RepoTree;
   lastSynced: number;
+  isLocal: boolean;
 }> {
   if (!forceRefresh) {
     const cachedTree = sessionStorage.getItem(TREE_CACHE_KEY);
@@ -53,116 +179,84 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
     if (cachedTree && cachedTimestamp) {
       try {
         const tree = JSON.parse(cachedTree) as RepoTree;
-        return { tree, lastSynced: parseInt(cachedTimestamp, 10) };
+        return {
+          tree,
+          lastSynced: parseInt(cachedTimestamp, 10),
+          isLocal: isLocalFallbackActive(),
+        };
       } catch (e) {
         console.warn("Error parsing cached repository tree, fetching fresh", e);
       }
     }
   }
 
+  const token = getStoredGitHubToken();
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
   };
 
-  if (GITHUB_TOKEN) {
-    headers["Authorization"] = `token ${GITHUB_TOKEN}`;
+  if (token) {
+    headers["Authorization"] = `token ${token}`;
   }
 
   const url = `${GITHUB_API_BASE}/git/trees/${GITHUB_BRANCH}?recursive=1`;
 
-  const response = await fetch(url, { headers });
+  try {
+    const response = await fetch(url, { headers });
 
-  if (!response.ok) {
+    if (response.ok) {
+      const data = await response.json();
+      const items: GitHubTreeItem[] = data.tree || [];
+      const tree = buildTreeFromItems(items);
+
+      const now = Date.now();
+      sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
+      sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+      sessionStorage.setItem(FALLBACK_MODE_KEY, "false");
+
+      return { tree, lastSynced: now, isLocal: false };
+    }
+
+    // If GitHub returns 404 (private repo or bad branch) or 403 (rate limit), attempt local dev fallback
+    console.warn(`GitHub API returned status ${response.status}. Attempting local workspace fallback...`);
+    const localRes = await fetch("/api/local-tree");
+    if (localRes.ok) {
+      const localData = await localRes.json();
+      const tree = buildTreeFromItems(localData.files || []);
+
+      const now = Date.now();
+      sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
+      sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+      sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
+
+      return { tree, lastSynced: now, isLocal: true };
+    }
+
     if (response.status === 403) {
-      throw new Error(
-        "GitHub API rate limit exceeded. Please wait a few minutes or provide a GitHub token."
-      );
+      throw new Error("GitHub API rate limit exceeded. Please provide a GitHub Personal Access Token.");
     }
     if (response.status === 404) {
-      throw new Error(
-        "GitHub repository or branch not found. Please verify your repository configuration."
-      );
+      throw new Error("GitHub repository or branch not found. If this repository is private, please provide a GitHub token.");
     }
     throw new Error(`Failed to fetch repository tree: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  const items: GitHubTreeItem[] = data.tree || [];
-
-  const allFiles: RepoFile[] = [];
-  const rootFiles: RepoFile[] = [];
-  const folderMap = new Map<string, RepoFolder>();
-
-  // Process all items
-  for (const item of items) {
-    if (item.type !== "blob" || shouldIgnorePath(item.path)) {
-      continue;
-    }
-
-    const type = getFileType(item.path);
-    // Keep markdown and pdfs
-    if (type !== "markdown" && type !== "pdf") {
-      continue;
-    }
-
-    const pathParts = item.path.split("/");
-    const name = pathParts[pathParts.length - 1];
-
-    const file: RepoFile = {
-      path: item.path,
-      name,
-      type,
-      size: item.size,
-      sha: item.sha,
-    };
-
-    allFiles.push(file);
-
-    if (pathParts.length === 1) {
-      // Root level file
-      rootFiles.push(file);
-    } else {
-      // Nested file inside a category folder
-      const folderName = pathParts[0];
-      if (!folderMap.has(folderName)) {
-        folderMap.set(folderName, {
-          name: folderName,
-          path: folderName,
-          files: [],
-          subfolders: [],
-        });
+  } catch (err: any) {
+    // Attempt local fallback if network failed or GitHub threw
+    try {
+      const localRes = await fetch("/api/local-tree");
+      if (localRes.ok) {
+        const localData = await localRes.json();
+        const tree = buildTreeFromItems(localData.files || []);
+        const now = Date.now();
+        sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
+        sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+        sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
+        return { tree, lastSynced: now, isLocal: true };
       }
-      folderMap.get(folderName)!.files.push(file);
+    } catch {
+      // Local fallback unavailable
     }
+    throw err;
   }
-
-  // Sort folders alphabetically
-  const folders = Array.from(folderMap.values()).sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
-  );
-
-  // Sort files inside each folder
-  for (const folder of folders) {
-    folder.files.sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
-    );
-  }
-
-  rootFiles.sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
-  );
-
-  const tree: RepoTree = {
-    folders,
-    rootFiles,
-    allFiles,
-  };
-
-  const now = Date.now();
-  sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
-  sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
-
-  return { tree, lastSynced: now };
 }
 
 /**
@@ -178,19 +272,43 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
     }
   }
 
-  const url = `${GITHUB_RAW_BASE}/${encodeURI(filePath)}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    if (response.status === 404) {
-      throw new Error(`Note not found at path: ${filePath}`);
+  // If local fallback is active, read directly from local workspace
+  if (isLocalFallbackActive()) {
+    const localRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
+    if (localRes.ok) {
+      const text = await localRes.text();
+      sessionStorage.setItem(cacheKey, text);
+      return text;
     }
-    throw new Error(`Unable to load note (${response.status} ${response.statusText}).`);
   }
 
-  const content = await response.text();
-  sessionStorage.setItem(cacheKey, content);
-  return content;
+  const token = getStoredGitHubToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `token ${token}`;
+  }
+
+  const url = `${GITHUB_RAW_BASE}/${encodeURI(filePath)}`;
+  try {
+    const response = await fetch(url, { headers });
+    if (response.ok) {
+      const content = await response.text();
+      sessionStorage.setItem(cacheKey, content);
+      return content;
+    }
+  } catch (e) {
+    console.warn("Raw GitHub fetch failed, attempting local fallback", e);
+  }
+
+  // Fallback to local server if on dev
+  const fallbackRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
+  if (fallbackRes.ok) {
+    const text = await fallbackRes.text();
+    sessionStorage.setItem(cacheKey, text);
+    return text;
+  }
+
+  throw new Error(`Unable to load note from path: ${filePath}`);
 }
 
 /**
@@ -200,7 +318,6 @@ export function clearStudyCache(): void {
   sessionStorage.removeItem(TREE_CACHE_KEY);
   sessionStorage.removeItem(TREE_CACHE_TIMESTAMP_KEY);
 
-  // Clear note contents
   for (let i = sessionStorage.length - 1; i >= 0; i--) {
     const key = sessionStorage.key(i);
     if (key && key.startsWith(CONTENT_CACHE_PREFIX)) {
