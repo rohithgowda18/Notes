@@ -272,13 +272,17 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
     }
   }
 
-  // If local fallback is active, read directly from local workspace
-  if (isLocalFallbackActive()) {
-    const localRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
-    if (localRes.ok) {
-      const text = await localRes.text();
-      sessionStorage.setItem(cacheKey, text);
-      return text;
+  // During local development or when fallback is active, read directly from local workspace
+  if (import.meta.env.DEV || isLocalFallbackActive()) {
+    try {
+      const localRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
+      if (localRes.ok) {
+        const text = await localRes.text();
+        sessionStorage.setItem(cacheKey, text);
+        return text;
+      }
+    } catch {
+      // Continue to GitHub fetch
     }
   }
 
