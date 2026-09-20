@@ -8,6 +8,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useLeetcode } from "../context/LeetcodeContext";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { EmptyState } from "../components/UI/EmptyState";
 
 function formatLeetcodeName(fileName: string): { number: string; title: string } {
   const clean = fileName.replace(/\.(md|markdown)$/i, "");
@@ -37,6 +39,10 @@ export const LeetcodeFolderPage: React.FC = () => {
 
   const isDsa = category === "dsa";
   const isDb = category === "database";
+
+  useDocumentTitle(
+    isDsa ? "DSA Solutions" : isDb ? "Database & SQL Solutions" : "LeetCode Solutions"
+  );
 
   const categoryFiles = useMemo(() => {
     return allFiles.filter((f) => {
@@ -158,9 +164,16 @@ export const LeetcodeFolderPage: React.FC = () => {
       {/* Solutions Grid */}
       <div className="space-y-3">
         {filteredFiles.length === 0 ? (
-          <div className="py-16 text-center text-xs text-neutral-400 dark:text-neutral-500">
-            No solutions matched your search.
-          </div>
+          <EmptyState
+            title="No solutions found"
+            description={
+              searchQuery
+                ? `No problems matching "${searchQuery}" in this category.`
+                : "No LeetCode solutions found in this category."
+            }
+            actionLabel={searchQuery ? "Clear Search" : undefined}
+            onAction={searchQuery ? () => setSearchQuery("") : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredFiles.map((file) => {

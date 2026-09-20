@@ -5,6 +5,7 @@ import { fetchLeetcodeMarkdown } from "../services/leetcode";
 import { useLeetcode } from "../context/LeetcodeContext";
 import { MarkdownRenderer } from "../components/Markdown/MarkdownRenderer";
 import { PrevNextNav } from "../components/Navigation/PrevNextNav";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import type { RepoFile, RepoFolder } from "../types";
 
 const SCROLL_POS_PREFIX = "leetcode_scroll_";
@@ -111,6 +112,9 @@ export const LeetcodeNotePage: React.FC = () => {
     }
     return clean;
   }
+
+  const solutionTitle = formatSolutionName(currentFile.name);
+  useDocumentTitle(solutionTitle);
 
   // Format category label
   function formatCategory(cat: string): string {

@@ -5,6 +5,7 @@ import { fetchRawMarkdown } from "../services/github";
 import { useRepo } from "../context/RepoContext";
 import { MarkdownRenderer } from "../components/Markdown/MarkdownRenderer";
 import { PrevNextNav } from "../components/Navigation/PrevNextNav";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import type { RepoFile, RepoFolder } from "../types";
 
 const SCROLL_POS_PREFIX = "study_notes_scroll_";
@@ -13,6 +14,13 @@ export const NotePage: React.FC = () => {
   const { "*": rawPath } = useParams();
   const filePath = rawPath ? decodeURIComponent(rawPath) : "";
   const { allFiles, tree } = useRepo();
+
+  const noteFileName = filePath.split("/").pop() || "Study Note";
+  const noteTitle = noteFileName
+    .replace(/\.(md|markdown)$/i, "")
+    .replace(/^[0-9]+[-_]/, "")
+    .replace(/[-_]/g, " ");
+  useDocumentTitle(noteTitle);
 
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);

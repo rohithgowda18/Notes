@@ -10,6 +10,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useRepo } from "../context/RepoContext";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { EmptyState } from "../components/UI/EmptyState";
 import type { RepoFolder } from "../types";
 
 function formatName(name: string): string {
@@ -44,6 +46,9 @@ export const FolderPage: React.FC = () => {
     if (!tree) return undefined;
     return findFolder(tree.folders, folderPath);
   }, [tree, folderPath]);
+
+  const folderTitle = folder?.name ? formatName(folder.name) : "Study Notes";
+  useDocumentTitle(folderTitle);
 
   const pathParts = folderPath ? folderPath.split("/") : [];
   const parentFolderPath = pathParts.length > 1 ? pathParts.slice(0, -1).join("/") : "";
@@ -210,9 +215,16 @@ export const FolderPage: React.FC = () => {
         </h2>
 
         {filteredFiles.length === 0 ? (
-          <div className="py-12 text-center text-xs text-neutral-400 dark:text-neutral-500">
-            No documents match your filter.
-          </div>
+          <EmptyState
+            title="No documents found"
+            description={
+              filterQuery
+                ? `No documents matching "${filterQuery}" in this folder.`
+                : "No study notes or documents currently in this folder."
+            }
+            actionLabel={filterQuery ? "Clear Filter" : undefined}
+            onAction={filterQuery ? () => setFilterQuery("") : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredFiles.map((file) => {
