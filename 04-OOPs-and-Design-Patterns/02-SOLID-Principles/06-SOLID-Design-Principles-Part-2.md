@@ -1,74 +1,154 @@
 # 06. SOLID Design Principles — Part 2: LSP, ISP & DIP
 
-> 💡 **Quick Revision Anchor**: `LSP (True Substitutability), ISP (Lean Interfaces), DIP (Invert Dependencies to Abstractions)`
+> 💡 **Quick Revision Anchor**: 
+> - **L (Liskov Substitution Principle)**: Subtypes must be substitutable for their base types without altering program correctness (Preserve behavioral contracts).
+> - **I (Interface Segregation Principle)**: Prefer many small, client-specific role interfaces over a single bloated "fat" interface.
+> - **D (Dependency Inversion Principle)**: Depend on **abstractions**, not on concrete low-level implementations (Decouple High-level policy from Low-level details).
 
 ---
 
 ## 1. Liskov Substitution Principle (LSP)
 
-> **Formal Definition**: *"If $S$ is a subtype of $T$, then objects of type $T$ may be replaced with objects of type $S$ without altering any of the desirable properties of the program (correctness, task performed, etc.)."*
+> **Formal Definition (Barbara Liskov, 1987)**:
+> *"If for each object $o_1$ of type $S$ there is an object $o_2$ of type $T$ such that for all programs $P$ defined in terms of $T$, the behavior of $P$ is unchanged when $o_1$ is substituted for $o_2$, then $S$ is a subtype of $T$."*
 
-In simple terms: A child class must be able to completely substitute its parent class **without breaking client expectations or throwing unexpected exceptions**.
+In simple terms: **A derived child class must extend the base class's behavior, NEVER break or restrict it.** If code works with a superclass `Base`, it must work seamlessly with `Subclass` without needing type checking (`instanceof`) or throwing unexpected `UnsupportedOperationException`.
 
 ---
 
-### The Classic Violation: The Rectangle-Square Dilemma
-Mathematically, a Square is a Rectangle. But in Object-Oriented Design, **modeling Square as a subclass of Rectangle violates LSP**:
-
-```java
-// ❌ VIOLATION OF LSP
-public class Rectangle {
-    protected int width;
-    protected int height;
-
-    public void setWidth(int width) { this.width = width; }
-    public void setHeight(int height) { this.height = height; }
-    public int getArea() { return width * height; }
-}
-
-public class Square extends Rectangle {
-    @Override
-    public void setWidth(int width) {
-        this.width = width;
-        this.height = width; // Forces square geometry
-    }
-
-    @Override
-    public void setHeight(int height) {
-        this.width = height;
-        this.height = height; // Forces square geometry
-    }
-}
-```
-
-#### Why it fails the substitution test:
-```java
-public void testRectangleArea(Rectangle rect) {
-    rect.setWidth(5);
-    rect.setHeight(10);
-    // Client reasonably expects area to be 5 * 10 = 50.
-    // But if rect is a Square, area will be 10 * 10 = 100!
-    assert rect.getArea() == 50 : "LSP Violation! Unexpected Area: " + rect.getArea();
-}
-```
+### The Anti-Pattern: The Fixed Deposit Account Trap
+Consider a banking system with different account types:
 
 ```mermaid
-flowchart TD
-    Client["Client expects width=5, height=10 => Area=50"]
-    Client --> Pass["Pass Rectangle: Area = 50 ✅"]
-    Client --> Fail["Pass Square: Area = 100 ❌ (Breaks contract!)"]
+classDiagram
+    class BankAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+    class SavingsAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+    class CurrentAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+    class FixedDepositAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void ❌ Throws Exception!
+    }
+
+    BankAccount <|-- SavingsAccount
+    BankAccount <|-- CurrentAccount
+    BankAccount <|-- FixedDepositAccount
 ```
 
-### The 3 Formal Subtyping Rules of LSP
-1. **Signature Rule**:
-   - Return types can be **covariant** (subtype return type).
-   - Method arguments cannot be more restrictive.
-   - Child methods **must not throw new or broader checked exceptions** than the parent method.
-2. **Property Rule (History Constraint)**:
-   - Invariants of the superclass must be preserved by the subclass. If the superclass states that an attribute is immutable after creation, the subclass cannot provide methods to mutate it.
-3. **Method Rules**:
-   - **Preconditions cannot be strengthened**: Subclass cannot demand stricter input conditions than its parent (e.g., if parent accepts all integers, child cannot reject negative integers).
-   - **Postconditions cannot be weakened**: Subclass must guarantee at least as much as the parent guaranteed.
+```java
+// ❌ VIOLATION OF LSP: FixedDeposit breaks the base class contract!
+public class BankAccount {
+    protected double balance;
+
+    public void deposit(double amount) { this.balance += amount; }
+    public void withdraw(double amount) {
+        if (balance >= amount) {
+            this.balance -= amount;
+        } else {
+            throw new IllegalArgumentException("Insufficient funds");
+        }
+    }
+}
+
+public class FixedDepositAccount extends BankAccount {
+    @Override
+    public void withdraw(double amount) {
+        // In a Fixed Deposit, money is locked until maturity!
+        throw new UnsupportedOperationException("❌ Cannot withdraw from a Fixed Deposit before maturity!");
+    }
+}
+```
+
+#### What goes wrong at runtime?
+```java
+public class BankingService {
+    public void processMonthlyDeductions(List<BankAccount> accounts, double fee) {
+        for (BankAccount acc : accounts) {
+            acc.withdraw(fee); // 💥 CRASHES with UnsupportedOperationException when encountering FixedDepositAccount!
+        }
+    }
+}
+```
+The client assumed every `BankAccount` could withdraw. Because `FixedDepositAccount` couldn't fulfill the parent's contract, program correctness was violated.
+
+---
+
+### The Clean Solution (Applying LSP)
+Segregate account hierarchies so that non-withdrawable accounts do not inherit withdraw capabilities:
+
+```mermaid
+classDiagram
+    class Account {
+        <<interface>>
+        +deposit(double amount) void
+        +getBalance() double
+    }
+    class WithdrawableAccount {
+        <<interface>>
+        +withdraw(double amount) void
+    }
+    class SavingsAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+    class CurrentAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+    class FixedDepositAccount {
+        +deposit(double amount) void
+    }
+
+    Account <|-- WithdrawableAccount
+    WithdrawableAccount <|.. SavingsAccount
+    WithdrawableAccount <|.. CurrentAccount
+    Account <|.. FixedDepositAccount
+```
+
+```java
+// 1. Base abstraction for all accounts
+public interface Account {
+    void deposit(double amount);
+    double getBalance();
+}
+
+// 2. Specialized abstraction for accounts supporting withdrawal
+public interface WithdrawableAccount extends Account {
+    void withdraw(double amount);
+}
+
+// 3. Regular accounts implement WithdrawableAccount
+public class SavingsAccount implements WithdrawableAccount {
+    private double balance;
+    @Override public void deposit(double amt) { balance += amt; }
+    @Override public void withdraw(double amt) { balance -= amt; }
+    @Override public double getBalance() { return balance; }
+}
+
+// 4. Fixed deposit only implements Account!
+public class FixedDepositAccount implements Account {
+    private double balance;
+    @Override public void deposit(double amt) { balance += amt; }
+    @Override public double getBalance() { return balance; }
+}
+```
+Now, `processMonthlyDeductions(List<WithdrawableAccount> accounts)` is completely type-safe and **impossible to crash!**
+
+---
+
+### The 4 Formal Subtyping Rules of LSP (Interview Favorite)
+1. **Preconditions cannot be strengthened in a subtype**: If parent method accepts any integer, child cannot restrict it to only positive numbers.
+2. **Postconditions cannot be weakened in a subtype**: If parent guarantees returning balance $\ge 0$, child cannot allow balance to become negative.
+3. **Invariants must be preserved**: Core integrity rules of parent must remain true in all subtypes.
+4. **Exception Rule**: Subclass methods cannot throw new or broader checked exceptions than the superclass method.
 
 ---
 
@@ -76,70 +156,84 @@ flowchart TD
 
 > **Formal Definition**: *"Clients should not be forced to depend upon interfaces that they do not use."*
 
-Prefer **many small, client-specific interfaces** over a single, bloated, "fat" general-purpose interface.
+In short: **Keep interfaces small, highly focused, and role-based.** Large, bloated ("fat") interfaces force implementers to write empty dummy methods or throw `UnsupportedOperationException`.
 
-### The Anti-Pattern: Fat Interface
+### The Anti-Pattern: The "Fat" Vehicle Interface
 ```java
-// ❌ VIOLATION OF ISP: Fat interface forcing unnecessary implementations
-public interface SmartDevice {
-    void printDocument();
-    void scanDocument();
-    void faxDocument();
-    void staplePages();
+// ❌ VIOLATION OF ISP: Bloated interface forcing irrelevant methods
+public interface VehicleOperations {
+    void drive();
+    void startEngine();
+    void stopEngine();
+    void refuel();
+    void pedal();
 }
 
-public class BasicOfficePrinter implements SmartDevice {
-    public void printDocument() { System.out.println("Printing..."); }
-
-    // Forced to write dummy code or throw UnsupportedOperationException!
-    public void scanDocument() { throw new UnsupportedOperationException("No scanner!"); }
-    public void faxDocument() { throw new UnsupportedOperationException("No fax!"); }
-    public void staplePages() { throw new UnsupportedOperationException("No stapler!"); }
+public class Bicycle implements VehicleOperations {
+    @Override public void pedal() { System.out.println("Pedaling bicycle..."); }
+    @Override public void drive() { System.out.println("Riding bicycle..."); }
+    
+    // Forced dummy implementations!
+    @Override public void startEngine() { /* No engine! Dummy empty body */ }
+    @Override public void stopEngine()  { /* No engine! Dummy empty body */ }
+    @Override public void refuel()      { throw new UnsupportedOperationException("No fuel tank!"); }
 }
 ```
 
-### The Clean Solution: Role-Based Segregated Interfaces
+### The Clean Solution (Applying ISP)
+Break the monolithic interface into discrete, cohesive role interfaces:
+
 ```mermaid
 classDiagram
-    class Printable {
+    class Drivable {
         <<interface>>
-        +printDocument() void
+        +drive() void
     }
-    class Scannable {
+    class Motorized {
         <<interface>>
-        +scanDocument() void
+        +startEngine() void
+        +stopEngine() void
+        +refuel() void
     }
-    class Faxable {
+    class PedalPowered {
         <<interface>>
-        +faxDocument() void
+        +pedal() void
     }
 
-    class SimplePrinter {
-        +printDocument() void
+    class Car {
+        +drive() void
+        +startEngine() void
+        +stopEngine() void
+        +refuel() void
     }
-    class AdvancedAllInOne {
-        +printDocument() void
-        +scanDocument() void
-        +faxDocument() void
+    class Bicycle {
+        +drive() void
+        +pedal() void
     }
 
-    Printable <|.. SimplePrinter
-    Printable <|.. AdvancedAllInOne
-    Scannable <|.. AdvancedAllInOne
-    Faxable <|.. AdvancedAllInOne
+    Drivable <|.. Car
+    Motorized <|.. Car
+    Drivable <|.. Bicycle
+    PedalPowered <|.. Bicycle
 ```
 
 ```java
-// ✅ Clean segregated interfaces
-public interface Printable { void printDocument(); }
-public interface Scannable { void scanDocument(); }
-public interface Faxable   { void faxDocument(); }
+public interface Drivable { void drive(); }
+public interface Motorized { void startEngine(); void stopEngine(); void refuel(); }
+public interface PedalPowered { void pedal(); }
 
-public class BasicOfficePrinter implements Printable {
-    @Override
-    public void printDocument() {
-        System.out.println("Printing document cleanly.");
-    }
+// Car implements only what it needs
+public class Car implements Drivable, Motorized {
+    @Override public void drive() { System.out.println("Driving car."); }
+    @Override public void startEngine() { System.out.println("Engine started."); }
+    @Override public void stopEngine() { System.out.println("Engine stopped."); }
+    @Override public void refuel() { System.out.println("Refueling petrol."); }
+}
+
+// Bicycle implements only what it needs
+public class Bicycle implements Drivable, PedalPowered {
+    @Override public void drive() { System.out.println("Riding bicycle."); }
+    @Override public void pedal() { System.out.println("Pedaling pedals."); }
 }
 ```
 
@@ -151,90 +245,108 @@ public class BasicOfficePrinter implements Printable {
 > 1. *"High-level modules should not depend on low-level modules. Both should depend on abstractions."*
 > 2. *"Abstractions should not depend on details. Details should depend on abstractions."*
 
-High-level policy (Business Logic) should never be tightly coupled to low-level details (SQL database, third-party SMS vendor, specific disk file).
+- **High-level module**: Core business logic / policy decisions (e.g., `UserService`, `OrderCheckoutService`).
+- **Low-level module**: Implementation details / infrastructure mechanisms (e.g., `MySQLDatabase`, `SendGridEmailService`, `StripeAPI`).
 
 ### The Anti-Pattern: Direct Concrete Coupling
 ```java
-// ❌ VIOLATION OF DIP: High-level NotificationService tightly coupled to concrete TwilioSmsSender
-public class NotificationService {
-    private TwilioSmsSender smsSender = new TwilioSmsSender(); // Hardcoded low-level dependency!
+// Low-level module
+public class MySQLDatabase {
+    public void saveUser(String email) {
+        System.out.println("Writing user " + email + " to MySQL tables.");
+    }
+}
 
-    public void alertUser(String message) {
-        smsSender.sendSms(message);
+// ❌ VIOLATION OF DIP: High-level business service directly instantiates low-level driver!
+public class UserService {
+    private MySQLDatabase database; // Tightly coupled to MySQL!
+
+    public UserService() {
+        this.database = new MySQLDatabase(); // Cannot mock for unit testing!
+    }
+
+    public void registerUser(String email) {
+        // Business logic
+        database.saveUser(email);
     }
 }
 ```
-*If company switches from Twilio to AWS SNS or SendGrid, `NotificationService` must be rewritten!*
 
-### The Clean Solution: Dependency Injection via Abstraction
+#### Why is this bad?
+1. You cannot swap MySQL for PostgreSQL or MongoDB without modifying `UserService.java`.
+2. You cannot write isolated unit tests without having a live MySQL database running!
+
+---
+
+### The Clean Solution (Applying DIP via Dependency Injection)
+
+Invert the dependency arrow: both `UserService` and database implementations depend on a common abstraction (`UserRepository`):
+
 ```mermaid
 flowchart TD
-    subgraph HighLevel["High-Level Domain Layer"]
-        Service["NotificationService (Business Rules)"]
+    subgraph "Before DIP (Tightly Coupled)"
+        US1[UserService - High Level] -->|Direct Dependency| DB1[MySQLDatabase - Low Level]
     end
 
-    subgraph Abstraction["Abstraction Layer"]
-        Channel["<<interface>> MessageChannel"]
+    subgraph "After DIP (Decoupled via Abstraction)"
+        US2[UserService - High Level] -->|Depends on| Interface["<<interface>><br/>UserRepository"]
+        DB2[MySQLRepository] ..|>|Implements| Interface
+        Mongo[MongoRepository] ..|>|Implements| Interface
+        Mock[MockUserRepository] ..|>|Implements| Interface
     end
 
-    subgraph LowLevel["Low-Level Detail Layer"]
-        Twilio["TwilioSmsChannel"]
-        SendGrid["SendGridEmailChannel"]
-        Firebase["FirebasePushChannel"]
-    end
-
-    Service -->|"Depends on"| Channel
-    Twilio -->|"Implements"| Channel
-    SendGrid -->|"Implements"| Channel
-    Firebase -->|"Implements"| Channel
-
-    style Abstraction fill:#3b82f6,stroke:#1d4ed8,color:#fff
+    style Interface fill:#dbeafe,stroke:#3b82f6,color:#1e40af
 ```
 
 ```java
-// ✅ Step 1: Define the Abstraction
-public interface MessageChannel {
-    void sendMessage(String recipient, String message);
+// 1. Abstraction (Contract owned by domain)
+public interface UserRepository {
+    void save(String email);
+    User findByEmail(String email);
 }
 
-// ✅ Step 2: Implement Low-Level Details
-public class TwilioSmsChannel implements MessageChannel {
+// 2. Low-level implementation 1: MySQL
+public class MySQLUserRepository implements UserRepository {
     @Override
-    public void sendMessage(String recipient, String message) {
-        System.out.println("Sending SMS via Twilio to " + recipient);
+    public void save(String email) {
+        System.out.println("Executing INSERT INTO users VALUES ('" + email + "') in MySQL");
     }
+    @Override public User findByEmail(String email) { return null; }
 }
 
-public class FirebasePushChannel implements MessageChannel {
+// 3. Low-level implementation 2: MongoDB
+public class MongoUserRepository implements UserRepository {
     @Override
-    public void sendMessage(String recipient, String message) {
-        System.out.println("Sending Push Notification via FCM to " + recipient);
+    public void save(String email) {
+        System.out.println("Saving BSON document { email: '" + email + "' } in MongoDB");
     }
+    @Override public User findByEmail(String email) { return null; }
 }
 
-// ✅ Step 3: High-Level Module Depends Exclusively on the Abstraction
-public class NotificationService {
-    private final MessageChannel channel;
+// 4. High-level service: Inversion of Control via Constructor Injection!
+public class UserService {
+    private final UserRepository userRepository;
 
-    // Dependency Injection via constructor
-    public NotificationService(MessageChannel channel) {
-        this.channel = channel;
+    // Dependency Injection: Abstraction is supplied from the outside
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
-    public void alertUser(String user, String alert) {
-        channel.sendMessage(user, alert);
+    public void register(String email) {
+        System.out.println("Validating email syntax...");
+        userRepository.save(email); // Relies on abstraction!
     }
 }
 ```
 
 ---
 
-## 4. The Complete SOLID Summary Matrix
+## 4. Summary: The Complete SOLID Quick-Check Guide
 
-| Principle | Full Name | Guiding Motto | Common Indicator of Violation |
-| :---: | :--- | :--- | :--- |
-| **S** | **Single Responsibility** | "One class, one reason to change." | God classes containing business logic, DB queries, and formatting. |
-| **O** | **Open / Closed** | "Open for extension, closed for modification." | Cascading `if-else` or `switch` statements checking object types. |
-| **L** | **Liskov Substitution** | "Subtypes must be truly substitutable." | Subclasses throwing `UnsupportedOperationException` or changing parent invariants. |
-| **I** | **Interface Segregation** | "Keep interfaces lean and focused." | Classes forced to implement empty or stub methods they don't need. |
-| **D** | **Dependency Inversion** | "Depend on abstractions, not concretions." | Calling `new ConcreteService()` directly inside high-level business classes. |
+| Principle | Primary Problem it Solves | Core Refactoring Tool |
+| :--- | :--- | :--- |
+| **S - Single Responsibility** | God Classes, merge conflicts, high coupling | Break class into focused, single-stakeholder modules |
+| **O - Open / Closed** | Fragile `if-else` / `switch` statements modifying legacy code | Interfaces, Polymorphism, Strategy / Factory patterns |
+| **L - Liskov Substitution** | Unexpected runtime errors, broken subclass contracts | Hierarchy segregation, honoring preconditions & postconditions |
+| **I - Interface Segregation** | Dummy empty methods, fat interface pollution | Break into small, cohesive, role-based interfaces |
+| **D - Dependency Inversion** | Hard-coded low-level dependencies, untestable code | Inversion of Control (IoC), Dependency Injection (DI) |

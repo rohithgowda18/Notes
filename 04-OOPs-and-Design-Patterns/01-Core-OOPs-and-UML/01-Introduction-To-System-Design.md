@@ -1,128 +1,170 @@
-# 01. Introduction To System Design & LLD Foundations
+# 01. Introduction To System Design (LLD vs. HLD)
 
-> 💡 **Quick Revision Anchor**: `Scalability, Maintainability, Reusability`
+> 💡 **Quick Revision Anchor**: 
+> - **DSA**: Optimizes algorithms & data structures (single problem / function level: *"Find shortest path"*).
+> - **LLD**: Optimizes code modularity, design patterns, classes, interfaces, maintainability, and clean architecture (*"How Rider, Driver, Trip, and FareStrategy interact"*).
+> - **HLD**: Optimizes distributed systems, scalability, databases, load balancing, caching, and network architecture (*"How to handle 10M requests across multi-region data centers"*).
 
 ---
 
-## 1. Why System Design? (DSA vs. LLD)
+## 1. Why System Design? (The Transition from DSA to Real Systems)
 
-When preparing for software engineering roles, most engineers spend months mastering **Data Structures & Algorithms (DSA)** on platforms like LeetCode. While DSA teaches algorithmic efficiency (time and space complexity), it only solves isolated, algorithmic micro-problems.
+In competitive programming and Data Structures & Algorithms (DSA), problems have well-defined inputs and expected outputs:
+- *"Given an array of $N$ integers, find two numbers that sum up to $K$."*
+- *"Find the shortest path in a weighted graph using Dijkstra's algorithm."*
 
-In real-world production engineering, no customer uses a standalone binary search or priority queue. Instead, millions of users interact with distributed, multi-component platforms like **Swiggy, Zomato, Uber, and Netflix**.
+However, knowing Dijkstra's algorithm does **not** give you the architectural capability to build Google Maps or Uber. Why?
+Because in production engineering:
+1. **Requirements evolve constantly**: Marketing asks for a new discount coupon model, a new vehicle tier (Uber Auto, Uber Moto), or an alternate payment gateway (UPI, Stripe, Apple Pay).
+2. **Multiple engineers collaborate**: 50+ developers touch the same codebase simultaneously. Poorly structured code causes merge conflicts, regression bugs, and codebase collapse.
+3. **Systems must scale and run 24/7**: The code must not only compute the result, but must also be testable, extensible, readable, and resilient to failure.
+
+```mermaid
+graph TD
+    subgraph "System Engineering Pyramid"
+        HLD["High-Level Design (HLD)<br/>Microservices, Kafka, Redis, SQL/NoSQL, Load Balancers, Scalability"]
+        LLD["Low-Level Design (LLD / OOD)<br/>Classes, Interfaces, SOLID Principles, Design Patterns, Modularity"]
+        DSA["Data Structures & Algorithms (DSA)<br/>Arrays, Trees, Graphs, Sorting, Time & Space Complexity"]
+    end
+    DSA --> LLD
+    LLD --> HLD
+```
+
+---
+
+## 2. DSA vs. LLD vs. HLD: Detailed Comparison
+
+| Parameter | DSA | Low-Level Design (LLD) | High-Level Design (HLD) |
+| :--- | :--- | :--- | :--- |
+| **Scope** | Function / In-memory algorithm | Component / Class / Object relationships | Whole system / Cluster / Network architecture |
+| **Primary Goal** | Minimize Time & Space complexity ($O(N)$, $O(\log N)$) | Maximize Code Readability, Extensibility, Reusability, Testability | Maximize Throughput, Availability, Reliability, Fault Tolerance |
+| **Key Questions Answered** | *"Which data structure gives $O(1)$ lookup?"* | *"Which design pattern prevents `if-else` explosion when adding new ride types?"* | *"Should we use PostgreSQL or Cassandra? Do we need a message queue like Kafka?"* |
+| **Artifacts Produced** | Functions, algorithmic logic, unit test cases | Class diagrams, Sequence diagrams, Interfaces, Design Patterns, SOLID code | Architecture diagrams, Database schemas, API contracts, Network topologies |
+| **Interview Format** | 45 min live coding on LeetCode-style problem | 60 min machine coding / object modeling of real app (e.g. Splitwise, TicTacToe) | 45-60 min system architecture whiteboard discussion (e.g. Design Netflix) |
+
+---
+
+## 3. Monolithic vs. Microservices Architecture
+
+During High-Level Design, architects choose how components are deployed and scaled:
 
 ```mermaid
 flowchart TD
-    subgraph DSA["DSA (Algorithmic Focus)"]
-        A1["Input Array / Graph"] --> A2["Optimize Time & Space Complexity"] --> A3["Output Target / Min Cost"]
+    subgraph Monolith["Monolithic Architecture"]
+        UI1[Web UI] --> App[Single Deployable Binary<br/>- User Auth Module<br/>- Payment Module<br/>- Order Module<br/>- Inventory Module]
+        App --> DB1[(Single Shared DB)]
     end
 
-    subgraph LLD["LLD (Architectural Focus)"]
-        B1["User Request / Client"] --> B2["Clean API & Controller"]
-        B2 --> B3["Business Service Layer"]
-        B3 --> B4["Data Access & Domain Entities"]
-        B4 --> B5["Maintainable, Extensible & Scalable Codebase"]
+    subgraph Microservices["Microservices Architecture"]
+        UI2[Client Apps] --> AGW[API Gateway]
+        AGW --> AuthSvc[Auth Service]
+        AGW --> PaySvc[Payment Service]
+        AGW --> OrderSvc[Order Service]
+        AuthSvc --> DBAuth[(Auth DB)]
+        PaySvc --> DBPay[(Payment DB)]
+        OrderSvc --> DBOrder[(Order DB)]
     end
 ```
 
-### The Tale of Two Engineers
-- **The Junior Dev (Isolated DSA Mindset)**: Writes monolithic scripts with tight coupling, hardcoded conditionals, and bloated functions. Adding a new payment method breaks 4 existing features.
-- **The Senior Dev (System Architecture Mindset)**: Designs clear class boundaries, adheres to OOP & SOLID principles, chooses decoupled design patterns, and writes code that easily scales when user traffic surges 100x.
-
----
-
-## 2. High-Level Design (HLD) vs. Low-Level Design (LLD)
-
-| Dimension | High-Level Design (HLD) | Low-Level Design (LLD) |
+| Parameter | Monolithic Architecture | Microservices Architecture |
 | :--- | :--- | :--- |
-| **Focus** | Macro Architecture & Infrastructure | Micro Architecture & Code Organization |
-| **Key Questions** | Which DB? SQL or NoSQL? How to balance load? Do we need Kafka? | What classes exist? Who inherits what? How are objects created? |
-| **Core Artifacts** | System Architecture Diagrams, Data Flow, Network Topologies | UML Class Diagrams, Sequence Diagrams, Schema & Interfaces |
-| **Principles** | CAP Theorem, PACELC, Sharding, Replication, Caching | OOP Principles, SOLID Principles, GoF Design Patterns |
-| **Target Scale** | Requests Per Second (RPS), Throughput, Latency, Bandwidth | Clean Code, Extensibility, Loose Coupling, Testability |
-
-```mermaid
-flowchart LR
-    subgraph HLD["High-Level Design (System View)"]
-        Client["Mobile / Web Client"] --> LB["Load Balancer"]
-        LB --> API["API Gateway / Microservices"]
-        API --> Cache["Redis Cache"]
-        API --> DB[("PostgreSQL / Mongo")]
-        API --> Queue["Kafka Queue"]
-    end
-
-    subgraph LLD["Low-Level Design (Code View)"]
-        direction TB
-        ClassDiagram["Class Diagrams & Entities"]
-        Patterns["Design Patterns (Factory, Strategy, Observer)"]
-        SOLID["SOLID Principles & Interfaces"]
-        Code["Modular Clean Code Implementation"]
-    end
-
-    HLD -.->|"Implements inside service"| LLD
-```
+| **Deployment** | Single unified war/jar binary | Independent containerized services (Docker/K8s) |
+| **Scaling** | Scale the whole application | Scale only bottleneck services (e.g. scale Payment during Black Friday) |
+| **Blast Radius** | A memory leak in one module crashes the entire system | Isolated failure; service mesh circuit breakers prevent cascade |
+| **Complexity** | Simple debugging & transactional ACID consistency | Distributed data, eventual consistency, network latency, saga patterns |
 
 ---
 
-## 3. The Three Pillars of Low-Level Design
+## 4. Understanding Non-Functional Requirements (NFRs)
 
-Whenever designing a software system, an engineer must optimize for three core attributes:
+When an interviewer asks you to design a system, they evaluate whether you understand both **Functional Requirements** (what the system does) and **Non-Functional Requirements** (how the system behaves under load, failures, and growth).
 
 ```mermaid
 mindmap
-  root((LLD Pillars))
+  root((System NFRs))
     Scalability
-      Handling more concurrent users
-      Adding features without system refactor
-      Horizontal & vertical code expansion
-    Maintainability
-      Clear single-responsibility classes
-      Predictable bug fixing
-      Zero side-effects on existing modules
-    Reusability
-      DRY (Don't Repeat Yourself)
-      Standard Design Patterns
-      Decoupled modular libraries
+      Vertical Scaling
+      Horizontal Scaling
+    Availability
+      Uptime SLAs
+      Fault Tolerance
+      Redundancy
+    Reliability
+      Data Integrity
+      Crash Recovery
+    Performance
+      Latency
+      Throughput
 ```
 
-### 1. Scalability (Code & Feature Scalability)
-- Can you introduce a new feature (e.g., adding `CryptoPayment` alongside `CreditCard` and `UPI`) without modifying 20 different files?
-- A scalable LLD isolates changes behind clean interfaces so the system expands horizontally.
+### 1. Scalability (Vertical vs. Horizontal)
+- **Vertical Scaling (Scale-Up)**: Adding more CPU cores, RAM, or SSD storage to a single server instance.
+  - *Pros*: Simple, no distributed synchronization needed.
+  - *Cons*: Hard hardware ceiling; expensive; single point of failure (SPOF).
+- **Horizontal Scaling (Scale-Out)**: Adding more commodity server instances behind a Load Balancer.
+  - *Pros*: Virtually unlimited growth; high availability.
+  - *Cons*: Requires stateless application layers, distributed databases, network coordination.
 
-### 2. Maintainability
-- Code is read 10x more often than it is written.
-- In poorly designed systems, fixing a bug in `OrderCalculation` inadvertently breaks `InvoiceGeneration`.
-- Maintainable code separates concerns so each module has one reason to change.
+### 2. Availability vs. Reliability
+- **Availability**: The percentage of time a system remains operational and accessible to process requests.
+  $$\text{Availability} = \frac{\text{Total Uptime}}{\text{Total Uptime} + \text{Total Downtime}}$$
+  - *High Availability Target*: **99.999% ("Five Nines")** $\approx$ under 5.26 minutes of downtime per entire year!
+- **Reliability**: The probability that a system performs its intended function correctly without errors or data loss over a specified interval.
+  - *Key Takeaway*: A system can be **available** (responding with HTTP 500 errors quickly) but **unreliable** (failing to complete bookings). Reliability requires correct execution.
 
-### 3. Reusability
-- Avoid reinventing the wheel.
-- Common behaviors (logging, caching, notification dispatching, retry logic) should be written as modular, reusable components or design patterns rather than duplicated across classes.
+### 3. Latency vs. Throughput
+- **Latency**: The time taken to process a single request from the moment it is sent until the response is received (measured in milliseconds, e.g., $p99 < 50\text{ ms}$).
+- **Throughput**: The number of requests the system can process per unit of time (measured in Requests Per Second - RPS, or Transactions Per Second - TPS).
+- *Analogy*: Think of a highway.
+  - **Latency** is how long it takes one car to travel from point A to point B (speed).
+  - **Throughput** is how many cars pass through a toll booth per minute (capacity).
 
 ---
 
-## 4. The 4-Stage LLD Interview Framework
+## 5. The Real-World LLD Example: Ride-Hailing App (Uber / Ola)
 
-In top tech companies (FAANG, Tier-1 Startups), LLD interviews (Machine Coding rounds) test how you translate ambiguity into working code:
+Let's illustrate how DSA, LLD, and HLD collaborate in a single feature: **Matching a rider with the nearest driver**.
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Candidate
-    actor Interviewer
-    Candidate->>Interviewer: 1. Requirement Gathering (Clarify scope, inputs, outputs, edge cases)
-    Candidate->>Interviewer: 2. Core Entities Identification (Actors, models, attributes)
-    Candidate->>Interviewer: 3. Class Diagram & Relationship Modeling (IS-A, HAS-A, Design Patterns)
-    Candidate->>Interviewer: 4. Working Code Implementation (Clean code, interfaces, unit tests)
+    actor Rider as Rider App
+    participant LB as Load Balancer (HLD)
+    participant Matcher as RideMatchingService (LLD)
+    participant Strategy as MatchingStrategy (LLD)
+    participant SpatialIdx as Geospatial QuadTree / Heap (DSA)
+    participant DB as Postgres / Redis (HLD)
+
+    Rider->>LB: POST /rides/request (lat, lng, rideType)
+    LB->>Matcher: Forward request
+    Matcher->>Strategy: findDrivers(location, rideType)
+    Note over Strategy: Strategy Pattern selects<br/>NearestDriverStrategy vs CheapestDriverStrategy
+    Strategy->>SpatialIdx: queryKNearestNeighbors(radius=3km)
+    Note over SpatialIdx: DSA: Min-Heap / QuadTree<br/>calculates distance in O(log N)
+    SpatialIdx-->>Strategy: List of 5 nearest Driver IDs
+    Strategy->>DB: Check driver availability & status
+    DB-->>Strategy: Driver #1042 Available
+    Strategy-->>Matcher: Driver #1042 selected
+    Matcher-->>Rider: Ride Confirmed (Driver #1042 arriving in 3 mins)
 ```
 
-1. **Clarify Requirements**: Define functional requirements (what the system must do) and non-functional requirements (extensibility, concurrency).
-2. **Identify Core Entities**: Extract domain objects from the problem statement (e.g., in a Parking Lot: `Vehicle`, `ParkingSpot`, `Ticket`, `Payment`).
-3. **Establish Relationships & Patterns**: Determine inheritance (`Car IS-A Vehicle`), composition (`ParkingLot HAS-A ParkingFloor`), and applicable patterns (`Strategy` for pricing, `Factory` for spot assignment).
-4. **Write Clean, Executable Code**: Structure code with proper access modifiers, descriptive naming, dependency injection, and edge-case handling.
+1. **DSA Component**: A Geospatial QuadTree or Min-Heap calculates the closest drivers in $O(\log N)$ time.
+2. **LLD Component**:
+   - `Rider` and `Driver` classes inherit from a base `User` class.
+   - `MatchingStrategy` interface with implementations `NearestDriverStrategy`, `SurgeOptimizedStrategy`, and `SharedRideStrategy`.
+   - `Trip` class tracks lifecycle states (`REQUESTED`, `ACCEPTED`, `IN_TRANSIT`, `COMPLETED`).
+3. **HLD Component**:
+   - Microservices communicate over gRPC / REST.
+   - WebSocket servers stream driver GPS updates every 4 seconds.
+   - Redis stores real-time driver coordinates with TTL.
 
 ---
 
-## 5. Summary & Key Takeaways
+## 6. Interview Preparation Roadmap
 
-- **DSA provides the algorithmic engine**, but **LLD provides the chassis and transmission** that allows an application to run in production.
-- Great LLD prioritizes **loose coupling** and **high cohesion**.
-- Software design is iterative: start with clear interfaces, identify variation points, and apply patterns only where flexibility is required.
+When approaching an LLD / Machine Coding interview:
+1. **Clarify Requirements (First 5–10 mins)**: Identify actors, functional use cases, constraints, and out-of-scope items.
+2. **Identify Core Entities & Relationships (Next 5–10 mins)**: Identify nouns (Classes) and verbs (Methods). Determine `IS-A` (Inheritance) vs `HAS-A` (Composition) relationships.
+3. **Apply Design Patterns Judiciously**: Do not force patterns. Use **Strategy** for interchangeable behaviors, **Factory** for object creation, **Observer** for event-driven updates, and **State** for complex status lifecycles.
+4. **Adhere to SOLID Principles**: Single responsibility classes, interface-driven programming, and dependency injection.
+5. **Implement Extensible, Compilable Code**: Write clean Java code with proper access modifiers, validation, error handling, and thread safety.

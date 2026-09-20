@@ -1,215 +1,215 @@
 # 12. Observer Design Pattern
 
-> 💡 **Quick Revision Anchor**: `Pub-Sub, Event-Driven State Notification, Push vs Pull`
+> 💡 **Quick Revision Anchor**: 
+> - **Type**: Behavioral Design Pattern (Publish-Subscribe foundation).
+> - **Core Intent**: Defines a **one-to-many** dependency between objects so that when the subject changes state, all registered observers are automatically notified and updated.
+> - **Key Models**: **Push Model** (Subject broadcasts data payload) vs. **Pull Model** (Subject notifies; Observer fetches specific state).
 
 ---
 
-## 1. Intent & Problem Motivation
+## 1. Context & Problem Statement
 
-The **Observer Design Pattern** is a **Behavioral Design Pattern** that defines a **one-to-many dependency** between objects. When the state of one object (the **Subject / Observable**) changes, all its registered dependents (**Observers / Subscribers**) are notified and updated automatically.
-
-### Polling vs. Push Notifications
-Imagine a customer waiting for the latest iPhone to come back in stock on Amazon:
-- **The Polling Anti-Pattern (Pulling repeatedly)**: The customer checks Amazon every 3 minutes. Hundreds of thousands of users refreshing every minute exhausts server CPU, consumes bandwidth, and wastes client battery.
-- **The Observer Pattern (Event-Driven Notification)**: The customer clicks *"Notify Me When in Stock"*. The product maintains a list of subscribers. When inventory is replenished, the system loops through subscribers once and sends an alert.
+Imagine you are building an **E-Commerce Product Inventory Alert** (e.g., Amazon "Notify Me When in Stock" for iPhone 16):
+- 50,000 users want an alert the instant the product is restocked.
+- **Polling Anti-Pattern**: If each user's client app polls `GET /product/stock` every 5 seconds, millions of wasted HTTP requests hit your servers, degrading database performance while users still suffer latency between poll intervals.
+- **Observer Solution**: Invert the communication. Clients **subscribe** once. The inventory system (**Subject / Observable**) automatically pushes an event to all registered **Observers** only when stock becomes greater than 0.
 
 ```mermaid
 flowchart TD
-    subgraph Polling["❌ Polling (Resource Wasteful)"]
-        User1["Client 1"] -->|"Is item in stock? (No)"| Server["Server"]
-        User2["Client 2"] -->|"Is item in stock? (No)"| Server
-        User1 -->|"Is item in stock? (No)"| Server
-    end
+    Subject["Subject / Observable<br/>(ProductStockChannel)"]
+    
+    Sub1["EmailObserver<br/>(User 1)"]
+    Sub2["SMSObserver<br/>(User 2)"]
+    Sub3["PushNotificationObserver<br/>(User 3)"]
 
-    subgraph ObserverPattern["✅ Observer Pattern (Event-Driven)"]
-        Subject["Subject (iPhone Inventory)"] -->|"Stock arrives -> notifyObservers()"| Obs1["Email Notification"]
-        Subject -->|"Stock arrives -> notifyObservers()"| Obs2["Mobile Push Alert"]
-        Subject -->|"Stock arrives -> notifyObservers()"| Obs3["SMS Service"]
-    end
-
-    style Polling fill:#fee2e2,stroke:#ef4444,color:#b91c1c
-    style ObserverPattern fill:#dcfce7,stroke:#10b981,color:#047857
+    Subject -->|1. notifyObservers()| Sub1
+    Subject -->|2. notifyObservers()| Sub2
+    Subject -->|3. notifyObservers()| Sub3
 ```
 
 ---
 
-## 2. Observer Architecture (UML Diagram)
+## 2. Observer Architecture & Actors
 
 ```mermaid
 classDiagram
-    class Subject {
+    class ISubject {
         <<interface>>
-        +subscribe(Observer o) void
-        +unsubscribe(Observer o) void
+        +subscribe(IObserver o) void
+        +unsubscribe(IObserver o) void
         +notifyObservers() void
     }
 
-    class Observer {
+    class IObserver {
         <<interface>>
-        +update() void
+        +update(String productName, int stockCount) void
     }
 
-    class YouTubeChannel {
-        -List~Observer~ subscribers
-        -String latestVideoTitle
-        +uploadVideo(String title) void
-        +getLatestVideoTitle() String
+    class ProductStockSubject {
+        -List~IObserver~ observers
+        -String productName
+        -int stockCount
+        +setStock(int count) void
+        +getStock() int
     }
 
-    class MobileAppUser {
-        -String userName
-        -YouTubeChannel channel
-        +update() void
+    class EmailNotificationObserver {
+        -String emailId
+        +update(String productName, int stockCount) void
     }
 
-    class EmailSubscriber {
-        -String emailAddress
-        -YouTubeChannel channel
-        +update() void
+    class SMSNotificationObserver {
+        -String phoneNumber
+        +update(String productName, int stockCount) void
     }
 
-    Subject <|.. YouTubeChannel
-    Observer <|.. MobileAppUser
-    Observer <|.. EmailSubscriber
-    Subject o-- Observer : maintains list of
-    MobileAppUser --> YouTubeChannel : pulls state
-    EmailSubscriber --> YouTubeChannel : pulls state
+    ISubject <|.. ProductStockSubject
+    IObserver <|.. EmailNotificationObserver
+    IObserver <|.. SMSNotificationObserver
+    ProductStockSubject o-- IObserver : Observers list
 ```
+
+### Key Participants:
+1. **Subject / Observable**: Maintains a collection of observers and provides methods to attach, detach, and broadcast state changes.
+2. **Observer Interface**: Defines the contract callback method (e.g. `update()`) invoked when the subject changes state.
+3. **Concrete Observers**: React to notifications by executing domain logic (sending an email, dispatching an SMS, updating a UI dashboard).
 
 ---
 
-## 3. Java Implementation Walkthrough
+## 3. Push vs. Pull Communication Models
 
-### 1. Subject and Observer Interfaces
+| Aspect | Push Model | Pull Model |
+| :--- | :--- | :--- |
+| **How it works** | Subject sends the complete data payload directly as method arguments: `update(data1, data2)` | Subject calls `update()`; Observer queries the subject via getters: `subject.getStock()` |
+| **Coupling** | Low coupling to subject interface, but subject assumes what data observers need. | Observer holds a reference to the Subject, but fetches only relevant fields. |
+| **Flexibility** | Rigid: Adding new state fields requires changing the observer interface signature. | Highly flexible: Observer queries new getters without breaking interface signatures. |
+
+---
+
+## 4. Production Java Implementation
+
 ```java
-public interface Observer {
-    void update();
+import java.util.ArrayList;
+import java.util.List;
+
+// 1. Observer Interface (Push Model)
+public interface StockObserver {
+    void onStockUpdate(String productName, int newStockCount);
 }
 
-public interface Subject {
-    void subscribe(Observer observer);
-    void unsubscribe(Observer observer);
+// 2. Observable Subject Interface
+public interface StockObservable {
+    void addObserver(StockObserver observer);
+    void removeObserver(StockObserver observer);
     void notifyObservers();
+    void setStockCount(int newStock);
 }
-```
 
-### 2. Concrete Subject (YouTube Channel)
-```java
-public class YouTubeChannel implements Subject {
-    private final String channelName;
-    // CopyOnWriteArrayList ensures thread-safe iteration while subscribing/unsubscribing
-    private final List<Observer> subscribers = new CopyOnWriteArrayList<>();
-    private String latestVideoTitle;
+// 3. Concrete Observable (Thread-safe list iteration)
+public class ProductStockSubject implements StockObservable {
+    private final List<StockObserver> observers = new ArrayList<>();
+    private final String productName;
+    private int currentStock = 0;
 
-    public YouTubeChannel(String channelName) {
-        this.channelName = channelName;
+    public ProductStockSubject(String productName) {
+        this.productName = productName;
     }
 
     @Override
-    public void subscribe(Observer observer) {
-        subscribers.add(observer);
+    public synchronized void addObserver(StockObserver observer) {
+        if (observer != null && !observers.contains(observer)) {
+            observers.add(observer);
+        }
     }
 
     @Override
-    public void unsubscribe(Observer observer) {
-        subscribers.remove(observer);
+    public synchronized void removeObserver(StockObserver observer) {
+        observers.remove(observer);
     }
 
     @Override
     public void notifyObservers() {
-        for (Observer observer : subscribers) {
-            observer.update();
+        // Create defensive copy to avoid ConcurrentModificationException
+        List<StockObserver> snapshot;
+        synchronized (this) {
+            snapshot = new ArrayList<>(this.observers);
+        }
+        for (StockObserver observer : snapshot) {
+            observer.onStockUpdate(productName, currentStock);
         }
     }
 
-    public void uploadVideo(String title) {
-        this.latestVideoTitle = title;
-        System.out.println("\n[" + channelName + "] Uploaded new video: \"" + title + "\"");
-        notifyObservers(); // Trigger notification wave
+    @Override
+    public void setStockCount(int newStock) {
+        int previousStock = this.currentStock;
+        this.currentStock = newStock;
+        // Trigger notification only on transition from 0 to > 0
+        if (previousStock == 0 && newStock > 0) {
+            System.out.println("📢 [ProductStockSubject] " + productName + " back in stock! Stock: " + newStock);
+            notifyObservers();
+        }
+    }
+}
+
+// 4. Concrete Observer 1: Email Alert
+public class EmailNotificationObserver implements StockObserver {
+    private final String userEmail;
+
+    public EmailNotificationObserver(String email) {
+        this.userEmail = email;
     }
 
-    public String getLatestVideoTitle() {
-        return latestVideoTitle;
+    @Override
+    public void onStockUpdate(String productName, int newStockCount) {
+        System.out.println("📧 [Email to " + userEmail + "] Hurry! " + productName + " is now in stock (" + newStockCount + " items remaining).");
+    }
+}
+
+// Concrete Observer 2: SMS Alert
+public class SMSNotificationObserver implements StockObserver {
+    private final String phone;
+
+    public SMSNotificationObserver(String phone) {
+        this.phone = phone;
     }
 
-    public String getChannelName() {
-        return channelName;
+    @Override
+    public void onStockUpdate(String productName, int newStockCount) {
+        System.out.println("📱 [SMS to " + phone + "] Product restocked: " + productName + ". Buy now!");
     }
 }
 ```
 
-### 3. Concrete Observers (Subscribers)
+### Driver / Client Demonstration:
 ```java
-public class MobileAppSubscriber implements Observer {
-    private final String userHandle;
-    private final YouTubeChannel channel;
-
-    public MobileAppSubscriber(String userHandle, YouTubeChannel channel) {
-        this.userHandle = userHandle;
-        this.channel = channel;
-    }
-
-    @Override
-    public void update() {
-        // Pull Model: queries only what it needs
-        String video = channel.getLatestVideoTitle();
-        System.out.println("🔔 Push Alert to [" + userHandle + "]: " + channel.getChannelName() + " posted \"" + video + "\"!");
-    }
-}
-
-public class EmailSubscriber implements Observer {
-    private final String email;
-    private final YouTubeChannel channel;
-
-    public EmailSubscriber(String email, YouTubeChannel channel) {
-        this.email = email;
-        this.channel = channel;
-    }
-
-    @Override
-    public void update() {
-        System.out.println("📧 Email dispatched to " + email + ": New video on " + channel.getChannelName());
-    }
-}
-```
-
-### 4. Client Simulation
-```java
-public class Main {
+public class ObserverDemo {
     public static void main(String[] args) {
-        YouTubeChannel codeArmy = new YouTubeChannel("Code Army - LLD");
+        StockObservable iphoneSubject = new ProductStockSubject("iPhone 16 Pro");
 
-        Observer user1 = new MobileAppSubscriber("@rohit", codeArmy);
-        Observer user2 = new EmailSubscriber("tech_fan@gmail.com", codeArmy);
+        StockObserver emailUser = new EmailNotificationObserver("alex@example.com");
+        StockObserver smsUser = new SMSNotificationObserver("+1-555-0199");
 
-        codeArmy.subscribe(user1);
-        codeArmy.subscribe(user2);
+        // Users subscribe to stock alerts
+        iphoneSubject.addObserver(emailUser);
+        iphoneSubject.addObserver(smsUser);
 
-        codeArmy.uploadVideo("Observer Pattern Explained in 20 Minutes");
+        // Product is restocked
+        iphoneSubject.setStockCount(15);
 
-        // User 2 unsubscribes
-        codeArmy.unsubscribe(user2);
+        // One user unsubscribes
+        iphoneSubject.removeObserver(smsUser);
 
-        codeArmy.uploadVideo("Decorator Pattern vs Proxy Pattern");
+        // Another restock occurs: only emailUser receives the notification!
+        iphoneSubject.setStockCount(0);
+        iphoneSubject.setStockCount(50);
     }
 }
 ```
 
 ---
 
-## 4. Push vs. Pull Model
+## 5. Critical Interview Trap: The Lapsed Listener Problem (Memory Leaks)
 
-| Feature | Push Model | Pull Model |
-| :--- | :--- | :--- |
-| **How Data Flows** | Subject passes data arguments directly: `update(Video video)` | Subject calls `update()`, Observer queries `subject.getData()` |
-| **Coupling** | Low Subject coupling, but assumptions made on what observers need. | Observer requires a reference to ConcreteSubject. |
-| **Flexibility** | High if all observers need the exact same payload. | High if different observers need entirely different subsets of state. |
-
----
-
-## 5. Real-World Applications
-
-1. **GUI Event Listeners**: Java Swing / Android `button.setOnClickListener(new OnClickListener() {...})`.
-2. **Reactive Programming**: RxJava, Project Reactor (`Flux`, `Mono`), WebSockets.
-3. **Message Brokers**: Kafka / RabbitMQ consumer group notifications.
-4. **Spring Framework**: `ApplicationEventPublisher` and `@EventListener`.
+In Java, if an observer object registers with a long-lived subject (like a Spring singleton bean) but forgets to call `removeObserver()`, the subject holds a **strong reference** to the observer.
+- Even if the observer is no longer used by the rest of the application, the **JVM Garbage Collector cannot collect it**, resulting in a silent memory leak!
+- **Solution**: Use explicit lifecycle cleanup methods, or store observers inside a `WeakHashMap` or list of `WeakReference<Observer>` so the GC can reclaim orphaned listeners.

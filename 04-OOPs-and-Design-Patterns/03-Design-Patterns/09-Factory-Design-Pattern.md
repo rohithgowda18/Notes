@@ -1,169 +1,245 @@
 # 09. Factory Design Pattern
 
-> 💡 **Quick Revision Anchor**: `Encapsulate Object Creation, Program to Interfaces`
+> 💡 **Quick Revision Anchor**: 
+> - **Type**: Creational Design Pattern.
+> - **Core Intent**: Decouples the client from direct object instantiation (`new` operator), delegating object creation to specialized factory classes or subclasses.
+> - **Hierarchy**: **Simple Factory** (conditional instantiation method) $\rightarrow$ **Factory Method** (subclasses decide concrete class) $\rightarrow$ **Abstract Factory** (families of related products).
 
 ---
 
-## 1. Intent & Problem Motivation
+## 1. Context & The Problem with the `new` Operator
 
-The **Factory Design Pattern** is a **Creational Design Pattern** that abstracts and centralizes the instantiation logic of objects. Instead of the client creating objects directly using the `new` operator, the client delegates creation to a dedicated Factory.
+In object-oriented code, directly scattering the `new` operator across your business logic creates severe architectural tight coupling:
 
-### The Problem: Tight Coupling with `new`
 ```java
-// ❌ Client directly tightly coupled to concrete classes
-public void orderMeal(String type) {
+// ❌ Tight Coupling: Direct instantiation scattered everywhere
+public void orderFood(String type) {
     Burger burger;
     if (type.equals("CHEESE")) {
         burger = new CheeseBurger();
     } else if (type.equals("VEGGIE")) {
         burger = new VeggieBurger();
-    } // Adding ChickenBurger requires modifying every client method!
+    } else {
+        burger = new StandardBurger();
+    }
     burger.prepare();
 }
 ```
 
-```mermaid
-flowchart TD
-    Client["Client Code"] -->|Direct 'new' instantiation| Cheese["CheeseBurger"]
-    Client -->|Direct 'new' instantiation| Veggie["VeggieBurger"]
-    Client -->|Direct 'new' instantiation| Chicken["ChickenBurger"]
+### Why is this problematic?
+1. **OCP Violation**: Every time a new product type is created (e.g., `ChickenBurger`), you must modify existing business classes.
+2. **Duplicate Creation Logic**: If multiple controllers, services, or background jobs instantiate burgers, creation logic (and constructor parameters) gets duplicated everywhere.
+3. **Impedes Unit Testing**: Hard-coded `new` calls prevent injecting mock instances during testing.
 
-    style Client fill:#fee2e2,stroke:#ef4444,color:#b91c1c
+---
+
+## 2. The 3 Tiers of the Factory Pattern Family
+
+```mermaid
+graph TD
+    A[Factory Pattern Family] --> B["1. Simple Factory<br/>(One class with a creation method)"]
+    A --> C["2. Factory Method (GoF)<br/>(Inheritance: Subclasses decide instantiation)"]
+    A --> D["3. Abstract Factory (GoF)<br/>(Creates entire families of related products)"]
 ```
 
 ---
 
-## 2. Factory Pattern Variants
+## 3. Tier 1: Simple Factory
 
-```mermaid
-flowchart LR
-    Factory["Factory Patterns"]
-    Factory --> SF["1. Simple Factory (Factory Idiom)"]
-    Factory --> FM["2. Factory Method (GoF Pattern)"]
-    Factory --> AF["3. Abstract Factory (GoF Pattern)"]
-```
+A dedicated factory class encapsulates the conditional instantiation logic:
 
-1. **Simple Factory**: A single class with a creation method encapsulating `if-else` / `switch` logic.
-2. **Factory Method**: Defines an abstract creation method in an interface or base class; subclasses decide which concrete product class to instantiate.
-3. **Abstract Factory**: Provides an interface for creating **families of related or dependent objects** without specifying their concrete classes (e.g., LightThemeFactory creating LightButton, LightMenu; DarkThemeFactory creating DarkButton, DarkMenu).
-
----
-
-## 3. Factory Method Pattern Architecture
-
-```mermaid
-classDiagram
-    class Burger {
-        <<interface>>
-        +prepare() void
-    }
-    class StandardBurger {
-        +prepare() void
-    }
-    class PremiumWheatBurger {
-        +prepare() void
-    }
-
-    class BurgerFactory {
-        <<abstract>>
-        +createBurger(String type) Burger
-        +orderBurger(String type) Burger
-    }
-    class ClassicBurgerFactory {
-        +createBurger(String type) Burger
-    }
-    class HealthyBurgerFactory {
-        +createBurger(String type) Burger
-    }
-
-    Burger <|.. StandardBurger
-    Burger <|.. PremiumWheatBurger
-    BurgerFactory <|-- ClassicBurgerFactory
-    BurgerFactory <|-- HealthyBurgerFactory
-    ClassicBurgerFactory ..> StandardBurger : creates
-    HealthyBurgerFactory ..> PremiumWheatBurger : creates
-```
-
----
-
-## 4. Java Implementation Walkthrough
-
-### 1. Product Hierarchy
 ```java
+// Product Interface
 public interface Burger {
     void prepare();
 }
 
-public class StandardBurger implements Burger {
-    @Override
-    public void prepare() {
-        System.out.println("Preparing Classic Beef Burger with Sesame Bun & Mayo.");
-    }
+public class CheeseBurger implements Burger {
+    @Override public void prepare() { System.out.println("Preparing Cheese Burger with cheddar."); }
 }
 
-public class PremiumWheatBurger implements Burger {
-    @Override
-    public void prepare() {
-        System.out.println("Preparing Organic Whole Wheat Burger with Avocado & Olive Oil.");
-    }
-}
-```
-
-### 2. Creator Hierarchy (Factory Method)
-```java
-public abstract class BurgerFactory {
-    // The Factory Method
-    public abstract Burger createBurger(String type);
-
-    // Common template workflow
-    public Burger orderBurger(String type) {
-        Burger burger = createBurger(type);
-        burger.prepare();
-        System.out.println("Boxing and dispatching order...\n");
-        return burger;
-    }
+public class VeggieBurger implements Burger {
+    @Override public void prepare() { System.out.println("Preparing Veggie Burger with lettuce."); }
 }
 
-public class ClassicBurgerFactory extends BurgerFactory {
-    @Override
-    public Burger createBurger(String type) {
-        if ("STANDARD".equalsIgnoreCase(type)) {
-            return new StandardBurger();
+// Simple Factory Class
+public class SimpleBurgerFactory {
+    public static Burger createBurger(String type) {
+        if ("CHEESE".equalsIgnoreCase(type)) {
+            return new CheeseBurger();
+        } else if ("VEGGIE".equalsIgnoreCase(type)) {
+            return new VeggieBurger();
         }
-        throw new IllegalArgumentException("Unknown classic burger: " + type);
-    }
-}
-
-public class HealthyBurgerFactory extends BurgerFactory {
-    @Override
-    public Burger createBurger(String type) {
-        if ("WHEAT".equalsIgnoreCase(type)) {
-            return new PremiumWheatBurger();
-        }
-        throw new IllegalArgumentException("Unknown healthy burger: " + type);
-    }
-}
-```
-
-### 3. Client Code
-```java
-public class Main {
-    public static void main(String[] args) {
-        BurgerFactory classicKitchen = new ClassicBurgerFactory();
-        classicKitchen.orderBurger("STANDARD");
-
-        BurgerFactory healthyKitchen = new HealthyBurgerFactory();
-        healthyKitchen.orderBurger("WHEAT");
+        throw new IllegalArgumentException("Unknown burger type: " + type);
     }
 }
 ```
 
 ---
 
-## 5. Summary & When to Use
+## 4. Tier 2: Factory Method (GoF)
 
-| Use Factory Pattern When: | Avoid Factory Pattern When: |
-| :--- | :--- |
-| You don't know ahead of time the exact types and dependencies of the objects your code should work with. | You are instantiating simple, fixed classes that will never have polymorphic variants. |
-| You want to decouple object creation logic from business logic. | Adding factories introduces unnecessary indirection and complexity for trivial objects. |
-| You want to provide a library/framework where users can extend internal components. | |
+> **Definition**: Define an interface or abstract class for creating an object, but let subclasses decide which class to instantiate. Factory Method lets a class defer instantiation to subclasses.
+
+```mermaid
+classDiagram
+    class Restaurant {
+        <<abstract>>
+        +orderBurger() Burger
+        #createBurger()* Burger
+    }
+    class StandardBurgerStore {
+        #createBurger() Burger
+    }
+    class GourmetBurgerStore {
+        #createBurger() Burger
+    }
+
+    Restaurant <|-- StandardBurgerStore
+    Restaurant <|-- GourmetBurgerStore
+    Restaurant ..> Burger : Creates
+```
+
+```java
+// Creator Abstraction
+public abstract class Restaurant {
+    // Template workflow
+    public Burger orderBurger() {
+        Burger burger = createBurger(); // Factory Method call
+        burger.prepare();
+        return burger;
+    }
+
+    // The Factory Method to be overridden by franchise branches
+    protected abstract Burger createBurger();
+}
+
+// Concrete Creator 1
+public class StandardBurgerStore extends Restaurant {
+    @Override
+    protected Burger createBurger() {
+        return new VeggieBurger();
+    }
+}
+
+// Concrete Creator 2
+public class GourmetBurgerStore extends Restaurant {
+    @Override
+    protected Burger createBurger() {
+        return new CheeseBurger();
+    }
+}
+```
+
+---
+
+## 5. Tier 3: Abstract Factory (GoF)
+
+> **Definition**: Provide an interface for creating **families of related or dependent objects** without specifying their concrete classes.
+
+### Real-World Use Case: Cross-Platform UI Kit
+Consider an application that must render native UI components on both **Windows** and **MacOS**:
+
+```mermaid
+classDiagram
+    class UIFactory {
+        <<interface>>
+        +createButton() Button
+        +createCheckbox() Checkbox
+    }
+    class WindowsUIFactory {
+        +createButton() Button
+        +createCheckbox() Checkbox
+    }
+    class MacUIFactory {
+        +createButton() Button
+        +createCheckbox() Checkbox
+    }
+
+    UIFactory <|.. WindowsUIFactory
+    UIFactory <|.. MacUIFactory
+
+    WindowsUIFactory ..> WindowsButton : Creates
+    WindowsUIFactory ..> WindowsCheckbox : Creates
+    MacUIFactory ..> MacButton : Creates
+    MacUIFactory ..> MacCheckbox : Creates
+```
+
+```java
+// Abstract Products
+public interface Button { void render(); }
+public interface Checkbox { void render(); }
+
+// Concrete Products: Windows Family
+public class WindowsButton implements Button {
+    @Override public void render() { System.out.println("[Windows] Flat square button rendered."); }
+}
+public class WindowsCheckbox implements Checkbox {
+    @Override public void render() { System.out.println("[Windows] Square checkbox rendered."); }
+}
+
+// Concrete Products: Mac Family
+public class MacButton implements Button {
+    @Override public void render() { System.out.println("[MacOS] Rounded glassmorphic button rendered."); }
+}
+public class MacCheckbox implements Checkbox {
+    @Override public void render() { System.out.println("[MacOS] Smooth rounded checkbox rendered."); }
+}
+
+// Abstract Factory
+public interface UIFactory {
+    Button createButton();
+    Checkbox createCheckbox();
+}
+
+// Concrete Factory 1: Windows
+public class WindowsUIFactory implements UIFactory {
+    @Override public Button createButton() { return new WindowsButton(); }
+    @Override public Checkbox createCheckbox() { return new WindowsCheckbox(); }
+}
+
+// Concrete Factory 2: Mac
+public class MacUIFactory implements UIFactory {
+    @Override public Button createButton() { return new MacButton(); }
+    @Override public Checkbox createCheckbox() { return new MacCheckbox(); }
+}
+```
+
+### Client Application Using Abstract Factory:
+```java
+public class Application {
+    private final Button button;
+    private final Checkbox checkbox;
+
+    public Application(UIFactory factory) {
+        // Application code is 100% decoupled from OS-specific implementations!
+        this.button = factory.createButton();
+        this.checkbox = factory.createCheckbox();
+    }
+
+    public void paint() {
+        button.render();
+        checkbox.render();
+    }
+
+    public static void main(String[] args) {
+        String currentOS = System.getProperty("os.name").toLowerCase();
+        UIFactory factory = currentOS.contains("mac") ? new MacUIFactory() : new WindowsUIFactory();
+        
+        Application app = new Application(factory);
+        app.paint();
+    }
+}
+```
+
+---
+
+## 6. Factory Method vs. Abstract Factory Comparison
+
+| Parameter | Simple Factory | Factory Method | Abstract Factory |
+| :--- | :--- | :--- | :--- |
+| **Complexity** | Low | Medium | High |
+| **GoF Pattern?** | No (Design idiom) | Yes | Yes |
+| **Mechanism** | Single class with static method | Inheritance (Subclasses override creation method) | Composition (Factory object injected into client) |
+| **Product Scope** | Creates a single product | Creates a single product | Creates a **family of related products** |
+| **Extension Point** | Modify existing factory class | Add new creator subclass | Add new concrete factory class |

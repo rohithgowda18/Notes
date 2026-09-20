@@ -1,204 +1,217 @@
 # 16. Adapter Design Pattern
 
-> 💡 **Quick Revision Anchor**: The **Adapter Pattern** is a **structural design pattern** that acts as a bridge between two incompatible interfaces. It wraps an existing class (Adaptee) with a new interface (Target) so that incompatible classes can collaborate without changing existing source code.
+> 💡 **Quick Revision Anchor**: 
+> - **Type**: Structural Design Pattern.
+> - **Core Intent**: Acts as a bridge between **two incompatible interfaces**, allowing classes to collaborate that normally could not due to mismatched API signatures or data formats.
+> - **Real-World Metaphor**: A travel power adapter that allows a 3-pin US plug to fit safely into a 2-pin European round wall socket.
 
 ---
 
 ## 1. Context & Motivation
 
-Imagine traveling from India/US to Europe with your laptop charger. Your charger has a 3-pin plug, but the European wall socket accepts only a 2-pin rounded plug. You don't rebuild your laptop charger or break the wall socket; you insert an **adapter** in between.
-
-In software architecture:
-- Your application's client expects data or API calls in a specific format (e.g., modern **JSON-based analytics** or a standard internal interface).
-- A 3rd-party provider or legacy system produces or accepts data in an incompatible format (e.g., **XML** data or legacy SOAP calls).
-- **Anti-Pattern**: Directly altering client code with messy conversions or altering third-party/legacy code (which you often don't own). This tightly couples your core business logic to vendor-specific APIs.
-- **Adapter Solution**: Introduce an **Adapter** class that implements your client's expected interface (`Target`), holds a reference to the legacy/third-party object (`Adaptee`), and translates incoming requests on the fly.
-
----
-
-## 2. Core Architecture & Actors
+In enterprise software engineering, you constantly integrate third-party libraries, external SDKs, or legacy systems:
+- Your application's client services expect data in modern **JSON format** via a standard domain interface (`IJsonAnalytics`).
+- A vendor's proprietary SDK produces analytics data exclusively in **XML format** (`LegacyXmlProvider`).
+- **Anti-Pattern**: Directly scattering XML parsing code and third-party vendor calls throughout your client business logic. This tightly couples your core application to a proprietary vendor API.
+- **Adapter Solution**: Wrap the incompatible class (`Adaptee`) inside an `Adapter` class that implements your application's expected interface (`Target`). The adapter handles conversion seamlessly behind the scenes.
 
 ```mermaid
 classDiagram
     class Client {
-        +getReport(IReport report, String data)
+        +processMetrics(IJsonAnalytics analytics)
     }
-    class IReport {
+    class IJsonAnalytics {
         <<interface>>
-        +getJsonData(String rawData) String
+        +getJsonMetrics() String
     }
-    class XMLDataProvider {
-        +getXmlData(String rawData) String
+    class XmlToJsonAdapter {
+        -LegacyXmlProvider xmlProvider
+        +getJsonMetrics() String
     }
-    class XMLToJSONAdapter {
-        -XMLDataProvider xmlProvider
-        +XMLToJSONAdapter(XMLDataProvider provider)
-        +getJsonData(String rawData) String
+    class LegacyXmlProvider {
+        +fetchRawXmlData() String
     }
 
-    Client --> IReport : Uses
-    XMLToJSONAdapter ..|> IReport : Implements (Target)
-    XMLToJSONAdapter --> XMLDataProvider : Wraps & Delegates (Adaptee)
+    Client --> IJsonAnalytics : Uses (Target)
+    XmlToJsonAdapter ..|> IJsonAnalytics : Implements
+    XmlToJsonAdapter --> LegacyXmlProvider : Wraps & Delegates (Adaptee)
 ```
-
-### The 4 Key Participants:
-1. **Target Interface (`IReport`)**: The domain-specific interface that your client expects and knows how to use.
-2. **Client**: The application code that executes business logic using the Target interface.
-3. **Adaptee (`XMLDataProvider`)**: The existing, incompatible class or 3rd-party library that contains useful functionality but has the wrong interface.
-4. **Adapter (`XMLToJSONAdapter`)**: Implements the Target interface while holding a reference to the Adaptee. It translates calls from the Target interface into calls the Adaptee understands and converts results back.
 
 ---
 
-## 3. Object Adapter vs. Class Adapter
+## 2. Object Adapter vs. Class Adapter
 
-| Aspect | Object Adapter (Recommended) | Class Adapter |
+| Parameter | Object Adapter (Recommended ⭐) | Class Adapter |
 | :--- | :--- | :--- |
-| **Mechanism** | Uses **Composition** (HAS-A relation). | Uses **Multiple Inheritance** (IS-A both Target and Adaptee). |
-| **Language Support** | Supported in all languages (Java, C++, Python, C#). | Only supported in languages with multiple class inheritance (C++, Python). Not feasible directly in Java (single class inheritance). |
-| **Flexibility** | High. Can adapt any subclass of the Adaptee. | Low. Tied to the specific concrete class extended. |
-| **Coupling** | Loose coupling. | Tightly coupled to both Target and Adaptee hierarchies. |
+| **Mechanism** | Uses **Composition** (HAS-A relation). | Uses **Multiple Inheritance** (IS-A both Target & Adaptee). |
+| **Language Support** | Supported in all OOP languages (Java, C++, Python, C#). | Only feasible in languages supporting multiple class inheritance (C++, Python). **Impossible in Java** with multiple classes. |
+| **Coupling** | **Loose coupling**. Can adapt any subclass of the Adaptee. | **Tight coupling**. Bound to one specific concrete Adaptee class. |
+| **Flexibility** | High. One adapter can work with the Adaptee and all its subclasses. | Low. Cannot adapt subclasses of the Adaptee easily. |
 
 ---
 
-## 4. Production Java Implementation
+## 3. Production Java Implementation: Case Study 1 (XML to JSON Adapter)
 
-### Step 1: Target Interface
 ```java
-// Target interface that the Client code relies upon
-public interface IReport {
-    String getJsonData(String rawData);
+// 1. Target Interface: Expected by our modern reporting dashboard
+public interface IJsonAnalytics {
+    String getJsonMetrics();
 }
-```
 
-### Step 2: Incompatible Adaptee (Legacy / 3rd-Party)
-```java
-// Adaptee: Existing service that produces XML data
-public class XMLDataProvider {
-    public String getXmlData(String rawData) {
-        // Simulating raw data conversion to XML
-        String[] parts = rawData.split(",");
-        String name = parts.length > 0 ? parts[0].trim() : "Unknown";
-        String id = parts.length > 1 ? parts[1].trim() : "0";
-        
-        return "<user><name>" + name + "</name><id>" + id + "</id></user>";
+// 2. Adaptee: 3rd-party vendor SDK producing legacy XML
+public class LegacyXmlProvider {
+    public String fetchRawXmlData() {
+        return "<analytics><users><active>1420</active><churnRate>0.04</churnRate></users></analytics>";
     }
 }
-```
 
-### Step 3: Adapter (Translates XML to JSON)
-```java
-// Adapter: Implements IReport, wraps XMLDataProvider
-public class XMLToJSONAdapter implements IReport {
-    private final XMLDataProvider xmlDataProvider;
+// 3. Adapter: Implements Target interface, wraps Adaptee
+public class XmlToJsonAdapter implements IJsonAnalytics {
+    private final LegacyXmlProvider xmlProvider;
 
-    public XMLToJSONAdapter(XMLDataProvider xmlDataProvider) {
-        this.xmlDataProvider = xmlDataProvider;
+    public XmlToJsonAdapter(LegacyXmlProvider xmlProvider) {
+        if (xmlProvider == null) throw new IllegalArgumentException("Adaptee cannot be null");
+        this.xmlProvider = xmlProvider;
     }
 
     @Override
-    public String getJsonData(String rawData) {
-        // 1. Delegate to the Adaptee to get XML
-        String xmlData = xmlDataProvider.getXmlData(rawData);
-        System.out.println("[Adapter] Received from Adaptee: " + xmlData);
+    public String getJsonMetrics() {
+        // Step 1: Query legacy Adaptee to get raw XML
+        String rawXml = xmlProvider.fetchRawXmlData();
+        System.out.println("🔄 [Adapter] Received XML payload from vendor: " + rawXml);
 
-        // 2. Translate XML to JSON format
-        String jsonData = convertXmlToJson(xmlData);
-        System.out.println("[Adapter] Converted to Target JSON: " + jsonData);
-        return jsonData;
+        // Step 2: Translate XML to clean JSON
+        String convertedJson = convertXmlToJson(rawXml);
+        System.out.println("✅ [Adapter] Converted XML to JSON successfully.");
+
+        return convertedJson;
     }
 
     private String convertXmlToJson(String xml) {
-        // Extract content between tags: <name>...</name> and <id>...</id>
-        String name = extractTag(xml, "name");
-        String id = extractTag(xml, "id");
-        return "{\"name\": \"" + name + "\", \"id\": " + id + "}";
-    }
-
-    private String extractTag(String xml, String tag) {
-        String openTag = "<" + tag + ">";
-        String closeTag = "</" + tag + ">";
-        int start = xml.indexOf(openTag);
-        int end = xml.indexOf(closeTag);
-        if (start != -1 && end != -1) {
-            return xml.substring(start + openTag.length(), end);
-        }
-        return "";
-    }
-}
-```
-
-### Step 4: Client & Test Driver
-```java
-// Client class: only depends on the IReport abstraction
-public class Client {
-    public void processReport(IReport report, String rawInput) {
-        System.out.println("[Client] Requesting report for input: " + rawInput);
-        String jsonResult = report.getJsonData(rawInput);
-        System.out.println("[Client] Displaying final JSON report: " + jsonResult);
+        String activeUsers = xml.replaceAll(".*<active>(.*?)</active>.*", "$1");
+        String churnRate = xml.replaceAll(".*<churnRate>(.*?)</churnRate>.*", "$1");
+        return "{\n  \"activeUsers\": " + activeUsers + ",\n  \"churnRate\": " + churnRate + "\n}";
     }
 }
 
-public class Main {
-    public static void main(String[] args) {
-        // 1. Existing legacy adaptee
-        XMLDataProvider legacyProvider = new XMLDataProvider();
-
-        // 2. Wrap it with our adapter
-        IReport adapter = new XMLToJSONAdapter(legacyProvider);
-
-        // 3. Client interacts with adapter via standard IReport interface
-        Client client = new Client();
-        client.processReport(adapter, "Alice, 42");
-        System.out.println("---");
-        client.processReport(adapter, "Bob, 108");
+// 4. Client Code: Expects only IJsonAnalytics
+public class AnalyticsDashboardClient {
+    public void displayDashboard(IJsonAnalytics analyticsService) {
+        System.out.println("📊 Rendering Dashboard with Real-time Metrics:");
+        String json = analyticsService.getJsonMetrics();
+        System.out.println(json);
     }
 }
 ```
 
 ---
 
-## 5. Sequence Diagram
+## 4. Production Java Implementation: Case Study 2 (Payment Gateway Adapter)
+
+In real-world e-commerce, applications must integrate external payment gateways like **Stripe**, **PayPal**, and **Razorpay**, each with different method signatures and currencies:
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor User
-    participant Client
-    participant Adapter as XMLToJSONAdapter (IReport)
-    participant Adaptee as XMLDataProvider
+classDiagram
+    class PaymentProcessor {
+        <<interface>>
+        +processPayment(String customerId, double amountInUSD) boolean
+    }
 
-    User ->> Client: processReport(adapter, "Alice, 42")
-    Client ->> Adapter: getJsonData("Alice, 42")
-    Adapter ->> Adaptee: getXmlData("Alice, 42")
-    Adaptee -->> Adapter: "<user><name>Alice</name><id>42</id></user>"
-    Note over Adapter: Parse XML tags & format into JSON string
-    Adapter -->> Client: '{"name": "Alice", "id": 42}'
-    Client -->> User: Display JSON Report
+    class StripeAdapter {
+        -StripeApi stripe
+        +processPayment(String customerId, double amountInUSD) boolean
+    }
+
+    class PayPalAdapter {
+        -PayPalApi payPal
+        +processPayment(String customerId, double amountInUSD) boolean
+    }
+
+    class StripeApi {
+        +charge(String stripeToken, long amountInCents) String
+    }
+
+    class PayPalApi {
+        +sendPayment(String email, double amount, String currency) boolean
+    }
+
+    PaymentProcessor <|.. StripeAdapter
+    PaymentProcessor <|.. PayPalAdapter
+    StripeAdapter --> StripeApi : Wraps
+    PayPalAdapter --> PayPalApi : Wraps
+```
+
+```java
+// Target Interface: Our application's universal payment contract
+public interface PaymentProcessor {
+    boolean processPayment(String customerId, double amountInUSD);
+}
+
+// Incompatible Vendor 1: Stripe API (expects amount in CENTS as integer)
+public class StripeApi {
+    public String charge(String stripeCustomerToken, long amountInCents) {
+        System.out.println("💳 [Stripe API] Charging " + amountInCents + " cents to " + stripeCustomerToken);
+        return "ch_stripe_success_9981";
+    }
+}
+
+// Incompatible Vendor 2: PayPal API (expects email and ISO currency code)
+public class PayPalApi {
+    public boolean sendPayment(String paypalEmail, double amount, String currencyCode) {
+        System.out.println("🅿️ [PayPal API] Sending $" + amount + " " + currencyCode + " to " + paypalEmail);
+        return true;
+    }
+}
+
+// Adapter 1: Stripe Adapter
+public class StripeAdapter implements PaymentProcessor {
+    private final StripeApi stripeApi;
+
+    public StripeAdapter(StripeApi stripeApi) { this.stripeApi = stripeApi; }
+
+    @Override
+    public boolean processPayment(String customerId, double amountInUSD) {
+        // Conversion logic: Dollars to Cents
+        long amountInCents = Math.round(amountInUSD * 100);
+        String chargeId = stripeApi.charge(customerId, amountInCents);
+        return chargeId != null && !chargeId.isEmpty();
+    }
+}
+
+// Adapter 2: PayPal Adapter
+public class PayPalAdapter implements PaymentProcessor {
+    private final PayPalApi payPalApi;
+
+    public PayPalAdapter(PayPalApi payPalApi) { this.payPalApi = payPalApi; }
+
+    @Override
+    public boolean processPayment(String customerId, double amountInUSD) {
+        return payPalApi.sendPayment(customerId, amountInUSD, "USD");
+    }
+}
 ```
 
 ---
 
-## 6. Adapter vs. Other Structural Patterns
+## 5. Two-Way Adapters
 
-| Pattern | Intent | Key Difference |
-| :--- | :--- | :--- |
-| **Adapter** | Converts one existing interface to match another expected interface. | Changes the **interface** of an existing object without altering behavior. |
-| **Decorator** | Adds responsibilities/behaviors dynamically without altering interface. | Keeps the **same interface** while enriching behavior. |
-| **Facade** | Provides a simplified higher-level interface to a complex subsystem. | Defines a **new, simpler interface** over many classes. |
-| **Proxy** | Provides a surrogate/placeholder to control access to an object. | Has the **exact same interface** as the underlying object. |
+A **Two-Way Adapter** implements **both** the Target interface and the Adaptee interface simultaneously. It can be passed to systems expecting the Target, or to legacy systems expecting the Adaptee, enabling seamless bidirectional interoperability.
 
 ---
 
-## 7. Real-World Applications & Interview Tips
+## 6. Real-World Java Standard Library Adapters
 
-1. **Java Standard Library**:
-   - `java.util.Arrays#asList()` adapts an array into a `List`.
-   - `java.io.InputStreamReader(InputStream)` adapts a byte stream (`InputStream`) into a character stream (`Reader`).
-2. **Third-Party Payment Gateways**:
-   - Your internal service uses `PaymentGateway` (`charge(double amount, String customerId)`).
-   - Stripe expects `stripeClient.createCharge(Map<String, Object> params)`.
-   - Razorpay expects `razorpayClient.payments.capture(String paymentId, JSONObject req)`.
-   - Adapters (`StripePaymentAdapter`, `RazorpayPaymentAdapter`) standardize multiple vendor APIs into a uniform domain interface.
-3. **Interview Gotchas**:
-   - Remember the **Single Responsibility Principle**: An adapter should only translate between interfaces; do not pollute it with heavy business validation logic.
-   - Favor **Object Adapter** (composition) over Class Adapter (inheritance) to avoid brittle base class issues and enable polymorphic reuse.
+1. **`java.util.Arrays#asList(T... a)`**:
+   Adapts an array of raw primitives/objects (`T[]`) to the `java.util.List<T>` collection interface.
+2. **`java.io.InputStreamReader(InputStream)`**:
+   Adapts a byte-oriented input stream (`InputStream`) to a character-oriented reader interface (`Reader`).
+
+---
+
+## 7. Adapter vs. Facade vs. Decorator
+
+| Pattern | Problem it Solves | Interface Transformation |
+| :--- | :--- | :--- |
+| **Adapter** | Converts an **incompatible existing interface** into one the client expects | Converts old interface $\rightarrow$ **new target interface** |
+| **Facade** | Provides a **simplified, high-level interface** to a complex subsystem | Creates a **new simpler interface** over many subsystem classes |
+| **Decorator** | Adds **new behaviors dynamically** without altering existing code | Preserves the **exact same interface** as the wrapped object |

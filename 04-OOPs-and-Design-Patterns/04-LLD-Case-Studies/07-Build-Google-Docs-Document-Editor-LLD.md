@@ -1,212 +1,315 @@
 # 07. Build Google Docs — Document Editor LLD
 
-> 💡 **Quick Revision Anchor**: `DocumentElement Composite, Controller Delegation, Persistence Strategy`
+> 💡 **Quick Revision Anchor**: A comprehensive machine-coding case study synthesizing **3 core structural & behavioral patterns**:
+> - **Composite Pattern**: Hierarchical document structure (Document $\rightarrow$ Paragraph $\rightarrow$ Text / Image / Table).
+> - **Flyweight Pattern**: Character font/styling memory optimization (millions of glyphs share intrinsic style state).
+> - **Memento Pattern**: Multi-level Undo & Redo state snapshot restoration.
 
 ---
 
-## 1. Problem Statement & Functional Requirements
+## 1. Problem Statement & Requirements
 
-Design a **Document Editor** (inspired by Google Docs or MS Word) that allows users to create, compose, render, and persist rich documents containing varied media.
+Design a rich text document editor (Google Docs / Microsoft Word clone) capable of creating documents, adding text with complex formatting, organizing hierarchical content, rendering to multiple output formats, and supporting limitless undo/redo operations.
 
 ### Functional Requirements:
-1. **Multi-Media Content Elements**: Support arbitrary document elements (Text, Images, Paragraphs, Tables).
-2. **Dynamic Rendering**: Render the complete document preserving sequence and styling.
-3. **Flexible Storage / Export**: Ability to save to local file systems, cloud databases (MongoDB/S3), or export to formats like PDF.
-4. **Extensibility**: Adding a new element type (e.g., CodeBlock, Video Embed) or a new persistence target must not break existing editor code.
+1. **Hierarchical Content Creation**: Support paragraphs, plain text, formatted characters, images, and tables.
+2. **Formatting & Styling**: Text can be styled (Font family, font size, bold, italic, color).
+3. **Memory Optimization**: Storing millions of characters must not exhaust JVM heap memory.
+4. **Undo & Redo (History)**: Users can undo typing/formatting edits and redo previously undone actions.
+5. **Multi-Format Exporting / Rendering**: Export the document content to Plain Text, HTML, and Markdown.
+
+### Non-Functional Requirements:
+- **Extensibility**: Adding new document elements (e.g. Code Snippet, Math LaTeX block) should require zero changes to existing document rendering logic.
+- **Low Latency**: Keystroke-level updates must execute in $O(1)$ time.
 
 ---
 
-## 2. Architectural Design & Class Decomposition
+## 2. Architectural Architecture & Design Patterns Map
+
+```mermaid
+graph TD
+    Client[Document Editor Client] --> Doc[Document]
+    
+    subgraph "1. Structural Hierarchy (Composite Pattern)"
+        Doc --> Comp[DocumentComponent]
+        Comp --> LeafText[TextCharacter - Leaf]
+        Comp --> LeafImg[ImageElement - Leaf]
+        Comp --> CompPara[Paragraph - Composite]
+        CompPara --> Comp
+    end
+    
+    subgraph "2. Memory Optimization (Flyweight Pattern)"
+        LeafText --> StyleFlyweight[CharacterStyle - Flyweight]
+        StyleFactory[StyleFactory] --> StyleFlyweight
+    end
+    
+    subgraph "3. History & State Recovery (Memento Pattern)"
+        Doc --> Caretaker[HistoryManager - Caretaker]
+        Caretaker --> Memento[DocumentSnapshot - Memento]
+    end
+```
+
+---
+
+## 3. Applying the Flyweight Pattern for Character Glyphs
+
+### The Memory Explosion Problem:
+A standard 50-page Google Doc contains approximately $150,000$ characters.
+- If each character object independently stores:
+  `char value (2 bytes)` + `String fontName (30 bytes)` + `int fontSize (4 bytes)` + `boolean isBold (1 byte)` + `String color (10 bytes)` + `Object header (16 bytes)` $\approx 80\text{ bytes per character}$.
+- For 100 concurrent users with 50-page docs:
+  $$100 \times 150,000 \times 80\text{ bytes} \approx 1.2\text{ GB of heap memory just for character styling!}$$
+
+### The Flyweight Solution:
+Split character state into:
+1. **Intrinsic State (Shared, Immutable)**: Font family, font size, bold, italic, color. Managed by a central `StyleFactory`.
+2. **Extrinsic State (Unique per instance)**: The character value itself (`char c`) and its position in the document.
 
 ```mermaid
 classDiagram
-    class DocumentElement {
-        <<interface>>
-        +render() String
-    }
-    class TextElement {
-        -String content
+    class CharacterStyle {
         -String font
-        -int fontSize
-        +render() String
+        -int size
+        -boolean isBold
+        -String color
+        +render(char character) void
     }
-    class ImageElement {
-        -String imagePath
-        -int width
-        -int height
-        +render() String
+    class StyleFactory {
+        -Map~String, CharacterStyle~ styleCache$
+        +getStyle(font, size, isBold, color)$ CharacterStyle
     }
-
-    class Document {
-        -List~DocumentElement~ elements
-        +addElement(DocumentElement el) void
-        +render() String
-        +getElements() List~DocumentElement~
+    class CharacterGlyph {
+        -char value
+        -CharacterStyle style
+        +render() void
     }
 
-    class Persistence {
-        <<interface>>
-        +save(Document doc, String target) void
-    }
-    class FilePersistence {
-        +save(Document doc, String target) void
-    }
-    class CloudDbPersistence {
-        +save(Document doc, String target) void
-    }
-
-    class DocumentEditor {
-        -Document document
-        -Persistence persistence
-        +addText(String text) void
-        +addImage(String path, int w, int h) void
-        +renderDocument() String
-        +save(String target) void
-    }
-
-    DocumentElement <|.. TextElement
-    DocumentElement <|.. ImageElement
-    Document o-- DocumentElement
-    Persistence <|.. FilePersistence
-    Persistence <|.. CloudDbPersistence
-    DocumentEditor --> Document
-    DocumentEditor --> Persistence
+    CharacterGlyph --> CharacterStyle : References
+    StyleFactory ..> CharacterStyle : Creates & Caches
 ```
 
 ---
 
-## 3. Implementation Code Walkthrough (Java)
+## 4. Production-Ready Java Implementation
 
-### 1. Document Elements (Composite Hierarchy)
+### Step 1: Character Style Flyweight & Factory
 ```java
-// Common interface for anything that can be rendered inside a document
-public interface DocumentElement {
-    String render();
-}
+import java.util.*;
 
-public class TextElement implements DocumentElement {
-    private final String text;
+// Intrinsic State: Immutable & Shared
+public final class CharacterStyle {
+    private final String font;
+    private final int size;
     private final boolean isBold;
+    private final String color;
 
-    public TextElement(String text, boolean isBold) {
-        this.text = text;
+    public CharacterStyle(String font, int size, boolean isBold, String color) {
+        this.font = font;
+        this.size = size;
         this.isBold = isBold;
+        this.color = color;
+    }
+
+    public void render(char c) {
+        // Formatted glyph representation
+        String boldWrapper = isBold ? "**" + c + "**" : String.valueOf(c);
+        System.out.print(boldWrapper);
     }
 
     @Override
-    public String render() {
-        return isBold ? "**" + text + "**" : text;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof CharacterStyle)) return false;
+        CharacterStyle that = (CharacterStyle) o;
+        return size == that.size && isBold == that.isBold &&
+               Objects.equals(font, that.font) && Objects.equals(color, that.color);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(font, size, isBold, color);
     }
 }
 
-public class ImageElement implements DocumentElement {
-    private final String imagePath;
-    private final int width;
-    private final int height;
+// Flyweight Factory with Cache
+public class StyleFactory {
+    private static final Map<String, CharacterStyle> cache = new HashMap<>();
 
-    public ImageElement(String imagePath, int width, int height) {
-        this.imagePath = imagePath;
-        this.width = width;
-        this.height = height;
-    }
-
-    @Override
-    public String render() {
-        return "<img src='" + imagePath + "' width='" + width + "' height='" + height + "' />";
+    public static CharacterStyle getStyle(String font, int size, boolean isBold, String color) {
+        String key = font + "_" + size + "_" + (isBold ? "B" : "R") + "_" + color;
+        return cache.computeIfAbsent(key, k -> new CharacterStyle(font, size, isBold, color));
     }
 }
 ```
 
-### 2. Document Aggregate
-```java
-public class Document {
-    private final List<DocumentElement> elements = new ArrayList<>();
+---
 
-    public void addElement(DocumentElement element) {
-        elements.add(element);
+### Step 2: Composite Pattern (Document Hierarchy)
+```java
+// Component Interface
+public interface DocumentComponent {
+    void render();
+    String toPlainText();
+}
+
+// Leaf 1: Individual Character Glyph
+public class CharacterGlyph implements DocumentComponent {
+    private final char character;
+    private final CharacterStyle style;
+
+    public CharacterGlyph(char character, CharacterStyle style) {
+        this.character = character;
+        this.style = style;
     }
 
-    public String render() {
-        StringBuilder sb = new StringBuilder();
-        for (DocumentElement el : elements) {
-            sb.append(el.render()).append("\n");
+    @Override
+    public void render() {
+        style.render(character);
+    }
+
+    @Override
+    public String toPlainText() {
+        return String.valueOf(character);
+    }
+}
+
+// Composite: Paragraph containing multiple document elements
+public class Paragraph implements DocumentComponent {
+    private final List<DocumentComponent> children = new ArrayList<>();
+
+    public void add(DocumentComponent component) {
+        children.add(component);
+    }
+
+    public void remove(DocumentComponent component) {
+        children.remove(component);
+    }
+
+    @Override
+    public void render() {
+        System.out.println(); // Start new paragraph line
+        for (DocumentComponent child : children) {
+            child.render();
+        }
+    }
+
+    @Override
+    public String toPlainText() {
+        StringBuilder sb = new StringBuilder("\n");
+        for (DocumentComponent child : children) {
+            sb.append(child.toPlainText());
         }
         return sb.toString();
     }
-
-    public List<DocumentElement> getElements() {
-        return Collections.unmodifiableList(elements);
-    }
 }
 ```
 
-### 3. Persistence Strategy
+---
+
+### Step 3: Memento Pattern (Undo / Redo Mechanism)
 ```java
-public interface DocumentPersistence {
-    void save(Document document, String destination);
-}
+// Memento: Immutable snapshot of document state
+public final class DocumentSnapshot {
+    private final String contentState;
 
-public class FileStoragePersistence implements DocumentPersistence {
-    @Override
-    public void save(Document document, String filePath) {
-        System.out.println("Writing rendered content to local disk at: " + filePath);
+    public DocumentSnapshot(String contentState) {
+        this.contentState = contentState;
+    }
+
+    public String getContentState() {
+        return contentState;
     }
 }
 
-public class CloudStoragePersistence implements DocumentPersistence {
-    @Override
-    public void save(Document document, String s3Uri) {
-        System.out.println("Uploading document JSON payload to AWS S3 bucket: " + s3Uri);
+// Originator: The Document being edited
+public class Document {
+    private StringBuilder content = new StringBuilder();
+
+    public void write(String text) {
+        content.append(text);
+    }
+
+    public String getContent() {
+        return content.toString();
+    }
+
+    public DocumentSnapshot createSnapshot() {
+        return new DocumentSnapshot(content.toString());
+    }
+
+    public void restore(DocumentSnapshot snapshot) {
+        this.content = new StringBuilder(snapshot.getContentState());
     }
 }
-```
 
-### 4. Document Editor Facade / Controller
-```java
-public class DocumentEditor {
-    private final Document document;
-    private final DocumentPersistence persistence;
+// Caretaker: Manages undo and redo stacks
+public class HistoryManager {
+    private final Deque<DocumentSnapshot> undoStack = new ArrayDeque<>();
+    private final Deque<DocumentSnapshot> redoStack = new ArrayDeque<>();
 
-    public DocumentEditor(DocumentPersistence persistence) {
-        this.document = new Document();
-        this.persistence = persistence;
+    public void saveState(Document doc) {
+        undoStack.push(doc.createSnapshot());
+        redoStack.clear(); // Clear redo on fresh edit
     }
 
-    public void addText(String text, boolean isBold) {
-        document.addElement(new TextElement(text, isBold));
+    public void undo(Document doc) {
+        if (undoStack.isEmpty()) {
+            System.out.println("⚠️ Nothing to undo!");
+            return;
+        }
+        redoStack.push(doc.createSnapshot());
+        DocumentSnapshot previousState = undoStack.pop();
+        doc.restore(previousState);
+        System.out.println("↩️ Undo performed.");
     }
 
-    public void addImage(String path, int width, int height) {
-        document.addElement(new ImageElement(path, width, height));
-    }
-
-    public String renderDocument() {
-        return document.render();
-    }
-
-    public void save(String destination) {
-        persistence.save(document, destination);
+    public void redo(Document doc) {
+        if (redoStack.isEmpty()) {
+            System.out.println("⚠️ Nothing to redo!");
+            return;
+        }
+        undoStack.push(doc.createSnapshot());
+        DocumentSnapshot nextState = redoStack.pop();
+        doc.restore(nextState);
+        System.out.println("↪️ Redo performed.");
     }
 }
 ```
 
 ---
 
-## 4. Key Design Patterns Applied
+### Step 4: Verification & Client Driver
+```java
+public class GoogleDocsApp {
+    public static void main(String[] args) {
+        Document doc = new Document();
+        HistoryManager history = new HistoryManager();
 
-| Pattern | Where Used | Problem Solved |
-| :--- | :--- | :--- |
-| **Composite Pattern** | `DocumentElement` interface implemented by `TextElement`, `ImageElement`, etc. | Treats leaf elements and complex container elements uniformly during rendering. |
-| **Strategy Pattern** | `DocumentPersistence` (`FileStorage`, `CloudStorage`) | Decouples document editing logic from storage mechanism. Storage can be swapped dynamically. |
-| **Facade Pattern** | `DocumentEditor` | Hides underlying complexity of document assembly and persistence behind a clean, intuitive client API. |
-| **Command Pattern (Extension)** | Undo / Redo operations | Encapsulates keystroke additions/deletions as executable command objects with `undo()`. |
+        // 1. Initial typing
+        history.saveState(doc);
+        doc.write("Hello World. ");
+        System.out.println("Doc: " + doc.getContent());
+
+        // 2. Add second sentence
+        history.saveState(doc);
+        doc.write("This is Google Docs LLD.");
+        System.out.println("Doc: " + doc.getContent());
+
+        // 3. Perform Undo
+        history.undo(doc);
+        System.out.println("After Undo: " + doc.getContent());
+
+        // 4. Perform Redo
+        history.redo(doc);
+        System.out.println("After Redo: " + doc.getContent());
+    }
+}
+```
 
 ---
 
-## 5. Machine Coding Interview Follow-ups
+## 5. Summary & Key Interview Takeaways
 
-1. **How to implement Undo/Redo?**
-   - Maintain two stacks: `Stack<Command> undoStack` and `Stack<Command> redoStack`.
-   - Each operation (`AddElementCommand`, `DeleteElementCommand`) implements `execute()` and `unexecute()`.
-2. **How to support character-by-character styling efficiently without wasting memory?**
-   - Apply the **Flyweight Pattern**: Share intrinsic character glyph definitions and keep only extrinsic formatting properties (cursor position, bold flag) per character.
+1. **Composite Pattern**: Allows uniform treatment of nested document trees (Character $\rightarrow$ Word $\rightarrow$ Line $\rightarrow$ Paragraph $\rightarrow$ Section $\rightarrow$ Document).
+2. **Flyweight Pattern**: Essential for document editors to prevent memory exhaustion by sharing immutable font, size, and styling metadata across hundreds of thousands of individual character glyphs.
+3. **Memento Pattern**: Decouples the document state encapsulation from the history tracking logic (Caretaker). The caretaker stores snapshots without needing to know internal document storage representation.

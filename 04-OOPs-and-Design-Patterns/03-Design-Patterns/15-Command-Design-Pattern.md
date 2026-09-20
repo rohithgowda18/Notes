@@ -1,46 +1,37 @@
 # 15. Command Design Pattern
 
-> 💡 **Quick Revision Anchor**: `Encapsulate Requests as Objects, Decouple Invoker from Receiver, Built-in Undo/Redo`
+> 💡 **Quick Revision Anchor**: 
+> - **Type**: Behavioral Design Pattern.
+> - **Core Intent**: Encapsulates a request as a standalone object, separating the **Invoker** that issues the request from the **Receiver** that performs the action.
+> - **Primary Superpowers**: Parameterization of requests, queuing/logging of operations, and multi-level **Undo/Redo** support.
 
 ---
 
-## 1. Intent & Problem Motivation
+## 1. Context & The Tight Coupling Anti-Pattern
 
-The **Command Design Pattern** is a **Behavioral Design Pattern** that converts a request or action into a **stand-alone object** containing all information about the request (the receiver, method name, and arguments).
+Imagine designing a **Universal Smart Home Remote Control**:
+- You have 7 programmable button slots.
+- The user can assign a button to turn on a Living Room Light, activate an Air Conditioner to 22°C, open the Garage Door, or play a Spotify playlist on a Stereo.
 
-### The Decoupling Problem
-Imagine designing a **Universal Remote Control** with 5 programmable buttons for a smart home:
-- The remote should not be hardcoded to `livingRoomLight.turnOn()`.
-- What if Button 1 turns on a Light today, but tomorrow the user rebinds Button 1 to open the Garage Door, and Button 2 to adjust the Air Conditioner?
-- If the remote knows about `Light`, `GarageDoor`, and `AirConditioner`, the remote becomes tightly coupled and constantly changes.
+### The Naive Anti-Pattern (Hardcoded Coupling):
+```java
+// ❌ Naive Remote: Hardcoded to specific vendor classes!
+public class BadRemote {
+    private Light light;
+    private AirConditioner ac;
 
-```mermaid
-flowchart LR
-    subgraph TightCoupling["❌ Tightly Coupled Remote"]
-        Remote["Remote Control"] --> Light["LivingRoomLight"]
-        Remote --> AC["AirConditioner"]
-        Remote --> Door["GarageDoor"]
-    end
-
-    subgraph CommandPattern["✅ Decoupled with Command Pattern"]
-        Invoker["Invoker (Remote Button)"] -->|"Only knows"| Command["<<interface>> Command (execute(), undo())"]
-        Command --> LightCmd["TurnOnLightCommand"]
-        LightCmd -->|"Delegates to"| Receiver["Light (Receiver)"]
-    end
-
-    style TightCoupling fill:#fee2e2,stroke:#ef4444,color:#b91c1c
-    style CommandPattern fill:#dcfce7,stroke:#10b981,color:#047857
+    public void onButtonPressed(int slot) {
+        if (slot == 1) light.turnOn();
+        else if (slot == 2) ac.setTemperature(22);
+        // Violates OCP every time a new device is purchased!
+    }
+}
 ```
+If you buy a new smart curtain or robotic vacuum, you must rewrite and recompile the `RemoteControl` class!
 
 ---
 
-## 2. Command Pattern Architecture & The 4 Key Actors
-
-1. **Command Interface**: Declares execution contract (`execute()`, `undo()`).
-2. **Concrete Command**: Binds a specific action to a Receiver.
-3. **Receiver**: The actual domain worker (e.g., `Light`, `Thermostat`) that performs the real task.
-4. **Invoker**: Holds references to commands and triggers execution (e.g., `RemoteControl`).
-5. **Client**: Instantiates receivers, wraps them into commands, and registers commands with the invoker.
+## 2. Command Pattern Architecture
 
 ```mermaid
 classDiagram
@@ -55,160 +46,196 @@ classDiagram
         +execute() void
         +undo() void
     }
-
-    class LightOffCommand {
-        -Light light
+    class ACOnCommand {
+        -AirConditioner ac
         +execute() void
         +undo() void
+    }
+
+    class RemoteControl {
+        -Command[] onCommands
+        -Command[] offCommands
+        -Deque~Command~ undoHistory
+        +setCommand(slot, onCmd, offCmd) void
+        +pressOnButton(slot) void
+        +pressOffButton(slot) void
+        +pressUndo() void
     }
 
     class Light {
         +turnOn() void
         +turnOff() void
     }
-
-    class RemoteControl {
-        -Command[] slots
-        -Stack~Command~ history
-        +setCommand(int slot, Command cmd) void
-        +pressButton(int slot) void
-        +pressUndo() void
+    class AirConditioner {
+        +turnOn() void
+        +turnOff() void
     }
 
     Command <|.. LightOnCommand
-    Command <|.. LightOffCommand
-    LightOnCommand --> Light : delegates to receiver
-    LightOffCommand --> Light : delegates to receiver
-    RemoteControl o-- Command
+    Command <|.. ACOnCommand
+    LightOnCommand --> Light : Receiver
+    ACOnCommand --> AirConditioner : Receiver
+    RemoteControl o-- Command : Invoker
 ```
+
+### The 4 Key Participants:
+1. **Command Interface**: Declares `execute()` and `undo()`.
+2. **Concrete Commands (`LightOnCommand`)**: Binds an action to a specific receiver.
+3. **Receiver (`Light`, `AirConditioner`)**: Contains actual device hardware logic.
+4. **Invoker (`RemoteControl`)**: Holds command slots and triggers execution without knowing which receiver is being operated.
 
 ---
 
-## 3. Java Implementation Walkthrough
+## 3. Production Java Implementation with Multi-Level Undo & Macro Mode
 
-### 1. Command Interface
 ```java
+import java.util.*;
+
+// 1. Command Interface
 public interface Command {
     void execute();
     void undo();
 }
-```
 
-### 2. Receiver (The Device)
-```java
+// 2. Null Object Pattern: Avoids null checks for empty button slots
+public class NoCommand implements Command {
+    @Override public void execute() {}
+    @Override public void undo() {}
+}
+
+// 3. Receivers (Domain entities with business logic)
 public class Light {
     private final String location;
     private boolean isOn = false;
 
     public Light(String location) { this.location = location; }
-
-    public void turnOn() {
-        isOn = true;
-        System.out.println("💡 [" + location + "] Light is turned ON.");
-    }
-
-    public void turnOff() {
-        isOn = false;
-        System.out.println("🌑 [" + location + "] Light is turned OFF.");
-    }
+    public void turnOn()  { isOn = true; System.out.println("💡 [" + location + "] Light is ON"); }
+    public void turnOff() { isOn = false; System.out.println("🌑 [" + location + "] Light is OFF"); }
+    public boolean isOn() { return isOn; }
 }
-```
 
-### 3. Concrete Commands
-```java
-public class TurnOnLightCommand implements Command {
+public class AirConditioner {
+    private boolean isRunning = false;
+    private int temperature = 24;
+
+    public void turnOn() { isRunning = true; System.out.println("❄️ AC is ON at " + temperature + "°C"); }
+    public void turnOff() { isRunning = false; System.out.println("🛑 AC is OFF"); }
+    public void setTemperature(int temp) { this.temperature = temp; System.out.println("🌡️ AC set to " + temp + "°C"); }
+}
+
+// 4. Concrete Commands
+public class LightOnCommand implements Command {
     private final Light light;
 
-    public TurnOnLightCommand(Light light) { this.light = light; }
-
-    @Override
-    public void execute() { light.turnOn(); }
-
-    @Override
-    public void undo() { light.turnOff(); }
+    public LightOnCommand(Light light) { this.light = light; }
+    @Override public void execute() { light.turnOn(); }
+    @Override public void undo()    { light.turnOff(); }
 }
 
-public class TurnOffLightCommand implements Command {
+public class LightOffCommand implements Command {
     private final Light light;
 
-    public TurnOffLightCommand(Light light) { this.light = light; }
-
-    @Override
-    public void execute() { light.turnOff(); }
-
-    @Override
-    public void undo() { light.turnOn(); }
+    public LightOffCommand(Light light) { this.light = light; }
+    @Override public void execute() { light.turnOff(); }
+    @Override public void undo()    { light.turnOn(); }
 }
-```
 
-### 4. Invoker (Remote Control with Undo History)
-```java
-public class RemoteControl {
-    private final Command[] buttons = new Command[5];
-    private final Deque<Command> history = new ArrayDeque<>();
+public class ACOnCommand implements Command {
+    private final AirConditioner ac;
 
-    public void setCommand(int slot, Command command) {
-        buttons[slot] = command;
-    }
+    public ACOnCommand(AirConditioner ac) { this.ac = ac; }
+    @Override public void execute() { ac.turnOn(); }
+    @Override public void undo()    { ac.turnOff(); }
+}
 
-    public void pressButton(int slot) {
-        if (buttons[slot] != null) {
-            buttons[slot].execute();
-            history.push(buttons[slot]); // Record for undo
+// Macro Command: Batch execution (Party Mode / Goodnight Mode)
+public class MacroCommand implements Command {
+    private final List<Command> commands;
+
+    public MacroCommand(List<Command> commands) { this.commands = commands; }
+    @Override public void execute() { for (Command cmd : commands) cmd.execute(); }
+    @Override public void undo() {
+        // Reverse undo order
+        for (int i = commands.size() - 1; i >= 0; i--) {
+            commands.get(i).undo();
         }
+    }
+}
+
+// 5. Invoker: Programmable Remote with Undo Stack
+public class RemoteControl {
+    private final Command[] onCommands;
+    private final Command[] offCommands;
+    private final Deque<Command> undoHistory = new ArrayDeque<>();
+
+    public RemoteControl(int slots) {
+        onCommands = new Command[slots];
+        offCommands = new Command[slots];
+        Command noOp = new NoCommand();
+        for (int i = 0; i < slots; i++) {
+            onCommands[i] = noOp;
+            offCommands[i] = noOp;
+        }
+    }
+
+    public void setCommand(int slot, Command onCmd, Command offCmd) {
+        onCommands[slot] = onCmd;
+        offCommands[slot] = offCmd;
+    }
+
+    public void pressOnButton(int slot) {
+        onCommands[slot].execute();
+        undoHistory.push(onCommands[slot]);
+    }
+
+    public void pressOffButton(int slot) {
+        offCommands[slot].execute();
+        undoHistory.push(offCommands[slot]);
     }
 
     public void pressUndo() {
-        if (!history.isEmpty()) {
-            Command lastCommand = history.pop();
-            System.out.print("[UNDO TRIGGERED] -> ");
-            lastCommand.undo();
-        } else {
-            System.out.println("Nothing to undo.");
+        if (undoHistory.isEmpty()) {
+            System.out.println("⚠️ No commands left to undo.");
+            return;
         }
+        Command lastCommand = undoHistory.pop();
+        System.out.print("[UNDO] ");
+        lastCommand.undo();
     }
 }
 ```
 
-### 5. Client Execution
+### Demonstration Execution:
 ```java
-public class Main {
+public class CommandDemo {
     public static void main(String[] args) {
-        RemoteControl remote = new RemoteControl();
+        RemoteControl remote = new RemoteControl(4);
+
         Light livingRoomLight = new Light("Living Room");
+        AirConditioner ac = new AirConditioner();
 
-        // Bind buttons
-        remote.setCommand(0, new TurnOnLightCommand(livingRoomLight));
-        remote.setCommand(1, new TurnOffLightCommand(livingRoomLight));
+        // Assign slots
+        remote.setCommand(0, new LightOnCommand(livingRoomLight), new LightOffCommand(livingRoomLight));
+        remote.setCommand(1, new ACOnCommand(ac), new NoCommand());
 
-        // Press Button 0 (Turn ON)
-        remote.pressButton(0);
+        // Press buttons
+        remote.pressOnButton(0); // Turns on Light
+        remote.pressOnButton(1); // Turns on AC
 
-        // Press Button 1 (Turn OFF)
-        remote.pressButton(1);
-
-        // Press Undo (Reverts Button 1, Turns Light back ON!)
-        remote.pressUndo();
-
-        // Press Undo (Reverts Button 0, Turns Light OFF!)
-        remote.pressUndo();
+        // Multi-level undo
+        remote.pressUndo(); // Undoes AC turn on -> turns off
+        remote.pressUndo(); // Undoes Light turn on -> turns off
     }
 }
-```
-
-#### Output:
-```text
-💡 [Living Room] Light is turned ON.
-🌑 [Living Room] Light is turned OFF.
-[UNDO TRIGGERED] -> 💡 [Living Room] Light is turned ON.
-[UNDO TRIGGERED] -> 🌑 [Living Room] Light is turned OFF.
 ```
 
 ---
 
 ## 4. Real-World Applications
 
-1. **GUI Buttons & Menu Items**: In IDEs, clicking "Copy", "Paste", or "Save" triggers an encapsulated `Command` without UI buttons knowing filesystem or clipboard internals.
-2. **Transactional Rollbacks**: In databases and transaction managers, each mutating operation stores an inverse command to execute if a rollback is triggered.
-3. **Task Queues & Background Schedulers**: Thread pools (`Runnable` and `Callable` in Java are standard Command implementations).
-4. **Macro Commands (Batch Scripts)**: Combining multiple commands into a single `MacroCommand` that executes sequential operations in a single click.
+1. **Transactional Database Rollbacks (WAL)**:
+   Every DB operation (INSERT, UPDATE, DELETE) is stored as a reversible command object in Write-Ahead Logs for atomic rollbacks (`undo()`).
+2. **GUI Desktop Applications**:
+   Every button click, keystroke, and menu item (Edit $\rightarrow$ Cut / Paste) is mapped to an action command supporting Ctrl+Z.
+3. **Job Schedulers & Thread Pools**:
+   `Runnable` and `Callable` in Java are standard command objects placed on worker queues for asynchronous execution.

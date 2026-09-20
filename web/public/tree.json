@@ -94,97 +94,97 @@
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/01-Introduction-To-System-Design.md",
       "name": "01-Introduction-To-System-Design.md",
       "type": "markdown",
-      "size": 6146
+      "size": 9702
     },
     {
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/02-OOPs-Real-World-Examples-Abstraction-Encapsulation.md",
       "name": "02-OOPs-Real-World-Examples-Abstraction-Encapsulation.md",
       "type": "markdown",
-      "size": 7490
+      "size": 11234
     },
     {
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/03-Inheritance-and-Polymorphism-in-OOPs.md",
       "name": "03-Inheritance-and-Polymorphism-in-OOPs.md",
       "type": "markdown",
-      "size": 6658
+      "size": 11024
     },
     {
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/04-UML-Diagrams-Class-and-Sequence-Diagrams.md",
       "name": "04-UML-Diagrams-Class-and-Sequence-Diagrams.md",
       "type": "markdown",
-      "size": 6882
+      "size": 9933
     },
     {
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/05-SOLID-Design-Principles-Part-1.md",
       "name": "05-SOLID-Design-Principles-Part-1.md",
       "type": "markdown",
-      "size": 7764
+      "size": 11136
     },
     {
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/06-SOLID-Design-Principles-Part-2.md",
       "name": "06-SOLID-Design-Principles-Part-2.md",
       "type": "markdown",
-      "size": 8383
+      "size": 12548
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/08-Strategy-Design-Pattern.md",
       "name": "08-Strategy-Design-Pattern.md",
       "type": "markdown",
-      "size": 5607
+      "size": 6845
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/09-Factory-Design-Pattern.md",
       "name": "09-Factory-Design-Pattern.md",
       "type": "markdown",
-      "size": 5173
+      "size": 7781
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/10-Singleton-Design-Pattern.md",
       "name": "10-Singleton-Design-Pattern.md",
       "type": "markdown",
-      "size": 6300
+      "size": 7276
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/12-Observer-Design-Pattern.md",
       "name": "12-Observer-Design-Pattern.md",
       "type": "markdown",
-      "size": 6809
+      "size": 7876
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/13-Decorator-Design-Pattern.md",
       "name": "13-Decorator-Design-Pattern.md",
       "type": "markdown",
-      "size": 6869
+      "size": 7212
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/15-Command-Design-Pattern.md",
       "name": "15-Command-Design-Pattern.md",
       "type": "markdown",
-      "size": 6425
+      "size": 7700
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/16-Adapter-Design-Pattern.md",
       "name": "16-Adapter-Design-Pattern.md",
       "type": "markdown",
-      "size": 8759
+      "size": 8520
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/17-Facade-Design-Pattern.md",
       "name": "17-Facade-Design-Pattern.md",
       "type": "markdown",
-      "size": 8318
+      "size": 7514
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/19-Composite-Design-Pattern-File-System.md",
       "name": "19-Composite-Design-Pattern-File-System.md",
       "type": "markdown",
-      "size": 8104
+      "size": 7563
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/20-Template-Method-Pattern.md",
       "name": "20-Template-Method-Pattern.md",
       "type": "markdown",
-      "size": 9422
+      "size": 7244
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/21-Proxy-Design-Pattern.md",
@@ -262,7 +262,7 @@
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/07-Build-Google-Docs-Document-Editor-LLD.md",
       "name": "07-Build-Google-Docs-Document-Editor-LLD.md",
       "type": "markdown",
-      "size": 6525
+      "size": 10350
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/11-Build-Zomato-Food-Delivery-App.md",

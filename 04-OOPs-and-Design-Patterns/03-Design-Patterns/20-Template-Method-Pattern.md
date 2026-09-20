@@ -1,232 +1,185 @@
-# 20. Template Method Design Pattern
+# 20. Template Method Pattern
 
-> 💡 **Quick Revision Anchor**: The **Template Method Pattern** is a **behavioral design pattern** that defines the skeleton of an algorithm in a base class, deferring some concrete steps to subclasses. It enforces the **Hollywood Principle** (*"Don't call us, we'll call you"*) without allowing subclasses to alter the fundamental sequence of execution.
+> 💡 **Quick Revision Anchor**: 
+> - **Type**: Behavioral Design Pattern.
+> - **Core Intent**: Defines the **fixed skeleton of an algorithm** in a base class, while deferring specific steps to subclasses without altering the algorithm's overarching structure.
+> - **Architectural Motto**: The **Hollywood Principle**: *"Don't call us, we'll call you."* (The superclass controls the workflow and calls child methods).
 
 ---
 
 ## 1. Context & Motivation
 
-In many software systems, a complex process must follow a strict, mandatory sequence of stages. 
-Consider a **Machine Learning Training Pipeline**:
-1. **Load Data**: Read datasets from disk/S3.
-2. **Preprocess Data**: Clean nulls, normalize features, train/test split.
-3. **Train Model**: Fit algorithmic weights (varies dramatically between Neural Networks, Decision Trees, SVM).
-4. **Evaluate Model**: Calculate loss, accuracy, F1-score.
-5. **Save Model**: Export serialized weights/checkpoints.
+Imagine building an **End-to-End Machine Learning Model Training Pipeline**:
+Every machine learning workflow follows a mandatory, invariant series of phases:
+1. `loadDataset()`: Reading raw CSV / Parquet records from S3.
+2. `preprocessData()`: Data cleaning, normalization, and one-hot encoding.
+3. `trainModel()`: The actual mathematical training algorithm (e.g. Neural Network backpropagation vs Decision Tree splitting).
+4. `evaluatePerformance()`: Calculating Precision, Recall, and F1-score.
+5. `saveModel()`: Persisting weights to artifact storage.
+6. Optional Hook: `sendNotification()`: Sending a Slack alert if training succeeds.
 
-### The Problem without Template Method
-If individual developers implement their own training classes from scratch:
-- Developer A skips data normalization, causing gradient explosion.
-- Developer B trains before splitting data, leaking test data into training sets.
-- Developer C forgets to evaluate before saving model artifacts.
-- Common code (like loading and saving) is duplicated across dozens of model files.
-
-### The Template Method Solution
-Define a `final` template method `trainPipeline()` in an abstract base class `ModelTrainer`. Common steps have default implementations, variant steps are declared `abstract`, and optional steps are provided as **hooks**. Subclasses supply the specialized math while the base class firmly controls the execution pipeline.
+### The Code Duplication Anti-Pattern:
+If each team (`ComputerVisionTeam`, `NLPTeam`, `FraudDetectionTeam`) implements their own separate training classes from scratch, 80% of the workflow (data loading, evaluation metrics, artifact saving) is copy-pasted and prone to diverging bugs.
+If someone forgets to run data validation before training, the job fails 5 hours later.
 
 ---
 
-## 2. The Hollywood Principle & Hook Methods
+## 2. Template Method Architecture
 
 ```mermaid
 classDiagram
-    class ModelTrainer {
+    class MLModelTrainer {
         <<abstract>>
-        +trainPipeline(String path)* void
-        #loadData(String path) void
-        #preprocessData() void
+        +trainPipeline() void $final$
+        #loadData() void
+        #preprocessData()* void
         #trainModel()* void
-        #evaluateModel()* void
-        #saveModel() void
-        #shouldSaveModel() boolean
+        #evaluateModel() void
+        #saveArtifacts() void
+        #shouldSendNotification() boolean
     }
 
     class NeuralNetworkTrainer {
+        #preprocessData() void
         #trainModel() void
-        #evaluateModel() void
-        #saveModel() void
+        #shouldSendNotification() boolean
     }
 
     class DecisionTreeTrainer {
+        #preprocessData() void
         #trainModel() void
-        #evaluateModel() void
-        #shouldSaveModel() boolean
     }
 
-    ModelTrainer <|-- NeuralNetworkTrainer : Extends
-    ModelTrainer <|-- DecisionTreeTrainer : Extends
+    MLModelTrainer <|-- NeuralNetworkTrainer
+    MLModelTrainer <|-- DecisionTreeTrainer
 ```
 
-### Key Architectural Concepts:
-1. **The Hollywood Principle (*"Don't call us, we'll call you"*)**:
-   - High-level base components decide *when* and *how* low-level components are invoked.
-   - Subclasses never directly call the template pipeline; they merely plug in the missing steps when called by the base class.
-2. **The `final` Keyword**:
-   - The template method itself is marked `final` in Java to prevent subclasses from overriding and breaking the algorithmic sequence.
-3. **Hook Methods**:
-   - Methods that provide default (often empty or boolean) behavior in the base class (e.g., `boolean shouldSaveModel() { return true; }`).
-   - Subclasses can selectively override hooks to conditionally intervene in the algorithm without modifying the pipeline itself.
+### The 3 Types of Methods in a Template Class:
+1. **The Template Method itself (`trainPipeline()`)**: Marked `final` so subclasses cannot tamper with or reorder the invariant algorithm steps.
+2. **Abstract Steps (`preprocessData()`, `trainModel()`)**: Primitive operations that **must** be implemented by specific subclasses.
+3. **Concrete Default Steps (`loadData()`, `evaluateModel()`)**: Reusable operations shared identically by all subclasses.
+4. **Hook Methods (`shouldSendNotification()`)**: Default empty or boolean methods that subclasses **can optionally override** to plug into the algorithm at specific extension points.
 
 ---
 
-## 3. Production Java Implementation: ML Model Training Pipeline
+## 3. Production Java Implementation
 
-### Step 1: Abstract Base Class with Template Method
 ```java
-public abstract class ModelTrainer {
+// Abstract Superclass containing the Template Method
+public abstract class MLModelTrainer {
 
-    // 1. The Template Method: marked final to lock the algorithm skeleton
-    public final void trainPipeline(String dataPath) {
-        System.out.println("\n--- Starting Machine Learning Pipeline ---");
-        loadData(dataPath);
-        preprocessData();
-        trainModel();       // Primitive step customized by subclass
-        evaluateModel();    // Primitive step customized by subclass
+    // 1. The Template Method: Marked final to freeze the algorithm structure!
+    public final void trainPipeline(String datasetPath) {
+        System.out.println("\n🚀 Starting ML Training Pipeline for: " + datasetPath);
+        loadData(datasetPath);
+        preprocessData(); // Abstract step
+        trainModel();     // Abstract step
+        evaluateModel();
+        saveArtifacts();
 
-        // Hook: Subclass controls whether model gets persisted
-        if (shouldSaveModel()) {
-            saveModel();
-        } else {
-            System.out.println("[Pipeline] Skipped model saving per hook decision.");
+        // 2. Hook execution
+        if (shouldSendNotification()) {
+            sendSlackNotification();
         }
-        System.out.println("--- Pipeline Completed Successfully ---\n");
+        System.out.println("✅ Pipeline completed successfully.\n");
     }
 
-    // 2. Common step implemented in base class
-    protected void loadData(String path) {
-        System.out.println("[Step 1] Loading raw dataset from: " + path);
+    // Common invariant step: Shared by all algorithms
+    private void loadData(String path) {
+        System.out.println("📥 [Step 1] Loading raw dataset from: " + path);
     }
 
-    // 3. Common data preprocessing step
-    protected void preprocessData() {
-        System.out.println("[Step 2] Preprocessing: Handling missing values, scaling features, splitting 80/20 train/test.");
-    }
+    // Abstract primitive step: Subclass must provide data transformations
+    protected abstract void preprocessData();
 
-    // 4. Abstract primitive operations: MUST be implemented by subclasses
+    // Abstract primitive step: Subclass must provide core training math
     protected abstract void trainModel();
-    protected abstract void evaluateModel();
 
-    // 5. Default save operation (can be overridden if custom serialization is needed)
-    protected void saveModel() {
-        System.out.println("[Step 5] Serializing model weights to default disk directory.");
+    // Common invariant step: Standard evaluation metrics
+    private void evaluateModel() {
+        System.out.println("📊 [Step 4] Evaluating model: Accuracy=94.2%, F1-Score=0.91");
     }
 
-    // 6. Hook method: Subclasses can override to alter workflow logic
-    protected boolean shouldSaveModel() {
-        return true; // Default to saving
-    }
-}
-```
-
-### Step 2: Concrete Implementation 1 — Neural Network
-```java
-public class NeuralNetworkTrainer extends ModelTrainer {
-
-    @Override
-    protected void trainModel() {
-        System.out.println("[Step 3 - NeuralNet] Running 100 epochs of Backpropagation with Adam Optimizer.");
+    // Common invariant step: S3 artifact persistence
+    private void saveArtifacts() {
+        System.out.println("💾 [Step 5] Serializing model weights to AWS S3 bucket.");
     }
 
-    @Override
-    protected void evaluateModel() {
-        System.out.println("[Step 4 - NeuralNet] Computing Cross-Entropy Loss: 0.042, Accuracy: 98.4%.");
+    // Hook Method: Default behavior is false; subclasses can override!
+    protected boolean shouldSendNotification() {
+        return false;
     }
 
-    @Override
-    protected void saveModel() {
-        System.out.println("[Step 5 - NeuralNet] Exporting weights as PyTorch/ONNX '.pt' tensor file.");
+    private void sendSlackNotification() {
+        System.out.println("📢 [Hook Alert] Dispatching Slack alert: Training finished!");
     }
 }
-```
 
-### Step 3: Concrete Implementation 2 — Decision Tree (Using Hook)
-```java
-public class DecisionTreeTrainer extends ModelTrainer {
-    private final boolean isDraftExperiment;
-
-    public DecisionTreeTrainer(boolean isDraftExperiment) {
-        this.isDraftExperiment = isDraftExperiment;
+// Concrete Implementation 1: Deep Learning Neural Network
+public class NeuralNetworkTrainer extends MLModelTrainer {
+    @Override
+    protected void preprocessData() {
+        System.out.println("🔄 [Step 2] Resizing images to 224x224 and normalizing RGB tensors to [-1, 1].");
     }
 
     @Override
     protected void trainModel() {
-        System.out.println("[Step 3 - DecisionTree] Calculating Gini Impurity and splitting nodes (max_depth = 8).");
+        System.out.println("🧠 [Step 3] Training Deep Convolutional Neural Network via Adam Optimizer over 50 Epochs.");
+    }
+
+    // Overriding hook to enable alerts for long-running deep learning jobs
+    @Override
+    protected boolean shouldSendNotification() {
+        return true;
+    }
+}
+
+// Concrete Implementation 2: Decision Tree / Random Forest
+public class DecisionTreeTrainer extends MLModelTrainer {
+    @Override
+    protected void preprocessData() {
+        System.out.println("🔄 [Step 2] Imputing missing tabular values and applying One-Hot Encoding.");
     }
 
     @Override
-    protected void evaluateModel() {
-        System.out.println("[Step 4 - DecisionTree] Decision Tree Accuracy: 91.2%, Precision: 89.5%.");
+    protected void trainModel() {
+        System.out.println("🌲 [Step 3] Fitting Random Forest of 200 trees with Gini Impurity split.");
     }
-
-    // Overriding the Hook
-    @Override
-    protected boolean shouldSaveModel() {
-        // Do not persist model artifacts if this is merely a draft test
-        return !isDraftExperiment;
-    }
+    // Uses default hook (no Slack alert)
 }
 ```
 
-### Step 4: Driver Execution
+### Demonstration Execution:
 ```java
-public class Main {
+public class TemplateMethodDemo {
     public static void main(String[] args) {
-        // Run Neural Network Training
-        ModelTrainer neuralNet = new NeuralNetworkTrainer();
-        neuralNet.trainPipeline("s3://datasets/vision/cifar10.csv");
+        // Deep learning training
+        MLModelTrainer cnn = new NeuralNetworkTrainer();
+        cnn.trainPipeline("s3://bucket/imagenet_data");
 
-        // Run Decision Tree Production Experiment
-        ModelTrainer treeProd = new DecisionTreeTrainer(false);
-        treeProd.trainPipeline("s3://datasets/tabular/credit_risk.csv");
-
-        // Run Decision Tree Draft Experiment (Hook skips saving)
-        ModelTrainer treeDraft = new DecisionTreeTrainer(true);
-        treeDraft.trainPipeline("s3://datasets/tabular/credit_risk_temp.csv");
+        // Tabular Random Forest training
+        MLModelTrainer rf = new DecisionTreeTrainer();
+        rf.trainPipeline("s3://bucket/customer_churn.csv");
     }
 }
 ```
 
 ---
 
-## 4. Execution Trace
+## 4. The Hollywood Principle Explained
 
-```text
---- Starting Machine Learning Pipeline ---
-[Step 1] Loading raw dataset from: s3://datasets/vision/cifar10.csv
-[Step 2] Preprocessing: Handling missing values, scaling features, splitting 80/20 train/test.
-[Step 3 - NeuralNet] Running 100 epochs of Backpropagation with Adam Optimizer.
-[Step 4 - NeuralNet] Computing Cross-Entropy Loss: 0.042, Accuracy: 98.4%.
-[Step 5 - NeuralNet] Exporting weights as PyTorch/ONNX '.pt' tensor file.
---- Pipeline Completed Successfully ---
+> *"Don't call us, we'll call you."*
 
---- Starting Machine Learning Pipeline ---
-[Step 1] Loading raw dataset from: s3://datasets/tabular/credit_risk_temp.csv
-[Step 2] Preprocessing: Handling missing values, scaling features, splitting 80/20 train/test.
-[Step 3 - DecisionTree] Calculating Gini Impurity and splitting nodes (max_depth = 8).
-[Step 4 - DecisionTree] Decision Tree Accuracy: 91.2%, Precision: 89.5%.
-[Pipeline] Skipped model saving per hook decision.
---- Pipeline Completed Successfully ---
-```
+- In traditional procedural code, your custom code calls library routines whenever it needs them (e.g. `Math.sqrt()`).
+- In the **Template Method Pattern**, the **framework/superclass calls your code**. The superclass dictates *when* and *in what order* methods are executed, while the subclass merely provides the custom pieces of the puzzle.
 
 ---
 
-## 5. Strategy Pattern vs. Template Method Pattern
+## 5. Template Method vs. Strategy Pattern
 
-| Dimension | Template Method Pattern | Strategy Pattern |
+| Feature | Template Method Pattern | Strategy Pattern |
 | :--- | :--- | :--- |
-| **Mechanism** | **Inheritance** (Subclassing base class). | **Composition** (Delegation to interface). |
-| **Granularity** | Varies **parts** of an algorithm; overall structure is fixed. | Swaps the **entire** algorithm interchangeably. |
-| **Binding Time** | **Compile-time** (Static via inheritance). | **Runtime** (Dynamic object swapping). |
-| **Class Coupling** | Tighter (subclasses bound to base class lifecycle). | Loose (independent strategy classes). |
-
----
-
-## 6. Real-World Applications & Interview Gotchas
-
-1. **Java Frameworks & Libraries**:
-   - `javax.servlet.http.HttpServlet`: Defines `service()` (template method) which orchestrates `doGet()`, `doPost()`, `doPut()`.
-   - `java.io.InputStream`: Template method `read(byte[] b, int off, int len)` calls primitive abstract `read()`.
-   - **Spring Framework**: `JdbcTemplate`, `AbstractController`.
-2. **Interview Best Practices**:
-   - Always make the template method `final` in Java or C++ non-virtual to protect algorithmic integrity.
-   - Keep primitive abstract methods `protected` so external clients cannot bypass the template method and invoke isolated steps out-of-order.
+| **Mechanism** | Uses **Inheritance** (Subclassing). | Uses **Composition** (Delegation). |
+| **Algorithm Variation** | Varies **individual steps** of a fixed algorithm. | Varies the **entire algorithm** as a black box. |
+| **Runtime Swapping** | **No**. Decided at compile time by class instantiation. | **Yes**. Swappable dynamically at runtime via setters. |
+| **Granularity** | Fine-grained (shared skeleton with custom steps). | Coarse-grained (completely independent strategies). |
