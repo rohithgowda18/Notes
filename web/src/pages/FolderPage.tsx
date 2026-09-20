@@ -222,7 +222,7 @@ export const FolderPage: React.FC = () => {
                 ? `No documents matching "${filterQuery}" in this folder.`
                 : "No study notes or documents currently in this folder."
             }
-            actionLabel={filterQuery ? "Clear Filter" : undefined}
+            actionText={filterQuery ? "Clear Filter" : undefined}
             onAction={filterQuery ? () => setFilterQuery("") : undefined}
           />
         ) : (

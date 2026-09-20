@@ -171,7 +171,7 @@ export const LeetcodeFolderPage: React.FC = () => {
                 ? `No problems matching "${searchQuery}" in this category.`
                 : "No LeetCode solutions found in this category."
             }
-            actionLabel={searchQuery ? "Clear Search" : undefined}
+            actionText={searchQuery ? "Clear Search" : undefined}
             onAction={searchQuery ? () => setSearchQuery("") : undefined}
           />
         ) : (
