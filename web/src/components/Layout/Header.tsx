@@ -13,6 +13,7 @@ import {
 import { useTheme } from "../../context/ThemeContext";
 import { useRepo } from "../../context/RepoContext";
 import { useLeetcode } from "../../context/LeetcodeContext";
+import { useToast } from "../../context/ToastContext";
 import { GITHUB_OWNER, GITHUB_REPO } from "../../config/github";
 
 interface HeaderProps {
@@ -31,10 +32,20 @@ export const Header: React.FC<HeaderProps> = ({
   const { theme, toggleTheme } = useTheme();
   const { refresh: refreshNotes, loading: notesLoading, lastSynced } = useRepo();
   const { refresh: refreshLeetcode, loading: lcLoading } = useLeetcode();
+  const { showSuccess, showError } = useToast();
   const [timeAgo, setTimeAgo] = useState<string>("just now");
 
   const isLoading = isLeetcode ? lcLoading : notesLoading;
   const handleRefresh = isLeetcode ? refreshLeetcode : refreshNotes;
+
+  const onRefreshClick = async () => {
+    try {
+      await handleRefresh();
+      showSuccess(isLeetcode ? "LeetCode solutions refreshed!" : "Study notes refreshed!");
+    } catch {
+      showError("Failed to refresh. Please check your internet connection.");
+    }
+  };
 
   useEffect(() => {
     if (!lastSynced) return;
@@ -143,7 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Refresh Notes / LeetCode with relative timestamp */}
         <button
-          onClick={handleRefresh}
+          onClick={onRefreshClick}
           disabled={isLoading}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
           title={isLeetcode ? "Fetch latest LeetCode solutions" : "Fetch latest notes from GitHub"}

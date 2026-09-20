@@ -25,4 +25,3 @@ dist-ssr
 
 # Generated notes static copy during build
 public/notes/
-public/leetcode/

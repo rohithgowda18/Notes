@@ -12,9 +12,15 @@ import {
   Terminal,
   Cpu,
   Bookmark,
+  Mail,
+  Phone,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { useRepo } from "../context/RepoContext";
 import { useLeetcode } from "../context/LeetcodeContext";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useToast } from "../context/ToastContext";
 
 interface DashboardPageProps {
   onOpenSearch?: () => void;
@@ -25,6 +31,8 @@ function formatFolderName(name: string): string {
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenSearch }) => {
+  useDocumentTitle("Home Dashboard");
+  const { showSuccess } = useToast();
   const { tree: notesTree, loading: notesLoading } = useRepo();
   const { tree: lcTree, loading: lcLoading } = useLeetcode();
 
@@ -329,6 +337,82 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenSearch }) =>
                 </Link>
               );
             })}
+          </div>
+        </div>
+
+        {/* Author & Contact Info */}
+        <div className="pt-8 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xs">
+            <div className="space-y-1 max-w-lg">
+              <h3 className="text-base font-bold text-neutral-900 dark:text-neutral-100">
+                Rohith Gowda K S
+              </h3>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-relaxed">
+                Computer Science & Backend Engineering • Maintained on GitHub • Open for
+                collaborations and technical inquiries.
+              </p>
+            </div>
+
+            {/* Contact Links & Actions */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Clickable Email */}
+              <div className="inline-flex items-center rounded-xl border border-neutral-200 dark:border-neutral-750 bg-neutral-50 dark:bg-neutral-850 p-1">
+                <a
+                  href="mailto:rohithgowda.ks@gmail.com"
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  title="Send an email"
+                >
+                  <Mail className="w-3.5 h-3.5 text-blue-500" />
+                  <span>rohithgowda.ks@gmail.com</span>
+                </a>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText("rohithgowda.ks@gmail.com");
+                    showSuccess("Email copied to clipboard!");
+                  }}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                  title="Copy email to clipboard"
+                  aria-label="Copy email to clipboard"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Clickable Phone Number */}
+              <div className="inline-flex items-center rounded-xl border border-neutral-200 dark:border-neutral-750 bg-neutral-50 dark:bg-neutral-850 p-1">
+                <a
+                  href="tel:+919902634351"
+                  className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                  title="Call or message phone number"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>+91 99026 34351</span>
+                </a>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText("+919902634351");
+                    showSuccess("Phone number copied to clipboard!");
+                  }}
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                  title="Copy phone number to clipboard"
+                  aria-label="Copy phone number to clipboard"
+                >
+                  <Copy className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* GitHub Link */}
+              <a
+                href="https://github.com/rohithgowda18"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium border border-neutral-200 dark:border-neutral-750 bg-neutral-50 dark:bg-neutral-850 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 transition-colors"
+                title="View GitHub profile"
+              >
+                <span>GitHub Profile</span>
+                <ExternalLink className="w-3 h-3 text-neutral-400" />
+              </a>
+            </div>
           </div>
         </div>
       </div>

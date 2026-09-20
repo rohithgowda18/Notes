@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { RepoProvider } from "./context/RepoContext";
 import { LeetcodeProvider } from "./context/LeetcodeContext";
+import { ToastProvider } from "./context/ToastContext";
 import { Header } from "./components/Layout/Header";
 import { Sidebar } from "./components/Layout/Sidebar";
 import { MobileNav } from "./components/Layout/MobileNav";
@@ -95,7 +96,7 @@ function MainLayout() {
             <Route path="/note/*" element={<NotePage />} />
             <Route path="/pdf/*" element={<PdfPage />} />
             <Route path="/leetcode/note/*" element={<LeetcodeNotePage />} />
-            <Route path="*" element={<NotFoundPage />} />
+            <Route path="*" element={<NotFoundPage onOpenSearch={() => setIsSearchOpen(true)} />} />
           </Routes>
         </main>
       </div>
@@ -109,14 +110,16 @@ function MainLayout() {
 export default function App() {
   return (
     <ThemeProvider>
-      <RepoProvider>
-        <LeetcodeProvider>
-          <BrowserRouter>
-            <ScrollRestoration />
-            <MainLayout />
-          </BrowserRouter>
-        </LeetcodeProvider>
-      </RepoProvider>
+      <ToastProvider>
+        <RepoProvider>
+          <LeetcodeProvider>
+            <BrowserRouter>
+              <ScrollRestoration />
+              <MainLayout />
+            </BrowserRouter>
+          </LeetcodeProvider>
+        </RepoProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

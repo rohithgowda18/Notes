@@ -1,4 +1,5 @@
 import type { RepoFile, RepoFolder, RepoTree } from "../types";
+import defaultLeetcodeData from "../../public/leetcode-tree.json";
 
 const LC_TREE_CACHE_KEY = "leetcode_tree_cache";
 const LC_TREE_CACHE_TS_KEY = "leetcode_tree_timestamp";
@@ -123,7 +124,9 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
     if (cachedTree && cachedTs) {
       try {
         const tree = JSON.parse(cachedTree) as RepoTree;
-        return { tree, lastSynced: parseInt(cachedTs, 10) };
+        if (tree.allFiles && tree.allFiles.length > 0) {
+          return { tree, lastSynced: parseInt(cachedTs, 10) };
+        }
       } catch {
         // re-fetch
       }
@@ -131,7 +134,7 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
   }
 
   try {
-    const res = await fetch("/leetcode-tree.json");
+    const res = await fetch(`/leetcode-tree.json?t=${Date.now()}`);
     if (res.ok) {
       const data = await res.json();
       if (data.files && data.files.length > 0) {
@@ -144,6 +147,12 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
     }
   } catch {
     // fall through
+  }
+
+  // Fallback to pre-bundled data from repository
+  if (defaultLeetcodeData?.files && defaultLeetcodeData.files.length > 0) {
+    const tree = buildTreeFromItems(defaultLeetcodeData.files as any);
+    return { tree, lastSynced: Date.now() };
   }
 
   // Return empty tree if no data

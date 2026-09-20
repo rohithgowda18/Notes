@@ -3,6 +3,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark, oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Check, Copy } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
+import { useToast } from "../../context/ToastContext";
 
 const CODE_FONT_STACK =
   '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace';
@@ -56,11 +57,13 @@ interface CodeBlockProps {
 export const CodeBlock: React.FC<CodeBlockProps> = ({ language = "text", value }) => {
   const [copied, setCopied] = useState(false);
   const { theme } = useTheme();
+  const { showSuccess } = useToast();
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(value);
       setCopied(true);
+      showSuccess("Code copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Failed to copy code: ", err);

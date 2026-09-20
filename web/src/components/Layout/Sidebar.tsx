@@ -455,7 +455,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center gap-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5 w-full">
             <button
               onClick={() => handleTabChange("notes")}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "notes"
                   ? "bg-white dark:bg-neutral-700 text-blue-600 dark:text-blue-400 shadow-xs"
                   : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
@@ -463,11 +463,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title="Study Notes"
             >
               <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Notes</span>
+              <span>Notes</span>
             </button>
             <button
               onClick={() => handleTabChange("leetcode")}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "leetcode"
                   ? "bg-white dark:bg-neutral-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
                   : "text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
@@ -475,9 +475,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               title={`LeetCode Solutions (${lcCount})`}
             >
               <Code2 className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">LeetCode</span>
+              <span>LeetCode</span>
               {lcCount > 0 && (
-                <span className={`text-[9px] px-1 py-0 rounded-full font-mono ${
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
                   activeTab === "leetcode"
                     ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400"
                     : "bg-neutral-200 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400"

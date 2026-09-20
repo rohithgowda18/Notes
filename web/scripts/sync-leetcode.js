@@ -61,13 +61,20 @@ if (!leetcodeSourceDir) {
     leetcodeSourceDir = tempCloneDir;
     console.log(`[sync-leetcode] Clone successful.`);
   } catch (err) {
-    console.warn(`[sync-leetcode] Clone failed: ${err.message}`);
-    console.warn(`[sync-leetcode] Skipping LeetCode sync. Set LEETCODE_LOCAL_PATH env var for local dev.`);
+    console.warn(`[sync-leetcode] Remote clone failed or skipped (${err.message}).`);
+    console.log(`[sync-leetcode] Using bundled LeetCode solutions from repository...`);
 
-    const treeJsonPath = path.join(webPublicDir, "leetcode-tree.json");
-    fs.writeFileSync(treeJsonPath, JSON.stringify({ files: [] }, null, 2), "utf-8");
-    console.log(`[sync-leetcode] Created empty leetcode-tree.json`);
-    process.exit(0);
+    // If we have bundled solutions in web/public/leetcode, use them directly
+    if (fs.existsSync(path.join(leetcodeTargetDir, "dsa")) || fs.existsSync(path.join(leetcodeTargetDir, "database"))) {
+      leetcodeSourceDir = leetcodeTargetDir;
+    } else {
+      const treeJsonPath = path.join(webPublicDir, "leetcode-tree.json");
+      if (!fs.existsSync(treeJsonPath)) {
+        fs.writeFileSync(treeJsonPath, JSON.stringify({ files: [] }, null, 2), "utf-8");
+      }
+      console.log(`[sync-leetcode] Finished with existing leetcode-tree.json`);
+      process.exit(0);
+    }
   }
 }
 
