@@ -1,4 +1,4 @@
-﻿# 🚀 Tech Placement & Interview Preparation Hub
+# 🚀 Tech Placement & Interview Preparation Hub
 
 Welcome to the organized, comprehensive revision repository for Software Engineering, Backend, and Tech Placements. All materials are categorized into clean, focused subject modules with direct access to notes, interview question banks, system design deep-dives, and project case studies.
 
@@ -31,6 +31,7 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 ## 2. Database Management Systems
 📁 **Directory:** [`02-DBMS/`](./02-DBMS/) | 📖 [Module Guide](./02-DBMS/README.md)
 
+- 🌟 [DBMS Advanced Concepts & Internals](./02-DBMS/DBMS-Advanced-Concepts.md) — Concurrency (2PL, MVCC), Deadlocks (Wait-Die, Wound-Wait), Isolation Levels, B+ Trees, Buffer Pool & Slotted Pages, WAL & ARIES, Candidate Keys, 2PC & Replication
 - 📝 [SQL Placement — High-Value Query Patterns](./02-DBMS/SQL-High-Value-Query-Patterns.md) — Master query patterns (Ranking, Top-N per group, LAG/LEAD, Deduplication, Anti-joins, Conditional Aggregation)
 - 📝 [SQL Advanced Syntax Cheat Sheet](./02-DBMS/SQL-Advanced-Syntax-CheatSheet.md) — Non-trivial syntax: Frame clauses (`ROWS BETWEEN`), `NTILE`, Recursive CTEs, Date/Time math, Regex, `ROLLUP`, and `FOR UPDATE` locking
 - 📄 [DBMS Full Notes](./02-DBMS/DBMS_Full_Notes.pdf) — Relational models, SQL, Normalization, Transactions & Concurrency
