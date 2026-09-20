@@ -278,21 +278,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
     }
   }
 
-  // 1. Try static /notes/ path first (Vercel CDN deployment)
-  try {
-    const staticRes = await fetch(`/notes/${encodeURI(filePath)}`);
-    if (staticRes.ok) {
-      const text = await staticRes.text();
-      if (!text.trim().startsWith("<!DOCTYPE html") && !text.trim().startsWith("<html")) {
-        sessionStorage.setItem(cacheKey, text);
-        return text;
-      }
-    }
-  } catch {
-    // Continue
-  }
-
-  // 2. In local dev server, read directly from local workspace
+  // 1. In local dev server, read directly from local workspace
   if (import.meta.env.DEV || isLocalFallbackActive()) {
     try {
       const localRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);

@@ -232,20 +232,6 @@ export async function fetchLeetcodeMarkdown(
     console.warn("Direct GitHub raw fetch failed for LeetCode solution", e);
   }
 
-  // 2. Fallback to static /leetcode/ path if present
-  try {
-    const staticRes = await fetch(`/leetcode/${encodeURI(filePath)}`);
-    if (staticRes.ok) {
-      const text = await staticRes.text();
-      if (!text.trim().startsWith("<!DOCTYPE html") && !text.trim().startsWith("<html")) {
-        sessionStorage.setItem(cacheKey, text);
-        return text;
-      }
-    }
-  } catch {
-    // fall through
-  }
-
   throw new Error(`Unable to load LeetCode solution: ${filePath}`);
 }
 

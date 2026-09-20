@@ -9,14 +9,13 @@ if (!fs.existsSync(path.join(rootDir, "web"))) {
 }
 
 const webPublicDir = path.resolve(rootDir, "web", "public");
-const leetcodeTargetDir = path.join(webPublicDir, "leetcode");
 
 console.log(`[sync-leetcode] Root Directory: ${rootDir}`);
-console.log(`[sync-leetcode] LeetCode Target Directory: ${leetcodeTargetDir}`);
+console.log(`[sync-leetcode] Web Public Directory: ${webPublicDir}`);
 
 // Ensure target directory exists
-if (!fs.existsSync(leetcodeTargetDir)) {
-  fs.mkdirSync(leetcodeTargetDir, { recursive: true });
+if (!fs.existsSync(webPublicDir)) {
+  fs.mkdirSync(webPublicDir, { recursive: true });
 }
 
 // Determine source: local path or clone from GitHub
@@ -62,25 +61,18 @@ if (!leetcodeSourceDir) {
     console.log(`[sync-leetcode] Clone successful.`);
   } catch (err) {
     console.warn(`[sync-leetcode] Remote clone failed or skipped (${err.message}).`);
-    console.log(`[sync-leetcode] Using bundled LeetCode solutions from repository...`);
-
-    // If we have bundled solutions in web/public/leetcode, use them directly
-    if (fs.existsSync(path.join(leetcodeTargetDir, "dsa")) || fs.existsSync(path.join(leetcodeTargetDir, "database"))) {
-      leetcodeSourceDir = leetcodeTargetDir;
-    } else {
-      const treeJsonPath = path.join(webPublicDir, "leetcode-tree.json");
-      if (!fs.existsSync(treeJsonPath)) {
-        fs.writeFileSync(treeJsonPath, JSON.stringify({ files: [] }, null, 2), "utf-8");
-      }
-      console.log(`[sync-leetcode] Finished with existing leetcode-tree.json`);
-      process.exit(0);
+    const treeJsonPath = path.join(webPublicDir, "leetcode-tree.json");
+    if (!fs.existsSync(treeJsonPath)) {
+      fs.writeFileSync(treeJsonPath, JSON.stringify({ files: [] }, null, 2), "utf-8");
     }
+    console.log(`[sync-leetcode] Preserving existing leetcode-tree.json`);
+    process.exit(0);
   }
 }
 
 const files = [];
 
-function scanAndCopy(sourceDir, relPath = "") {
+function scan(sourceDir, relPath = "") {
   if (!fs.existsSync(sourceDir)) return;
   const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
 
@@ -105,26 +97,10 @@ function scanAndCopy(sourceDir, relPath = "") {
       if (!relPath && entry.name !== "dsa" && entry.name !== "database") {
         continue;
       }
-      const destDir = path.join(leetcodeTargetDir, itemRel);
-      if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir, { recursive: true });
-      }
-      scanAndCopy(sourcePath, itemRel);
+      scan(sourcePath, itemRel);
     } else if (entry.isFile()) {
       const lower = entry.name.toLowerCase();
       if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
-        const destPath = path.join(leetcodeTargetDir, itemRel);
-        const destFolder = path.dirname(destPath);
-        if (!fs.existsSync(destFolder)) {
-          fs.mkdirSync(destFolder, { recursive: true });
-        }
-
-        try {
-          fs.copyFileSync(sourcePath, destPath);
-        } catch (e) {
-          console.warn(`[sync-leetcode] Failed to copy ${itemRel}:`, e.message);
-        }
-
         files.push({
           path: itemRel,
           name: entry.name,
@@ -136,12 +112,12 @@ function scanAndCopy(sourceDir, relPath = "") {
   }
 }
 
-scanAndCopy(leetcodeSourceDir);
+scan(leetcodeSourceDir);
 
 const treeJsonPath = path.join(webPublicDir, "leetcode-tree.json");
 fs.writeFileSync(treeJsonPath, JSON.stringify({ files }, null, 2), "utf-8");
 
-console.log(`[sync-leetcode] Successfully indexed ${files.length} LeetCode solutions and created leetcode-tree.json!`);
+console.log(`[sync-leetcode] Successfully indexed ${files.length} LeetCode solutions into leetcode-tree.json! (No local copies generated)`);
 
 // Clean up temp clone
 if (fs.existsSync(tempCloneDir)) {

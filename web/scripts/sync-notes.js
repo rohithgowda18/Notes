@@ -12,17 +12,13 @@ if (!fs.existsSync(path.join(rootDir, "01-Operating-Systems"))) {
 }
 
 const webPublicDir = path.resolve(rootDir, "web", "public");
-const notesTargetDir = path.join(webPublicDir, "notes");
 
 console.log(`[sync-notes] Root Directory: ${rootDir}`);
-console.log(`[sync-notes] Notes Target Directory: ${notesTargetDir}`);
+console.log(`[sync-notes] Web Public Directory: ${webPublicDir}`);
 
-// Ensure target directories exist
+// Ensure public directory exists
 if (!fs.existsSync(webPublicDir)) {
   fs.mkdirSync(webPublicDir, { recursive: true });
-}
-if (!fs.existsSync(notesTargetDir)) {
-  fs.mkdirSync(notesTargetDir, { recursive: true });
 }
 
 const files = [];
@@ -37,7 +33,7 @@ function shouldIgnore(name) {
   );
 }
 
-function scanAndCopy(sourceDir, relPath = "") {
+function scan(sourceDir, relPath = "") {
   if (!fs.existsSync(sourceDir)) return;
   const entries = fs.readdirSync(sourceDir, { withFileTypes: true });
 
@@ -48,46 +44,26 @@ function scanAndCopy(sourceDir, relPath = "") {
     const itemRel = (relPath ? `${relPath}/${entry.name}` : entry.name).replace(/\\/g, "/");
 
     if (entry.isDirectory()) {
-      const destDir = path.join(notesTargetDir, itemRel);
-      if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir, { recursive: true });
-      }
-      scanAndCopy(sourcePath, itemRel);
+      scan(sourcePath, itemRel);
     } else if (entry.isFile()) {
       const lower = entry.name.toLowerCase();
       const isDoc = lower.endsWith(".md") || lower.endsWith(".markdown") || lower.endsWith(".pdf");
-      const isAsset = lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".svg") || lower.endsWith(".webp") || lower.endsWith(".gif");
 
-      if (isDoc || isAsset) {
-        const destPath = path.join(notesTargetDir, itemRel);
-        const destFolder = path.dirname(destPath);
-        if (!fs.existsSync(destFolder)) {
-          fs.mkdirSync(destFolder, { recursive: true });
-        }
-
-        // Copy file if changed or not exists
-        try {
-          fs.copyFileSync(sourcePath, destPath);
-        } catch (e) {
-          console.warn(`Failed to copy ${itemRel}:`, e.message);
-        }
-
-        if (isDoc) {
-          files.push({
-            path: itemRel,
-            name: entry.name,
-            type: lower.endsWith(".pdf") ? "pdf" : "markdown",
-            size: fs.statSync(sourcePath).size,
-          });
-        }
+      if (isDoc) {
+        files.push({
+          path: itemRel,
+          name: entry.name,
+          type: lower.endsWith(".pdf") ? "pdf" : "markdown",
+          size: fs.statSync(sourcePath).size,
+        });
       }
     }
   }
 }
 
-scanAndCopy(rootDir);
+scan(rootDir);
 
 const treeJsonPath = path.join(webPublicDir, "tree.json");
 fs.writeFileSync(treeJsonPath, JSON.stringify({ files }, null, 2), "utf-8");
 
-console.log(`[sync-notes] Successfully indexed ${files.length} documents and created tree.json!`);
+console.log(`[sync-notes] Successfully indexed ${files.length} documents into tree.json! (No local copies generated)`);

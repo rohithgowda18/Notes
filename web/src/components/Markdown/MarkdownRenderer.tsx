@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidRenderer } from "./MermaidRenderer";
 import { isLocalFallbackActive } from "../../services/github";
+import { GITHUB_RAW_BASE } from "../../config/github";
 import { Maximize2, X } from "lucide-react";
 
 interface MarkdownRendererProps {
@@ -50,7 +51,7 @@ function resolveAssetPath(currentFilePath: string, assetPath: string): string {
   if (isLocalDev) {
     return `/api/local-file?path=${encodeURIComponent(resolvedPath)}`;
   } else {
-    return `/notes/${encodeURI(resolvedPath)}`;
+    return `${GITHUB_RAW_BASE}/${encodeURI(resolvedPath)}`;
   }
 }
 
