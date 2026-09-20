@@ -1,352 +1,649 @@
-# 06. SOLID Design Principles — Part 2: LSP, ISP & DIP
+# 06. SOLID Design Principles — Part 2: LSP Deep Dive, ISP & DIP
 
-> 💡 **Quick Revision Anchor**: 
-> - **L (Liskov Substitution Principle)**: Subtypes must be substitutable for their base types without altering program correctness (Preserve behavioral contracts).
-> - **I (Interface Segregation Principle)**: Prefer many small, client-specific role interfaces over a single bloated "fat" interface.
-> - **D (Dependency Inversion Principle)**: Depend on **abstractions**, not on concrete low-level implementations (Decouple High-level policy from Low-level details).
+## 1. Overview
 
----
-
-## 1. Liskov Substitution Principle (LSP)
-
-> **Formal Definition (Barbara Liskov, 1987)**:
-> *"If for each object $o_1$ of type $S$ there is an object $o_2$ of type $T$ such that for all programs $P$ defined in terms of $T$, the behavior of $P$ is unchanged when $o_1$ is substituted for $o_2$, then $S$ is a subtype of $T$."*
-
-In simple terms: **A derived child class must extend the base class's behavior, NEVER break or restrict it.** If code works with a superclass `Base`, it must work seamlessly with `Subclass` without needing type checking (`instanceof`) or throwing unexpected `UnsupportedOperationException`.
-
----
-
-### The Anti-Pattern: The Fixed Deposit Account Trap
-Consider a banking system with different account types:
+Part 2 of the SOLID design principles completes the foundation of object-oriented design:
+- **Liskov Substitution Principle (LSP) Deep Dive**: Exploring the 3 foundational rule sets (Signature Rules, Property Rules, and Method Rules) that ensure child classes remain true, crash-free substitutes for their parent abstractions.
+- **Interface Segregation Principle (ISP)**: Why many client-specific interfaces are vastly superior to one monolithic general-purpose interface.
+- **Dependency Inversion Principle (DIP)**: Inverting direct structural coupling so high-level business policies and low-level storage drivers both depend on abstractions.
+- **Pragmatic Engineering Reality**: Why SOLID guidelines are *design principles* rather than dogmatic *laws*, balancing code purity against business deadlines and system trade-offs.
 
 ```mermaid
-classDiagram
-    class BankAccount {
-        +deposit(double amount) void
-        +withdraw(double amount) void
-    }
-    class SavingsAccount {
-        +deposit(double amount) void
-        +withdraw(double amount) void
-    }
-    class CurrentAccount {
-        +deposit(double amount) void
-        +withdraw(double amount) void
-    }
-    class FixedDepositAccount {
-        +deposit(double amount) void
-        +withdraw(double amount) void ❌ Throws Exception!
-    }
-
-    BankAccount <|-- SavingsAccount
-    BankAccount <|-- CurrentAccount
-    BankAccount <|-- FixedDepositAccount
+mindmap
+  root((SOLID Principles Part 2))
+    LSP Deep Dive Guidelines
+      Signature Rule
+        Arguments: Contravariance / Identical
+        Return Types: Covariance / Narrower
+        Exceptions: Narrower Subtypes Only
+      Property Rule
+        Class Invariants: Balance Non-Negative
+        History Constraint: Cannot Revoke Parent Guarantees
+      Method Rule
+        Preconditions: Can only weaken, never strengthen
+        Postconditions: Can only strengthen, never weaken
+    Interface Segregation ISP
+      Monolithic Shape fat interface
+      Segregate 2D Shape Area vs 3D Shape Volume
+      Role-Specific Client Contracts
+    Dependency Inversion DIP
+      UserService direct MySQL / MongoDB coupling
+      Introduce Persistence / Repository Abstraction
+      Constructor Dependency Injection
+    Pragmatic Philosophy
+      Principles vs Dogmatic Laws
+      DSA Time-Space Metaphor
+      Scenario-Based Object Mapping Ola vs Swiggy
 ```
 
+---
+
+## 2. What Problem Are We Solving?
+
+1. **Hidden Liskov Landmines**: Subtypes compile without errors, but at runtime throw unhandled exceptions (`RuntimeError`, `UnsupportedOperationException`), violate class invariants (negative bank balance), or reject valid inputs because child preconditions were tightened.
+2. **Fat / Polluted Interfaces (ISP Violation)**: Forcing 2D geometric shapes (Square, Rectangle) to implement 3D operations (`getVolume()`), polluting client code with dummy implementations or dummy exceptions.
+3. **Hard-Coded Infrastructure Coupling (DIP Violation)**: High-level business logic (`UserService`, `Application`) instantiating concrete low-level database drivers (`MySQLDatabase`, `MongoDBDatabase`), making database swapping impossible without modifying business classes.
+
+---
+
+## 3. Core Concepts & Definitions
+
+### 1. Broad vs. Narrow Types
+To master subtyping rules, define hierarchy directions clearly:
+- **Broader Class (Supertype / Ancestor)**: Higher up in the inheritance tree (e.g., `Organism` is broader than `Animal`, and `Animal` is broader than `Dog`).
+- **Narrower Class (Subtype / Descendant)**: Lower down in the inheritance tree (e.g., `Dog` is narrower than `Animal`).
+
+---
+
+### 2. The 3 LSP Operational Guidelines
+
+To make Liskov Substitution concrete and actionable in day-to-day coding, Barbara Liskov and Jeannette Wing categorized subtyping requirements into 3 rule sets:
+
+```text
+               ┌─────────────────────────────────────────────────────┐
+               │         LSP Verification Guidelines                 │
+               └──────────────────────────┬──────────────────────────┘
+                                          │
+         ┌────────────────────────────────┼────────────────────────────────┐
+         │                                │                                │
+         ▼                                ▼                                ▼
+┌─────────────────┐              ┌─────────────────┐              ┌─────────────────┐
+│ Signature Rules │              │ Property Rules  │              │  Method Rules   │
+├─────────────────┤              ├─────────────────┤              ├─────────────────┤
+│ • Arguments     │              │ • Class         │              │ • Preconditions │
+│   (Contravariant│              │   Invariants    │              │   (Must NOT be  │
+│    or Identical)│              │ • History       │              │    strengthened)│
+│ • Return Types  │              │   Constraints   │              │ • Postconditions│
+│   (Covariant /  │              └─────────────────┘              │   (Must NOT be  │
+│    Narrower)    │                                               │    weakened)    │
+│ • Exceptions    │                                               └─────────────────┘
+│   (Narrower /   │
+│    Subclasses)  │
+└─────────────────┘
+```
+
+#### A. Signature Rules
+1. **Argument Rule**: Subclass method argument types must either be identical or broader (contravariant) than parent method arguments. If a parent accepts any `String`, a child cannot abruptly restrict the argument to an incompatible type.
+2. **Return Type Rule (Covariance)**: Subclass method return types must be identical to or narrower (covariant) than the parent return type. If parent method `getRandomAnimal()` returns `Animal`, child method can safely return `Dog` (since every `Dog` is an `Animal`), but it cannot return a broader `Organism` that the caller cannot handle.
+3. **Exception Rule**: Subclass methods cannot throw new, broader, or unrelated checked exceptions. If parent declares `throws LogicException`, child can throw a narrower subtype (`IndexOutOfBoundsException`), but never an unrelated sibling like `RuntimeException` that the parent caller's `catch (LogicException e)` block will miss.
+
+#### B. Property Rules
+1. **Class Invariant Rule**: Any invariant condition that is guaranteed by the parent class must remain unconditionally true in all derived child classes.
+   - *Example*: In `BankAccount`, `balance >= 0` is a class invariant. A `CheatAccount` that bypasses validation and permits negative balances violates the invariant.
+2. **History Constraint Rule**: Subclasses cannot mutate properties or revoke state guarantees that the parent declared as immutable or permanently allowed.
+   - *Example*: If `BankAccount` historically promises that funds can be withdrawn at any time, a `FixedDepositAccount` that completely disables `withdraw()` violates the history constraint.
+
+#### C. Method Rules
+1. **Precondition Rule**: Conditions that must be satisfied *before* a method executes. A subclass **cannot strengthen** preconditions (cannot make input requirements stricter than the parent). Subclasses may weaken preconditions (accept a wider range of valid inputs).
+   - *Example*: If base class `User.setPassword()` requires `length >= 8`, child class `AdminUser` can accept `length >= 6` (weakened), but cannot demand `length >= 12` (strengthened), because existing clients passing 9-character passwords would break.
+2. **Postcondition Rule**: Guarantees that must hold true *after* a method completes execution. A subclass **cannot weaken** postconditions. It may strengthen them (guarantee additional outcomes).
+   - *Example*: If base class `Car.applyBrake()` guarantees `speed decreases`, child class `ElectricCar` can guarantee `speed decreases AND battery charges via regenerative braking` (strengthened postcondition), but it can never fail to decrease speed (weakened postcondition).
+
+---
+
+### 3. Interface Segregation Principle (ISP)
+> *"Many client-specific interfaces are better than one general-purpose interface."*
+- Clients should never be forced to depend on methods they do not use.
+- Avoid fat, monolithic interfaces. Instead, decompose them into focused, cohesive role-based interfaces.
+
+---
+
+### 4. Dependency Inversion Principle (DIP)
+> *"High-level modules should not depend on low-level modules. Both should depend on abstractions."*
+> *"Abstractions should not depend on details. Details should depend on abstractions."*
+- **High-Level Module**: Business logic, orchestrators, core application services (e.g. `UserService`, `OrderProcessor`).
+- **Low-Level Module**: Storage drivers, networking protocols, disk access (e.g. `MySQLDatabase`, `MongoDBDatabase`, `CassandraDB`).
+- **The Solution**: Place an interface abstraction between high-level and low-level modules. Both depend on the abstraction, and low-level implementations are injected dynamically via Constructor Dependency Injection.
+
+---
+
+## 4. Important Terminology
+
+- **Covariance**: Allowing a child method to return a narrower (more specific) type than the parent method.
+- **Contravariance**: Allowing a child method to accept broader (more generic) argument types than the parent method.
+- **Class Invariant**: A condition that must remain `true` for all valid states of an object throughout its entire lifecycle.
+- **History Constraint**: The guarantee that state mutations possible in the child do not violate the immutable properties or operational guarantees established by the parent.
+- **High-Level Module**: Classes that encapsulate core domain policy and user journeys.
+- **Low-Level Module**: Classes that handle I/O details, databases, caches, hardware, and external APIs.
+- **Dependency Injection (DI)**: Supplying an external collaborator to an object (typically via constructor) rather than letting the object instantiate it with `new`.
+
+---
+
+## 5. Real-World Analogies
+
+### 1. Car Braking & Regenerative Braking (LSP Postconditions)
+- In a standard gasoline car, pressing the brake pedal guarantees the car slows down (postcondition).
+- In an electric vehicle (Tesla, Nexon EV), pressing the brake pedal slows down the car **and** charges the battery through regenerative braking.
+- The electric car strengthens the postcondition (more benefits delivered to the driver), which is 100% compliant with LSP. But if a car subclass failed to slow down, it would violate LSP and cause a catastrophe.
+
+### 2. 2D vs. 3D Geometric Shapes (ISP)
+- A `Shape` interface with `calculateArea()` and `calculateVolume()`.
+- A 2D `Square` or `Rectangle` has no physical height or depth. Forcing them to implement `calculateVolume()` makes no geometric sense and forces dummy exception stubs.
+- Segregate into `TwoDimensionalShape` (area) and `ThreeDimensionalShape` (area + volume).
+
+### 3. CEO, Managers, and Developers (DIP)
+- A company's CEO (high-level module) does not directly micromanage individual junior developers or track which compiler version they run (low-level module).
+- If the company swaps developers or hires contractors, the CEO does not rewrite company strategy.
+- The CEO communicates through an abstraction: the **Engineering Manager interface**. The manager delegates execution to developers. High-level policy remains completely decoupled from low-level personnel details.
+
+### 4. Human Roles: Swiggy vs. Ola (The Contextual Object Metaphor)
+- A single real-world `Human` (User) object is vastly complex: they eat, sleep, sing, walk, work, and commute.
+- In pure OOP modeling, does that mean our `User` class should have 500 methods? **No.**
+- In the **Ola / Uber** app scenario, the user role only invokes mobility behaviors: `bookRide()`, `cancelRide()`.
+- In the **Swiggy / Zomato** app scenario, the same human role invokes food ordering behaviors: `orderFood()`, `cancelOrder()`.
+- Software maps real-world entities *specifically within the boundary of an application scenario*. Interface segregation reflects how real objects present different facets in different contexts.
+
+---
+
+## 6. Naive / Bad Design: Violating SOLID Part 2
+
+### 1. LSP Violation: The Invariant & History Breaker
 ```java
-// ❌ VIOLATION OF LSP: FixedDeposit breaks the base class contract!
+// ❌ LSP Violation: Invariant and History Constraint broken
 public class BankAccount {
     protected double balance;
 
-    public void deposit(double amount) { this.balance += amount; }
-    public void withdraw(double amount) {
-        if (balance >= amount) {
-            this.balance -= amount;
-        } else {
-            throw new IllegalArgumentException("Insufficient funds");
+    public BankAccount(double initialBalance) {
+        if (initialBalance < 0) {
+            throw new IllegalArgumentException("Balance cannot be negative!");
         }
+        this.balance = initialBalance;
+    }
+
+    // Invariant: balance >= 0
+    // History Constraint: withdrawal is an allowed lifecycle operation
+    public void withdraw(double amount) {
+        if (balance - amount < 0) {
+            throw new RuntimeException("Insufficient funds!");
+        }
+        this.balance -= amount;
+        System.out.println("Withdrawn: " + amount + ", Remaining: " + balance);
     }
 }
 
-public class FixedDepositAccount extends BankAccount {
+// ❌ Violates Invariant: CheatAccount permits balance < 0
+public class CheatAccount extends BankAccount {
+    public CheatAccount(double initialBalance) {
+        super(initialBalance);
+    }
+
     @Override
     public void withdraw(double amount) {
-        // In a Fixed Deposit, money is locked until maturity!
-        throw new UnsupportedOperationException("❌ Cannot withdraw from a Fixed Deposit before maturity!");
+        // Skips parent balance >= 0 check! Breaks class invariant!
+        this.balance -= amount;
+        System.out.println("Cheat withdrawal allowed! Balance is now: " + balance);
     }
 }
-```
 
-#### What goes wrong at runtime?
-```java
-public class BankingService {
-    public void processMonthlyDeductions(List<BankAccount> accounts, double fee) {
-        for (BankAccount acc : accounts) {
-            acc.withdraw(fee); // 💥 CRASHES with UnsupportedOperationException when encountering FixedDepositAccount!
-        }
+// ❌ Violates History Constraint: FixedDeposit revokes withdraw()
+public class FixedDepositAccount extends BankAccount {
+    public FixedDepositAccount(double initialBalance) {
+        super(initialBalance);
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        // Revokes parent guarantee that money can be withdrawn!
+        throw new UnsupportedOperationException("Withdrawals not allowed on Fixed Deposit before maturity!");
     }
 }
 ```
-The client assumed every `BankAccount` could withdraw. Because `FixedDepositAccount` couldn't fulfill the parent's contract, program correctness was violated.
 
 ---
 
-### The Clean Solution (Applying LSP)
-Segregate account hierarchies so that non-withdrawable accounts do not inherit withdraw capabilities:
+### 2. ISP Violation: The Bloated Shape Interface
+```java
+// ❌ ISP Violation: General-purpose interface forces 2D shapes to define 3D methods
+public interface Shape {
+    double calculateArea();
+    double calculateVolume(); // 2D shapes do not have volume!
+}
 
+public class Square implements Shape {
+    private final double side;
+
+    public Square(double side) { this.side = side; }
+
+    @Override
+    public double calculateArea() {
+        return side * side;
+    }
+
+    @Override
+    public double calculateVolume() {
+        // Forced dummy exception stub!
+        throw new UnsupportedOperationException("Square is 2D; volume is not applicable!");
+    }
+}
+```
+
+---
+
+### 3. DIP Violation: Direct Concrete Storage Coupling
+```java
+// ❌ Low-Level Module 1
+public class MySQLDatabase {
+    public void executeQuery(String query) {
+        System.out.println("Executing SQL: " + query);
+    }
+}
+
+// ❌ Low-Level Module 2
+public class MongoDBDatabase {
+    public void insertDocument(String doc) {
+        System.out.println("Inserting Mongo Document: " + doc);
+    }
+}
+
+// ❌ DIP Violation: High-level UserService directly instantiates and depends on concrete databases
+public class UserService {
+    private MySQLDatabase sqlDb;
+    private MongoDBDatabase mongoDb;
+
+    public UserService() {
+        // Direct hard-coded coupling!
+        this.sqlDb = new MySQLDatabase();
+        this.mongoDb = new MongoDBDatabase();
+    }
+
+    public void storeUserToSql(String user) {
+        sqlDb.executeQuery("INSERT INTO users VALUES ('" + user + "')");
+    }
+
+    public void storeUserToMongo(String user) {
+        mongoDb.insertDocument("{ user: '" + user + "' }");
+    }
+    // If Cassandra DB is introduced, UserService MUST be modified -> Breaks OCP and DIP!
+}
+```
+
+---
+
+## 7. Refactoring Step-by-Step
+
+```text
+Step 1: Fix LSP Hierarchy
+  Separate Account contracts:
+  Base Account (deposit, getBalance) 
+  --> WithdrawableAccount extends Account (withdraw)
+  --> FixedDepositAccount implements Account (no withdrawal method exposed)
+
+Step 2: Segregate Interfaces (ISP)
+  Split fat Shape interface into role interfaces:
+  TwoDimensionalShape (calculateArea)
+  ThreeDimensionalShape extends TwoDimensionalShape (calculateVolume)
+  Square implements TwoDimensionalShape
+  Cube implements ThreeDimensionalShape
+
+Step 3: Invert Dependencies (DIP)
+  Introduce DatabasePersistence abstraction:
+  interface DatabasePersistence { void save(String data); }
+  High-level UserService depends on DatabasePersistence
+  Low-level MySQLDatabase & MongoDBDatabase implement DatabasePersistence
+  Inject dependency via UserService constructor
+```
+
+---
+
+## 8. Final Design & Architecture
+
+### Class Diagram
 ```mermaid
 classDiagram
+    %% ISP & LSP Account Structure
     class Account {
         <<interface>>
         +deposit(double amount) void
         +getBalance() double
     }
+
     class WithdrawableAccount {
         <<interface>>
         +withdraw(double amount) void
     }
-    class SavingsAccount {
-        +deposit(double amount) void
-        +withdraw(double amount) void
-    }
-    class CurrentAccount {
-        +deposit(double amount) void
-        +withdraw(double amount) void
-    }
-    class FixedDepositAccount {
-        +deposit(double amount) void
+
+    Account <|-- WithdrawableAccount : Extends
+    WithdrawableAccount <|.. SavingsAccount : Implements
+    Account <|.. FixedDepositAccount : Implements
+
+    %% ISP Shapes
+    class TwoDimensionalShape {
+        <<interface>>
+        +calculateArea() double
     }
 
-    Account <|-- WithdrawableAccount
-    WithdrawableAccount <|.. SavingsAccount
-    WithdrawableAccount <|.. CurrentAccount
-    Account <|.. FixedDepositAccount
+    class ThreeDimensionalShape {
+        <<interface>>
+        +calculateArea() double
+        +calculateVolume() double
+    }
+
+    TwoDimensionalShape <|.. Square : Implements
+    ThreeDimensionalShape <|.. Cube : Implements
+
+    %% DIP Architecture
+    class DatabasePersistence {
+        <<interface>>
+        +save(String data) void
+    }
+
+    class MySQLDatabasePersistence {
+        +save(String data) void
+    }
+
+    class MongoDBDatabasePersistence {
+        +save(String data) void
+    }
+
+    class UserService {
+        -DatabasePersistence persistence
+        +UserService(DatabasePersistence persistence)
+        +registerUser(String user) void
+    }
+
+    DatabasePersistence <|.. MySQLDatabasePersistence : Implements
+    DatabasePersistence <|.. MongoDBDatabasePersistence : Implements
+    UserService --> DatabasePersistence : Depends on Abstraction
 ```
 
+---
+
+## 9. Complete Java Implementation
+
 ```java
-// 1. Base abstraction for all accounts
+import java.util.*;
+
+// ============================================================================
+// 1. LSP GUIDELINES IMPLEMENTATION
+// ============================================================================
+
+// --- A. Property Rule & History Constraint Clean Hierarchy ---
 public interface Account {
     void deposit(double amount);
     double getBalance();
 }
 
-// 2. Specialized abstraction for accounts supporting withdrawal
 public interface WithdrawableAccount extends Account {
     void withdraw(double amount);
 }
 
-// 3. Regular accounts implement WithdrawableAccount
 public class SavingsAccount implements WithdrawableAccount {
     private double balance;
-    @Override public void deposit(double amt) { balance += amt; }
-    @Override public void withdraw(double amt) { balance -= amt; }
-    @Override public double getBalance() { return balance; }
+
+    public SavingsAccount(double initialBalance) {
+        if (initialBalance < 0) throw new IllegalArgumentException("Initial balance cannot be negative");
+        this.balance = initialBalance;
+    }
+
+    @Override
+    public void deposit(double amount) {
+        if (amount <= 0) throw new IllegalArgumentException("Deposit amount must be positive");
+        this.balance += amount;
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        // Enforces Invariant: balance >= 0
+        if (balance - amount < 0) throw new IllegalStateException("Insufficient funds");
+        this.balance -= amount;
+        System.out.println("[SavingsAccount] Withdrawn: " + amount + ", Remaining: " + balance);
+    }
+
+    @Override
+    public double getBalance() { return balance; }
 }
 
-// 4. Fixed deposit only implements Account!
 public class FixedDepositAccount implements Account {
     private double balance;
-    @Override public void deposit(double amt) { balance += amt; }
-    @Override public double getBalance() { return balance; }
-}
-```
-Now, `processMonthlyDeductions(List<WithdrawableAccount> accounts)` is completely type-safe and **impossible to crash!**
 
----
-
-### The 4 Formal Subtyping Rules of LSP (Interview Favorite)
-1. **Preconditions cannot be strengthened in a subtype**: If parent method accepts any integer, child cannot restrict it to only positive numbers.
-2. **Postconditions cannot be weakened in a subtype**: If parent guarantees returning balance $\ge 0$, child cannot allow balance to become negative.
-3. **Invariants must be preserved**: Core integrity rules of parent must remain true in all subtypes.
-4. **Exception Rule**: Subclass methods cannot throw new or broader checked exceptions than the superclass method.
-
----
-
-## 2. Interface Segregation Principle (ISP)
-
-> **Formal Definition**: *"Clients should not be forced to depend upon interfaces that they do not use."*
-
-In short: **Keep interfaces small, highly focused, and role-based.** Large, bloated ("fat") interfaces force implementers to write empty dummy methods or throw `UnsupportedOperationException`.
-
-### The Anti-Pattern: The "Fat" Vehicle Interface
-```java
-// ❌ VIOLATION OF ISP: Bloated interface forcing irrelevant methods
-public interface VehicleOperations {
-    void drive();
-    void startEngine();
-    void stopEngine();
-    void refuel();
-    void pedal();
-}
-
-public class Bicycle implements VehicleOperations {
-    @Override public void pedal() { System.out.println("Pedaling bicycle..."); }
-    @Override public void drive() { System.out.println("Riding bicycle..."); }
-    
-    // Forced dummy implementations!
-    @Override public void startEngine() { /* No engine! Dummy empty body */ }
-    @Override public void stopEngine()  { /* No engine! Dummy empty body */ }
-    @Override public void refuel()      { throw new UnsupportedOperationException("No fuel tank!"); }
-}
-```
-
-### The Clean Solution (Applying ISP)
-Break the monolithic interface into discrete, cohesive role interfaces:
-
-```mermaid
-classDiagram
-    class Drivable {
-        <<interface>>
-        +drive() void
-    }
-    class Motorized {
-        <<interface>>
-        +startEngine() void
-        +stopEngine() void
-        +refuel() void
-    }
-    class PedalPowered {
-        <<interface>>
-        +pedal() void
+    public FixedDepositAccount(double initialBalance) {
+        if (initialBalance < 0) throw new IllegalArgumentException("Initial balance cannot be negative");
+        this.balance = initialBalance;
     }
 
-    class Car {
-        +drive() void
-        +startEngine() void
-        +stopEngine() void
-        +refuel() void
-    }
-    class Bicycle {
-        +drive() void
-        +pedal() void
-    }
-
-    Drivable <|.. Car
-    Motorized <|.. Car
-    Drivable <|.. Bicycle
-    PedalPowered <|.. Bicycle
-```
-
-```java
-public interface Drivable { void drive(); }
-public interface Motorized { void startEngine(); void stopEngine(); void refuel(); }
-public interface PedalPowered { void pedal(); }
-
-// Car implements only what it needs
-public class Car implements Drivable, Motorized {
-    @Override public void drive() { System.out.println("Driving car."); }
-    @Override public void startEngine() { System.out.println("Engine started."); }
-    @Override public void stopEngine() { System.out.println("Engine stopped."); }
-    @Override public void refuel() { System.out.println("Refueling petrol."); }
-}
-
-// Bicycle implements only what it needs
-public class Bicycle implements Drivable, PedalPowered {
-    @Override public void drive() { System.out.println("Riding bicycle."); }
-    @Override public void pedal() { System.out.println("Pedaling pedals."); }
-}
-```
-
----
-
-## 3. Dependency Inversion Principle (DIP)
-
-> **Formal Definition**:
-> 1. *"High-level modules should not depend on low-level modules. Both should depend on abstractions."*
-> 2. *"Abstractions should not depend on details. Details should depend on abstractions."*
-
-- **High-level module**: Core business logic / policy decisions (e.g., `UserService`, `OrderCheckoutService`).
-- **Low-level module**: Implementation details / infrastructure mechanisms (e.g., `MySQLDatabase`, `SendGridEmailService`, `StripeAPI`).
-
-### The Anti-Pattern: Direct Concrete Coupling
-```java
-// Low-level module
-public class MySQLDatabase {
-    public void saveUser(String email) {
-        System.out.println("Writing user " + email + " to MySQL tables.");
-    }
-}
-
-// ❌ VIOLATION OF DIP: High-level business service directly instantiates low-level driver!
-public class UserService {
-    private MySQLDatabase database; // Tightly coupled to MySQL!
-
-    public UserService() {
-        this.database = new MySQLDatabase(); // Cannot mock for unit testing!
-    }
-
-    public void registerUser(String email) {
-        // Business logic
-        database.saveUser(email);
-    }
-}
-```
-
-#### Why is this bad?
-1. You cannot swap MySQL for PostgreSQL or MongoDB without modifying `UserService.java`.
-2. You cannot write isolated unit tests without having a live MySQL database running!
-
----
-
-### The Clean Solution (Applying DIP via Dependency Injection)
-
-Invert the dependency arrow: both `UserService` and database implementations depend on a common abstraction (`UserRepository`):
-
-```mermaid
-flowchart TD
-    subgraph "Before DIP (Tightly Coupled)"
-        US1[UserService - High Level] -->|Direct Dependency| DB1[MySQLDatabase - Low Level]
-    end
-
-    subgraph "After DIP (Decoupled via Abstraction)"
-        US2[UserService - High Level] -->|Depends on| Interface["<<interface>><br/>UserRepository"]
-        DB2[MySQLRepository] ..|>|Implements| Interface
-        Mongo[MongoRepository] ..|>|Implements| Interface
-        Mock[MockUserRepository] ..|>|Implements| Interface
-    end
-
-    style Interface fill:#dbeafe,stroke:#3b82f6,color:#1e40af
-```
-
-```java
-// 1. Abstraction (Contract owned by domain)
-public interface UserRepository {
-    void save(String email);
-    User findByEmail(String email);
-}
-
-// 2. Low-level implementation 1: MySQL
-public class MySQLUserRepository implements UserRepository {
     @Override
-    public void save(String email) {
-        System.out.println("Executing INSERT INTO users VALUES ('" + email + "') in MySQL");
+    public void deposit(double amount) {
+        this.balance += amount;
     }
-    @Override public User findByEmail(String email) { return null; }
-}
 
-// 3. Low-level implementation 2: MongoDB
-public class MongoUserRepository implements UserRepository {
     @Override
-    public void save(String email) {
-        System.out.println("Saving BSON document { email: '" + email + "' } in MongoDB");
-    }
-    @Override public User findByEmail(String email) { return null; }
+    public double getBalance() { return balance; }
+    // Clean design: Does NOT implement WithdrawableAccount -> withdraw() is never exposed!
 }
 
-// 4. High-level service: Inversion of Control via Constructor Injection!
-public class UserService {
-    private final UserRepository userRepository;
+// --- B. Method Rules: Preconditions & Postconditions ---
+public class User {
+    protected String password;
 
-    // Dependency Injection: Abstraction is supplied from the outside
-    public UserService(UserRepository userRepository) {
-        this.userRepository = userRepository;
+    // Precondition: password length must be >= 8
+    public void setPassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters long");
+        }
+        this.password = password;
+        System.out.println("[User] Password set successfully");
+    }
+}
+
+public class FlexibleUser extends User {
+    // Weakened Precondition: Accepts length >= 6 (Permitted by LSP!)
+    @Override
+    public void setPassword(String password) {
+        if (password == null || password.length() < 6) {
+            throw new IllegalArgumentException("Password must be at least 6 characters long");
+        }
+        this.password = password;
+        System.out.println("[FlexibleUser] Weakened precondition accepted: Password set successfully");
+    }
+}
+
+// ============================================================================
+// 2. INTERFACE SEGREGATION PRINCIPLE (ISP)
+// ============================================================================
+
+public interface TwoDimensionalShape {
+    double calculateArea();
+}
+
+public interface ThreeDimensionalShape {
+    double calculateArea();
+    double calculateVolume();
+}
+
+public class Square implements TwoDimensionalShape {
+    private final double side;
+
+    public Square(double side) { this.side = side; }
+
+    @Override
+    public double calculateArea() {
+        return side * side;
+    }
+}
+
+public class Cube implements ThreeDimensionalShape {
+    private final double side;
+
+    public Cube(double side) { this.side = side; }
+
+    @Override
+    public double calculateArea() {
+        return 6 * side * side;
     }
 
-    public void register(String email) {
-        System.out.println("Validating email syntax...");
-        userRepository.save(email); // Relies on abstraction!
+    @Override
+    public double calculateVolume() {
+        return side * side * side;
+    }
+}
+
+// ============================================================================
+// 3. DEPENDENCY INVERSION PRINCIPLE (DIP)
+// ============================================================================
+
+// Abstraction layer between High-Level and Low-Level modules
+public interface DatabasePersistence {
+    void save(String data);
+}
+
+// Low-Level Module A
+public class MySQLDatabasePersistence implements DatabasePersistence {
+    @Override
+    public void save(String data) {
+        System.out.println("💾 [MySQL Driver] Executing INSERT INTO records VALUES ('" + data + "')");
+    }
+}
+
+// Low-Level Module B
+public class MongoDBDatabasePersistence implements DatabasePersistence {
+    @Override
+    public void save(String data) {
+        System.out.println("🍃 [MongoDB Driver] Executing db.records.insertOne({ payload: '" + data + "' })");
+    }
+}
+
+// Low-Level Module C (Added later without changing UserService - OCP + DIP!)
+public class CassandraDatabasePersistence implements DatabasePersistence {
+    @Override
+    public void save(String data) {
+        System.out.println("⚡ [Cassandra Driver] Executing INSERT INTO cluster_keyspace ('" + data + "')");
+    }
+}
+
+// High-Level Business Service: Depends ONLY on DatabasePersistence abstraction
+public class UserService {
+    private final DatabasePersistence persistence;
+
+    // Constructor Dependency Injection
+    public UserService(DatabasePersistence persistence) {
+        this.persistence = Objects.requireNonNull(persistence, "Persistence driver cannot be null");
+    }
+
+    public void registerUser(String username) {
+        System.out.println("🔒 [UserService] Validating business rules for user: " + username);
+        persistence.save(username); // Delegated polymorphically!
+    }
+}
+
+// ============================================================================
+// DEMONSTRATION / DRIVER
+// ============================================================================
+public class SolidPart2Demo {
+    public static void main(String[] args) {
+        System.out.println("--- 1. LSP Clean Demonstration ---");
+        WithdrawableAccount savings = new SavingsAccount(1000);
+        savings.withdraw(400);
+
+        Account fd = new FixedDepositAccount(50000);
+        System.out.println("FD Balance: " + fd.getBalance());
+
+        System.out.println("\n--- 2. ISP Shapes Demonstration ---");
+        TwoDimensionalShape square = new Square(5);
+        ThreeDimensionalShape cube = new Cube(3);
+        System.out.println("Square Area: " + square.calculateArea());
+        System.out.println("Cube Area: " + cube.calculateArea() + ", Volume: " + cube.calculateVolume());
+
+        System.out.println("\n--- 3. DIP Dependency Injection Demonstration ---");
+        // Swap low-level storage drivers seamlessly at runtime:
+        UserService mysqlService = new UserService(new MySQLDatabasePersistence());
+        mysqlService.registerUser("rohit_dev");
+
+        UserService mongoService = new UserService(new MongoDBDatabasePersistence());
+        mongoService.registerUser("anurag_tech");
+
+        UserService cassandraService = new UserService(new CassandraDatabasePersistence());
+        cassandraService.registerUser("cloud_cluster_node");
     }
 }
 ```
 
 ---
 
-## 4. Summary: The Complete SOLID Quick-Check Guide
+## 10. Engineering Philosophy: Principles vs. Laws
 
-| Principle | Primary Problem it Solves | Core Refactoring Tool |
-| :--- | :--- | :--- |
-| **S - Single Responsibility** | God Classes, merge conflicts, high coupling | Break class into focused, single-stakeholder modules |
-| **O - Open / Closed** | Fragile `if-else` / `switch` statements modifying legacy code | Interfaces, Polymorphism, Strategy / Factory patterns |
-| **L - Liskov Substitution** | Unexpected runtime errors, broken subclass contracts | Hierarchy segregation, honoring preconditions & postconditions |
-| **I - Interface Segregation** | Dummy empty methods, fat interface pollution | Break into small, cohesive, role-based interfaces |
-| **D - Dependency Inversion** | Hard-coded low-level dependencies, untestable code | Inversion of Control (IoC), Dependency Injection (DI) |
+An essential insight emphasized in software engineering interviews:
+
+```text
+       Engineering Law (Immutable)            Design Principle (Guideline)
+  ┌─────────────────────────────────────┐   ┌─────────────────────────────────────┐
+  │ Cannot be violated without runtime  │   │ An ideal target for clean, scalable │
+  │ failure or compiler errors.         │   │ and maintainable architecture.      │
+  │ Example: Type safety, syntax.       │   │ Trade-offs are evaluated against    │
+  │                                     │   │ business needs & performance.       │
+  └─────────────────────────────────────┘   └─────────────────────────────────────┘
+```
+
+1. **The DSA Space-Time Trade-off Metaphor**:
+   - In DSA, an algorithm designer rarely achieves $O(1)$ time and $O(1)$ space simultaneously. You trade memory (e.g., using a `HashMap`) to gain faster runtime lookup.
+   - Similarly, in Low-Level Design, achieving 100% adherence to all SOLID principles simultaneously can introduce extreme indirection (hundreds of tiny interfaces and wrapper classes).
+2. **Business Reality vs. Code Purity**:
+   - Real-world production code sometimes tolerates controlled violations of SOLID when strict business deadlines, extreme performance constraints, or legacy frameworks demand pragmatic trade-offs.
+   - Strive to follow SOLID as closely as possible—it keeps systems extensible, debuggable, and testable—but remember that delivering real customer business value is the ultimate goal.
+
+---
+
+## 11. Important Design Decisions
+
+1. **Why `FixedDepositAccount` does not extend `WithdrawableAccount`**: By segregating account contracts at compile-time, callers expecting a `WithdrawableAccount` can never be passed a `FixedDepositAccount`. Compiler type-safety prevents runtime crashes.
+2. **Constructor Injection over Setter / Field Injection**: Constructor injection guarantees that `UserService` cannot be instantiated in an invalid, half-initialized state without a persistence engine.
+3. **Segregated Shapes over Default Methods**: Default interface methods that throw `UnsupportedOperationException` defeat static typing; dedicated role interfaces maintain compile-time safety.
+
+---
+
+## 12. Edge Cases
+
+- **Covariant Returns in Java**: Java natively supports covariant return types. If `Parent.get()` returns `Number`, `Child.get()` can return `Integer`.
+- **Precondition Strengthening Trap**: Adding `@NotNull` or checking `arg > 10` in a subclass when the parent allowed `null` or `arg > 0` is an invisible LSP trap that breaks client code.
+- **Null Injections**: Guarding constructors against `null` dependencies using `Objects.requireNonNull()`.
+
+---
+
+## 13. Comparison Summary
+
+| Metric | LSP (Liskov Substitution) | ISP (Interface Segregation) | DIP (Dependency Inversion) |
+| :--- | :--- | :--- | :--- |
+| **Primary Focus** | Subtyping correctness & contract fidelity | Interface granularity & client role focus | Structural coupling & architectural dependency flow |
+| **Target Element** | Classes, subclasses, and overridden methods | Interfaces and client contracts | High-level business vs low-level I/O classes |
+| **Key Warning Sign** | Subclasses throwing `UnsupportedOperationException` | Classes implementing dummy/empty method bodies | Classes writing `new ConcreteDriver()` directly in logic |
+| **Resolution Tool** | Formal subtyping rules (Signature, Property, Method) | Splitting fat interfaces into role interfaces | Interfaces + Constructor Dependency Injection |
+
+---
+
+## 14. Quick Revision
+
+### Core Idea
+LSP guarantees subtypes satisfy parent contracts without breaking client behavior; ISP keeps interfaces small and client-focused; DIP prevents business policy from depending directly on infrastructure drivers.
+
+### Remember
+- **LSP Guidelines**: Signature rules (identical args, covariant return, narrower exceptions), Property rules (class invariants & history constraints), and Method rules (cannot strengthen preconditions, cannot weaken postconditions).
+- **ISP**: Split monolithic interfaces into client-specific role interfaces (e.g. 2D vs 3D shapes).
+- **DIP**: High-level modules (`UserService`) and low-level modules (`MySQL`, `MongoDB`) must both depend on abstractions (`DatabasePersistence`).
+
+### Java Implementation Idea
+Define fine-grained interfaces (`WithdrawableAccount`, `TwoDimensionalShape`, `DatabasePersistence`), implement only applicable interfaces on concrete classes, and inject dependencies through constructors (`new UserService(new MySQLDatabasePersistence())`).
+
+### Most Important Interview Point
+DIP is the architectural principle (*"depend on abstractions"*); Inversion of Control (IoC) is the overarching framework pattern (*"framework calls you"*); Dependency Injection (DI) is the specific technique used to pass the dependency into the class.
+
+### Common Trap
+Assuming SOLID principles are rigid legal statutes rather than guidelines. Never hesitate to explain the trade-offs: pure SOLID prevents bugs and enhances maintainability, but engineering pragmatism dictates balancing design purity with business complexity.

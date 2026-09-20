@@ -1,319 +1,524 @@
 # 23. Build Payment Gateway System LLD
 
-> 💡 **Quick Revision Anchor**: A mission-critical financial system LLD combining the **Template Method Pattern** (enforcing the invariant *Validate -> Initiate -> Confirm* transaction lifecycle), **Strategy/Factory** (dynamic gateway routing between Razorpay, Paytm, Stripe), **Retry Mechanisms** for transient network failures, and **Remote Proxy** abstraction.
+> 💡 **Quick Revision Anchor**: A mission-critical financial system LLD that seamlessly coordinates three GoF patterns: **Template Method Pattern** (enforcing the invariant sequence: *Validate $\to$ Initiate $\to$ Confirm* across different banking partners), **Proxy Pattern** (`PaymentGatewayProxy` intercepting calls to handle *fault-tolerant Retries, Error Logging, and Circuit Breaking*), and **Factory Pattern** (dynamically provisioning *Paytm*, *Razorpay*, or *Stripe* pipelines).
 
 ---
 
-## 1. Problem Statement & Requirements
+## 1. Problem Statement & Functional Requirements
 
-Design a robust, extensible payment gateway routing engine capable of safely processing financial transactions across multiple banking and 3rd-party payment aggregators.
-
-### Functional Requirements:
-1. **Multi-Gateway Support**: Support multiple vendors (e.g., Razorpay, Paytm, Stripe) with uniform processing.
-2. **Invariant Transaction Lifecycle**: Every payment **must** strictly execute 3 phases:
-   - **Phase 1: Validation**: Verify parameters, currency compatibility, and account integrity.
-   - **Phase 2: Initiation**: Dispatch payment payload to the external provider.
-   - **Phase 3: Confirmation**: Verify transaction receipt, capture funds, and log audit trails.
-3. **Resilience & Retry Mechanism**: Transient network failures must trigger automatic retries (up to $N$ attempts) before declaring failure.
-4. **Pluggability**: Adding a new provider must never modify existing gateway execution pipelines.
-
----
-
-## 2. Architecture & Design Patterns Map
+The goal is to design a plug-and-play **Payment Gateway Routing Engine** that any client application (e.g., Zomato, Swiggy, Amazon) can integrate as a single entry point to process payments safely across diverse third-party financial providers.
 
 ```mermaid
-graph TD
-    Client[Client / Checkout Service] --> Factory[PaymentGatewayFactory]
-    Factory --> GW[PaymentGateway - Template Method]
-    
-    subgraph "Template Method Pipeline"
-        GW --> V[1. validatePayment]
-        GW --> I[2. initiateWithRetry]
-        GW --> C[3. confirmPayment]
-    end
+flowchart LR
+    ClientApp([Client App<br/>Zomato / Amazon]) -->|PaymentRequest| Controller["PaymentController / Engine"]
+    Controller --> Factory["PaymentGatewayFactory"]
+    Factory --> Proxy["PaymentGatewayProxy<br/>(Retry & Logging Proxy)"]
+    Proxy --> Template["PaymentGateway<br/>(Template Method)"]
+    Template --> RealGW["PaytmGateway / RazorpayGateway"]
+    RealGW --> Banking["IBankingSystem<br/>(Paytm / Razorpay Banking Backend)"]
 
-    subgraph "Concrete Gateways (Subclasses)"
-        GW --> Razorpay[RazorpayGateway]
-        GW --> Paytm[PaytmGateway]
-        GW --> Stripe[StripeGateway]
-    end
+    style ClientApp fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
+    style Proxy fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Template fill:#e8f8f5,stroke:#26a69a,stroke-width:2px
+    style RealGW fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
+```
 
-    subgraph "Remote Boundary (Remote Proxy / Adapter)"
-        Razorpay --> RProxy[RazorpayRemoteProxy]
-        RProxy -.-> ExtBank[External Razorpay Cloud API]
-    end
+### Functional Requirements (Taught in Lecture):
+1. **Multi-Provider Support**: Pluggable integration with multiple aggregators/gateways (e.g., Paytm, Razorpay, Google Pay, Stripe).
+2. **Open-Closed Extensibility (OCP)**: New gateways must be seamlessly added in the future without modifying core business orchestration.
+3. **Standard Invariant Payment Lifecycle**: Regardless of which third-party provider processes the transaction, every payment must strictly execute three ordered phases:
+   $$\text{Validate} \longrightarrow \text{Initiate} \longrightarrow \text{Confirm}$$
+4. **Resilience & Automatic Retry Mechanism**: Financial network calls and banking APIs are inherently prone to transient timeouts or temporary drops. The system must automatically retry failed transactions up to a configurable threshold before declaring failure.
+5. **Error Logging & Audit Trails**: Comprehensive diagnostics on failed attempts with clear reason codes.
+
+### Non-Functional Requirements:
+- **Plug-and-Play Single Entry Point**: A simplified client-facing API that completely hides internal networking, banking APIs, and retry loops.
+- **High Availability & Fault Tolerance**: Isolated failure boundaries so that an outage in one provider (e.g., Paytm) does not compromise other gateways (e.g., Razorpay).
+
+---
+
+## 2. Architectural Design Patterns Overview
+
+The lecture masterfully coordinates three core design patterns to solve this problem cleanly:
+
+```mermaid
+mindmap
+  root((Payment Gateway Architecture))
+    Template Method Pattern
+      Base class: PaymentGateway
+      Invariant Template Method: processPayment
+      Enforces execution order: validate -> initiate -> confirm
+    Proxy Pattern
+      Class: PaymentGatewayProxy
+      Protection / Interceptor Proxy
+      Single Responsibility: Retry mechanism & exception handling
+      Decouples retry logic from banking execution
+    Factory Pattern
+      Class: PaymentGatewayFactory
+      Decouples gateway instantiation based on user choice or routing strategy
+    Adapter / Facade
+      IBankingSystem
+      Simulates external 3rd-party banking partner APIs
 ```
 
 ---
 
-## 3. Class Diagram & Relationships
+## 3. The 3-Phase Invariant Lifecycle (Template Method)
+
+Why is the Template Method essential here?
+- If every gateway subclass were free to define its own flow, one developer might forget validation, while another might trigger confirmation before initiation completes.
+- In `PaymentGateway`, `processPayment(PaymentRequest request)` is declared `final`:
+  ```java
+  public final boolean processPayment(PaymentRequest request) {
+      if (!validate(request)) return false;
+      if (!initiate(request)) return false;
+      return confirm(request);
+  }
+  ```
+- Subclasses (`PaytmGateway`, `RazorpayGateway`) implement `validate()`, `initiate()`, and `confirm()`, but **cannot alter the execution order**.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client App (e.g. Zomato)
+    participant Proxy as PaymentGatewayProxy
+    participant Base as PaymentGateway (Template Method)
+    participant Sub as PaytmGateway / RazorpayGateway
+    participant Bank as IBankingSystem
+
+    Client->>Proxy: processPayment(request)
+    activate Proxy
+    loop Up to maxRetries attempts
+        Proxy->>Base: processPayment(request)
+        activate Base
+        Base->>Sub: validate(request)
+        Sub-->>Base: validation passed (true)
+        Base->>Sub: initiate(request)
+        Sub->>Bank: processPayment(amount)
+        alt Transient Failure / Network Timeout
+            Bank-->>Sub: false / SocketTimeout
+            Sub-->>Base: initiate failed (false)
+            Base-->>Proxy: attempt failed
+            Note over Proxy: Catch failure, log diagnostics, and retry!
+        else Success
+            Bank-->>Sub: true
+            Sub-->>Base: initiate succeeded (true)
+            Base->>Sub: confirm(request)
+            Sub-->>Base: confirmed (true)
+            Base-->>Proxy: success (true)
+            Proxy-->>Client: Transaction Successful!
+        end
+        deactivate Base
+    end
+    deactivate Proxy
+```
+
+---
+
+## 4. Class Diagram & System Architecture
 
 ```mermaid
 classDiagram
     class PaymentRequest {
-        -String transactionId
-        -String userId
+        -String sender
+        -String receiver
         -double amount
         -String currency
-        +getTransactionId() String
         +getAmount() double
+        +getSender() String
+        +getReceiver() String
     }
 
-    class PaymentResponse {
-        -String transactionId
-        -PaymentStatus status
-        -String message
-        +isSuccess() boolean
+    class IBankingSystem {
+        <<interface>>
+        +processPayment(double amount) boolean
+    }
+
+    class PaytmBankingSystem {
+        +processPayment(double amount) boolean
+    }
+
+    class RazorpayBankingSystem {
+        +processPayment(double amount) boolean
     }
 
     class PaymentGateway {
         <<abstract>>
-        +processPayment(PaymentRequest req)* PaymentResponse
+        #IBankingSystem bankingSystem
+        +processPayment(PaymentRequest req) boolean
         #validate(PaymentRequest req)* boolean
-        #executeTransaction(PaymentRequest req)* PaymentResponse
-        #confirm(PaymentRequest req, PaymentResponse res)* void
-        -initiateWithRetry(PaymentRequest req) PaymentResponse
-    }
-
-    class RazorpayGateway {
-        #validate(PaymentRequest req) boolean
-        #executeTransaction(PaymentRequest req) PaymentResponse
-        #confirm(PaymentRequest req, PaymentResponse res) void
+        #initiate(PaymentRequest req)* boolean
+        #confirm(PaymentRequest req)* boolean
     }
 
     class PaytmGateway {
         #validate(PaymentRequest req) boolean
-        #executeTransaction(PaymentRequest req) PaymentResponse
-        #confirm(PaymentRequest req, PaymentResponse res) void
+        #initiate(PaymentRequest req) boolean
+        #confirm(PaymentRequest req) boolean
     }
 
-    PaymentGateway <|-- RazorpayGateway : Extends
+    class RazorpayGateway {
+        #validate(PaymentRequest req) boolean
+        #initiate(PaymentRequest req) boolean
+        #confirm(PaymentRequest req) boolean
+    }
+
+    class PaymentGatewayProxy {
+        -PaymentGateway realGateway
+        -int maxRetries
+        +processPayment(PaymentRequest req) boolean
+    }
+
+    class PaymentGatewayFactory {
+        +getGateway(String type) PaymentGateway
+    }
+
+    class PaymentController {
+        +handlePayment(String type, PaymentRequest req) boolean
+    }
+
+    IBankingSystem <|.. PaytmBankingSystem : Implements
+    IBankingSystem <|.. RazorpayBankingSystem : Implements
+
     PaymentGateway <|-- PaytmGateway : Extends
+    PaymentGateway <|-- RazorpayGateway : Extends
+    PaymentGateway <|-- PaymentGatewayProxy : Extends / Implements
+
+    PaytmGateway --> PaytmBankingSystem : Uses
+    RazorpayGateway --> RazorpayBankingSystem : Uses
+
+    PaymentGatewayProxy o--> PaymentGateway : Wraps realGateway
+    PaymentGatewayFactory ..> PaymentGatewayProxy : Creates & Wraps
+    PaymentController --> PaymentGatewayFactory : Uses
 ```
 
 ---
 
-## 4. Production Java Implementation
+## 5. Complete, Compilable Java Implementation
 
-### Step 1: Request & Response Domain Models
+Below is the complete, self-contained Java implementation faithfully capturing the lecture's architecture and design patterns.
+
 ```java
-import java.time.Instant;
+package com.designpatterns.casestudy.paymentgateway;
 
-public enum PaymentStatus {
-    SUCCESS,
-    FAILED,
-    PENDING
-}
+import java.util.Random;
 
-public class PaymentRequest {
-    private final String transactionId;
-    private final String userId;
+// ============================================================================
+// 1. DOMAIN MODELS
+// ============================================================================
+
+class PaymentRequest {
+    private final String sender;
+    private final String receiver;
     private final double amount;
     private final String currency;
 
-    public PaymentRequest(String transactionId, String userId, double amount, String currency) {
-        this.transactionId = transactionId;
-        this.userId = userId;
+    public PaymentRequest(String sender, String receiver, double amount, String currency) {
+        this.sender = sender;
+        this.receiver = receiver;
         this.amount = amount;
         this.currency = currency;
     }
 
-    public String getTransactionId() { return transactionId; }
-    public String getUserId() { return userId; }
+    public String getSender() { return sender; }
+    public String getReceiver() { return receiver; }
     public double getAmount() { return amount; }
     public String getCurrency() { return currency; }
-}
-
-public class PaymentResponse {
-    private final String transactionId;
-    private final PaymentStatus status;
-    private final String message;
-    private final Instant timestamp;
-
-    public PaymentResponse(String transactionId, PaymentStatus status, String message) {
-        this.transactionId = transactionId;
-        this.status = status;
-        this.message = message;
-        this.timestamp = Instant.now();
-    }
-
-    public String getTransactionId() { return transactionId; }
-    public PaymentStatus getStatus() { return status; }
-    public String getMessage() { return message; }
-    public boolean isSuccess() { return status == PaymentStatus.SUCCESS; }
 
     @Override
     public String toString() {
-        return "PaymentResponse{id='" + transactionId + "', status=" + status + ", msg='" + message + "'}";
+        return "PaymentRequest[" + sender + " -> " + receiver + ", " + currency + " " + amount + "]";
     }
 }
-```
 
-### Step 2: Base Gateway with Template Method & Retry
-```java
-public abstract class PaymentGateway {
-    private static final int MAX_RETRIES = 3;
+// ============================================================================
+// 2. EXTERNAL BANKING SYSTEMS (3RD-PARTY AGGREGATORS / ADAPTER TARGETS)
+// ============================================================================
 
-    // 1. Template Method: Sealed workflow for processing any payment
-    public final PaymentResponse processPayment(PaymentRequest request) {
-        System.out.println("\n[Gateway] === Initiating Transaction: " + request.getTransactionId() + " ===");
+interface IBankingSystem {
+    boolean processPayment(double amount);
+}
 
-        // Step 1: Validation
+class PaytmBankingSystem implements IBankingSystem {
+    private final Random random = new Random();
+
+    @Override
+    public boolean processPayment(double amount) {
+        System.out.println("    [Paytm Banking Engine] Calling Paytm UPI core servers for ₹" + amount + "...");
+        // Simulate real-world 70% success rate / transient network glitch
+        boolean success = random.nextInt(100) < 70;
+        if (!success) {
+            System.err.println("    [Paytm Banking Engine] Transient Network Timeout from NPCI Switch!");
+        }
+        return success;
+    }
+}
+
+class RazorpayBankingSystem implements IBankingSystem {
+    private final Random random = new Random();
+
+    @Override
+    public boolean processPayment(double amount) {
+        System.out.println("    [Razorpay Banking Engine] Connecting to Razorpay Card/Netbanking network for ₹" + amount + "...");
+        // Simulate 80% success rate
+        boolean success = random.nextInt(100) < 80;
+        if (!success) {
+            System.err.println("    [Razorpay Banking Engine] Bank Gateway handshake dropped!");
+        }
+        return success;
+    }
+}
+
+// ============================================================================
+// 3. TEMPLATE METHOD PATTERN: BASE PAYMENT GATEWAY
+// ============================================================================
+
+abstract class PaymentGateway {
+    protected IBankingSystem bankingSystem;
+
+    public PaymentGateway(IBankingSystem bankingSystem) {
+        this.bankingSystem = bankingSystem;
+    }
+
+    /**
+     * The invariant Template Method: Enforces Validate -> Initiate -> Confirm.
+     */
+    public boolean processPayment(PaymentRequest request) {
+        System.out.println("  [Step 1: Validation] Validating transaction parameters...");
         if (!validate(request)) {
-            System.err.println("[Gateway] Validation failed for transaction: " + request.getTransactionId());
-            return new PaymentResponse(request.getTransactionId(), PaymentStatus.FAILED, "Validation check failed.");
+            System.err.println("  [Validation Failed] Request validation rejected!");
+            return false;
         }
 
-        // Step 2: Initiation with Automatic Retry
-        PaymentResponse response = executeWithRetry(request);
-
-        // Step 3: Confirmation / Post-processing
-        confirm(request, response);
-
-        System.out.println("[Gateway] === Completed Transaction: " + request.getTransactionId() + " ===\n");
-        return response;
-    }
-
-    // Step 2 Orchestrator: Retry handling for transient external network failures
-    private PaymentResponse executeWithRetry(PaymentRequest request) {
-        int attempts = 0;
-        while (attempts < MAX_RETRIES) {
-            attempts++;
-            try {
-                System.out.println("[Gateway] Dispatching attempt " + attempts + " of " + MAX_RETRIES + "...");
-                PaymentResponse response = executeTransaction(request);
-                if (response.isSuccess()) {
-                    return response;
-                }
-            } catch (Exception e) {
-                System.err.println("[Gateway] Network error on attempt " + attempts + ": " + e.getMessage());
-            }
+        System.out.println("  [Step 2: Initiation] Initiating transfer with banking network...");
+        if (!initiate(request)) {
+            System.err.println("  [Initiation Failed] Banking provider could not process payment.");
+            return false;
         }
-        return new PaymentResponse(request.getTransactionId(), PaymentStatus.FAILED, 
-                                   "Exhausted all " + MAX_RETRIES + " transaction retry attempts.");
+
+        System.out.println("  [Step 3: Confirmation] Confirming transaction & settling ledger...");
+        return confirm(request);
     }
 
-    // Primitive operations to be specialized by specific gateways
     protected abstract boolean validate(PaymentRequest request);
-    protected abstract PaymentResponse executeTransaction(PaymentRequest request) throws Exception;
-    protected abstract void confirm(PaymentRequest request, PaymentResponse response);
+    protected abstract boolean initiate(PaymentRequest request);
+    protected abstract boolean confirm(PaymentRequest request);
 }
-```
 
-### Step 3: Concrete Gateways (Razorpay & Paytm)
-```java
-// Razorpay Implementation
-public class RazorpayGateway extends PaymentGateway {
+// ============================================================================
+// 4. CONCRETE GATEWAYS (PAYTM & RAZORPAY)
+// ============================================================================
+
+class PaytmGateway extends PaymentGateway {
+    public PaytmGateway() {
+        super(new PaytmBankingSystem());
+    }
 
     @Override
     protected boolean validate(PaymentRequest request) {
-        System.out.println("[Razorpay] Validating minimum balance and KYC for user: " + request.getUserId());
+        // Paytm validation: Positive amount, INR currency, sender phone/wallet registered
         return request.getAmount() > 0 && "INR".equalsIgnoreCase(request.getCurrency());
     }
 
     @Override
-    protected PaymentResponse executeTransaction(PaymentRequest request) throws Exception {
-        System.out.println("[Razorpay] Calling Razorpay HTTPS API via Remote Proxy for ₹" + request.getAmount());
-        // Simulating external bank call
-        return new PaymentResponse(request.getTransactionId(), PaymentStatus.SUCCESS, "Razorpay payment authorized successfully.");
+    protected boolean initiate(PaymentRequest request) {
+        return bankingSystem.processPayment(request.getAmount());
     }
 
     @Override
-    protected void confirm(PaymentRequest request, PaymentResponse response) {
-        if (response.isSuccess()) {
-            System.out.println("[Razorpay] Transaction confirmed: Captured funds & generated webhook.");
-        } else {
-            System.out.println("[Razorpay] Transaction failed: Releasing pending holds.");
-        }
+    protected boolean confirm(PaymentRequest request) {
+        System.out.println("  [Paytm] SMS notification sent to sender " + request.getSender() 
+                           + " and receiver " + request.getReceiver());
+        return true;
     }
 }
 
-// Paytm Implementation (Simulating intermittent network retry demonstration)
-public class PaytmGateway extends PaymentGateway {
-    private int simulatedAttempts = 0;
+class RazorpayGateway extends PaymentGateway {
+    public RazorpayGateway() {
+        super(new RazorpayBankingSystem());
+    }
 
     @Override
     protected boolean validate(PaymentRequest request) {
-        System.out.println("[Paytm] Checking Paytm wallet limit & UPI handles...");
-        return request.getAmount() <= 100000; // Paytm single txn limit
+        // Razorpay validation: Supports multi-currency, limit check
+        return request.getAmount() > 0 && request.getAmount() <= 500000;
     }
 
     @Override
-    protected PaymentResponse executeTransaction(PaymentRequest request) throws Exception {
-        simulatedAttempts++;
-        if (simulatedAttempts < 2) {
-            // Simulate transient gateway timeout on first try
-            throw new java.net.SocketTimeoutException("Paytm payment server handshake timed out.");
-        }
-        return new PaymentResponse(request.getTransactionId(), PaymentStatus.SUCCESS, "Paytm UPI debit settled.");
+    protected boolean initiate(PaymentRequest request) {
+        return bankingSystem.processPayment(request.getAmount());
     }
 
     @Override
-    protected void confirm(PaymentRequest request, PaymentResponse response) {
-        System.out.println("[Paytm] Audit ledger updated. SMS receipt dispatched to user.");
+    protected boolean confirm(PaymentRequest request) {
+        System.out.println("  [Razorpay] Webhook triggered. Captured funds & updated merchant audit logs.");
+        return true;
     }
 }
-```
 
-### Step 4: Gateway Factory & Test Driver
-```java
-public class PaymentGatewayFactory {
-    public static PaymentGateway getGateway(String provider) {
-        if ("RAZORPAY".equalsIgnoreCase(provider)) {
-            return new RazorpayGateway();
-        } else if ("PAYTM".equalsIgnoreCase(provider)) {
-            return new PaytmGateway();
+// ============================================================================
+// 5. PROXY PATTERN: RETRY MECHANISM & FAULT TOLERANCE PROXY
+// ============================================================================
+
+class PaymentGatewayProxy extends PaymentGateway {
+    private final PaymentGateway realGateway;
+    private final int maxRetries;
+
+    public PaymentGatewayProxy(PaymentGateway realGateway, int maxRetries) {
+        super(null); // The proxy delegates to realGateway; no direct banking system needed
+        this.realGateway = realGateway;
+        this.maxRetries = maxRetries;
+    }
+
+    @Override
+    public boolean processPayment(PaymentRequest request) {
+        System.out.println("\n[PaymentGatewayProxy] Intercepting request for: " + request);
+        int attempts = 0;
+
+        while (attempts < maxRetries) {
+            attempts++;
+            System.out.println("[PaymentGatewayProxy] Executing attempt " + attempts + " of " + maxRetries + "...");
+            
+            try {
+                boolean success = realGateway.processPayment(request);
+                if (success) {
+                    System.out.println("[PaymentGatewayProxy] Transaction succeeded on attempt " + attempts + "!");
+                    return true;
+                }
+            } catch (Exception e) {
+                System.err.println("[PaymentGatewayProxy] Exception caught on attempt " + attempts + ": " + e.getMessage());
+            }
+
+            System.out.println("[PaymentGatewayProxy] Attempt " + attempts + " failed. Initiating retry...");
         }
-        throw new IllegalArgumentException("Unknown payment provider: " + provider);
+
+        System.err.println("[PaymentGatewayProxy] All " + maxRetries + " retry attempts exhausted. Transaction DECLINED!");
+        return false;
+    }
+
+    @Override protected boolean validate(PaymentRequest req) { return false; }
+    @Override protected boolean initiate(PaymentRequest req) { return false; }
+    @Override protected boolean confirm(PaymentRequest req) { return false; }
+}
+
+// ============================================================================
+// 6. FACTORY PATTERN & CONTROLLER
+// ============================================================================
+
+enum GatewayType {
+    PAYTM,
+    RAZORPAY
+}
+
+class PaymentGatewayFactory {
+    public static PaymentGateway getGateway(GatewayType type, int retryCount) {
+        PaymentGateway realGateway;
+        switch (type) {
+            case PAYTM:
+                realGateway = new PaytmGateway();
+                break;
+            case RAZORPAY:
+                realGateway = new RazorpayGateway();
+                break;
+            default:
+                throw new IllegalArgumentException("Unsupported Gateway Type: " + type);
+        }
+
+        // Always return the protected proxy wrapper
+        return new PaymentGatewayProxy(realGateway, retryCount);
     }
 }
 
-public class Main {
+class PaymentController {
+    public boolean checkout(GatewayType preferredGateway, PaymentRequest request) {
+        System.out.println("===============================================================");
+        System.out.println(">>> CHECKOUT INITIATED via " + preferredGateway);
+        System.out.println("===============================================================");
+        PaymentGateway gateway = PaymentGatewayFactory.getGateway(preferredGateway, 3);
+        boolean result = gateway.processPayment(request);
+        System.out.println(">>> CHECKOUT RESULT: " + (result ? "SUCCESSFUL" : "FAILED"));
+        return result;
+    }
+}
+
+// ============================================================================
+// 7. MAIN DEMONSTRATION DRIVER
+// ============================================================================
+
+public class PaymentGatewayDemo {
     public static void main(String[] args) {
-        // 1. Process standard transaction via Razorpay
-        PaymentGateway razorpay = PaymentGatewayFactory.getGateway("RAZORPAY");
-        PaymentRequest req1 = new PaymentRequest("TXN_1001", "USER_ALICE", 2499.00, "INR");
-        PaymentResponse res1 = razorpay.processPayment(req1);
-        System.out.println("Result 1: " + res1);
+        PaymentController controller = new PaymentController();
 
-        // 2. Process transaction via Paytm (Demonstrating automatic retry on transient failure)
-        PaymentGateway paytm = PaymentGatewayFactory.getGateway("PAYTM");
-        PaymentRequest req2 = new PaymentRequest("TXN_1002", "USER_BOB", 850.00, "INR");
-        PaymentResponse res2 = paytm.processPayment(req2);
-        System.out.println("Result 2: " + res2);
+        PaymentRequest order1 = new PaymentRequest("Rohit (User_99)", "Zomato Restaurant Partner", 850.00, "INR");
+        controller.checkout(GatewayType.PAYTM, order1);
+
+        PaymentRequest order2 = new PaymentRequest("Aditya (User_42)", "Amazon Seller Hub", 4200.00, "INR");
+        controller.checkout(GatewayType.RAZORPAY, order2);
     }
 }
 ```
 
 ---
 
-## 5. Execution Output
+## 6. Advanced Lecture Extensions & Homework
 
-```text
-[Gateway] === Initiating Transaction: TXN_1001 ===
-[Razorpay] Validating minimum balance and KYC for user: USER_ALICE
-[Gateway] Dispatching attempt 1 of 3...
-[Razorpay] Calling Razorpay HTTPS API via Remote Proxy for ₹2499.0
-[Razorpay] Transaction confirmed: Captured funds & generated webhook.
-[Gateway] === Completed Transaction: TXN_1001 ===
-Result 1: PaymentResponse{id='TXN_1001', status=SUCCESS, msg='Razorpay payment authorized successfully.'}
+In the concluding section of the video, the instructor tasks students with integrating two advanced real-world capabilities:
 
-[Gateway] === Initiating Transaction: TXN_1002 ===
-[Paytm] Checking Paytm wallet limit & UPI handles...
-[Gateway] Dispatching attempt 1 of 3...
-[Gateway] Network error on attempt 1: Paytm payment server handshake timed out.
-[Gateway] Dispatching attempt 2 of 3...
-[Paytm] Audit ledger updated. SMS receipt dispatched to user.
-[Gateway] === Completed Transaction: TXN_1002 ===
-Result 2: PaymentResponse{id='TXN_1002', status=SUCCESS, msg='Paytm UPI debit settled.'}
+### Extension 1: Scalable Retry Mechanism (Exponential Backoff)
+Instead of immediate linear retries, enterprise gateways implement **Exponential Backoff with Jitter** to prevent overwhelming recovering banking servers:
+$$\text{Delay}(n) = \text{InitialDelay} \times 2^{n-1} + \text{random\_jitter}$$
+
+```mermaid
+graph LR
+    Fail1[Attempt 1 Fails] -->|Wait 100ms| Fail2[Attempt 2 Fails]
+    Fail2 -->|Wait 200ms| Fail3[Attempt 3 Fails]
+    Fail3 -->|Wait 400ms| Fail4[Attempt 4]
 ```
+
+### Extension 2: Recurring / Subscription Billing
+For platforms like YouTube Premium, Netflix, or Spotify, transactions occur on a recurring schedule without interactive user PIN entry:
+- Leverage the **Template Method Pattern**:
+  - `validateSubscriptionMandate()`: Verifies pre-authorized e-mandate registration with the bank.
+  - `initiateRecurringDebit()`: Dispatches standing instructions payload.
+  - `confirmAndExtendSubscription()`: Updates the user's subscription renewal date.
 
 ---
 
-## 6. Real-World Architecture & Interview Considerations
+## 7. Crucial Financial Interview Considerations
 
-1. **Idempotency**:
-   - In distributed payments, retrying a request might charge the user twice if the previous request reached the bank but the response was lost.
-   - **Solution**: Pass an **Idempotency-Key** (`transactionId`) in the HTTP headers to external gateways so duplicate dispatches simply return the existing settled state.
-2. **Reconciliation & Webhooks**:
-   - Financial systems don't rely solely on synchronous HTTP calls. If a transaction stays in `PENDING`, asynchronous webhooks and nightly reconciliation cron jobs settle disputed states.
+1. **Idempotency Keys**:
+   - What happens if a network timeout occurs after money is deducted from the customer's bank account, but before the gateway receives the confirmation response?
+   - **Remedy**: Every `PaymentRequest` must carry a unique `idempotencyKey` (UUID). The banking system caches responses for keys; if a retried request carries the same key, the bank returns the existing settled state rather than charging the card twice.
+2. **Two-Phase Commit vs Webhook Settlement**:
+   - Synchronous HTTP responses can time out. Real gateways mark transactions as `PENDING` and rely on asynchronous **Webhooks** from banking switches for eventual consistency.
+
+---
+
+## Quick Revision
+
+### Core Idea
+A plug-and-play financial routing engine coordinating **Template Method** (invariant lifecycle: Validate $\to$ Initiate $\to$ Confirm), **Proxy** (transparent retry mechanism and error handling), and **Factory** (vendor abstraction).
+
+### Remember
+- **Template Method**: `PaymentGateway.processPayment()` defines the invariant 3-step sequence; child gateways implement vendor-specific logic.
+- **Proxy**: `PaymentGatewayProxy` wraps concrete gateways to run the retry loop and exception trapping, adhering to SRP.
+- **Factory**: `PaymentGatewayFactory` instantiates the appropriate gateway and returns it pre-wrapped in the proxy.
+
+### Java Implementation Idea
+```java
+abstract class PaymentGateway {
+    public final boolean processPayment(Request req) {
+        return validate(req) && initiate(req) && confirm(req);
+    }
+    protected abstract boolean validate(Request req);
+    protected abstract boolean initiate(Request req);
+    protected abstract boolean confirm(Request req);
+}
+```
+
+### Most Important Interview Point
+**Why decouple the Retry Logic into a Proxy instead of placing it inside the Template Method?**
+To strictly follow the **Single Responsibility Principle (SRP)**. The gateway subclass or template method is solely responsible for executing the banking transaction lifecycle. Managing retry attempts, backoff intervals, and fault recovery is an orthogonal concern handled cleanly by the `PaymentGatewayProxy`.
+
+### Common Trap
+Retrying financial transactions without **Idempotency Keys**. Blindly executing a retry loop on timeout errors can double-charge customers if the initial debit succeeded but only the return acknowledgment packet was dropped.

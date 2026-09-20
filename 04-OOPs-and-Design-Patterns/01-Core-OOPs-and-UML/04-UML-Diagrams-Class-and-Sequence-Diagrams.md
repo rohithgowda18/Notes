@@ -1,224 +1,391 @@
-# 04. UML Diagrams — Class & Sequence Diagrams
+# 04. UML Diagrams: Class & Sequence Diagrams
 
-> 💡 **Quick Revision Anchor**: 
-> - **Class Diagram**: Static structural view (Classes, attributes, methods, relationships: Generalization, Realization, Association, Aggregation, Composition, Dependency).
-> - **Sequence Diagram**: Dynamic behavioral view over time (Lifelines, activation bars, synchronous/asynchronous messages, return replies).
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Unified Modeling Language (UML). Explains why out of 14 standard UML diagrams, only two dominate 99% of Low-Level Design interviews: **Class Diagrams** (structural blueprints detailing attributes, visibility, and relationship semantics—Inheritance, Realization, Association, Aggregation vs Composition, Dependency) and **Sequence Diagrams** (behavioral interaction timelines with lifelines, activation bars, sync/async calls, create/destroy lifecycle events, and `alt`/`opt`/`loop` fragments). Features the lecture's canonical **Car Hierarchy** and the complete **ATM Cash Withdrawal Sequence Flow**.
 
 ---
 
-## 1. Why UML in Low-Level Design?
+## 1. What is UML and Why Does It Matter?
 
-**Unified Modeling Language (UML)** is the international standard architectural blueprint for visualizing, specifying, and documenting software systems before writing a single line of code.
+**Unified Modeling Language (UML)** is the standardized visual language used by software architects and engineers to specify, visualize, construct, and document software systems.
 
-```mermaid
-graph TD
-    UML[UML Diagrams] --> Structural[Structural Diagrams<br/>Static System Architecture]
-    UML --> Behavioral[Behavioral Diagrams<br/>Dynamic Runtime Interactions]
-    
-    Structural --> ClassDiag["Class Diagram ⭐ (Most Important in LLD)"]
-    Structural --> ObjectDiag[Object Diagram]
-    Structural --> ComponentDiag[Component Diagram]
-    
-    Behavioral --> SeqDiag["Sequence Diagram ⭐ (Most Important in LLD)"]
-    Behavioral --> StateDiag[State Machine Diagram]
-    Behavioral --> ActivityDiag[Activity Diagram]
+```text
+                                  UML DIAGRAMS (14 Total)
+                                             │
+                   ┌─────────────────────────┴─────────────────────────┐
+                   ▼                                                   ▼
+     Structural (Static Architecture)                    Behavioral (Dynamic Execution)
+     • Shows what classes exist                          • Shows how objects interact
+     • 7 Total diagrams                                  • 7 Total diagrams
+     • THE GOLD STANDARD:                                • THE GOLD STANDARD:
+       ★ Class Diagram                                     ★ Sequence Diagram
 ```
 
-In technical interviews and real-world system design, drawing UML diagrams upfront prevents hundreds of hours of refactoring messy code.
+### Why Learn Only Class & Sequence Diagrams?
+Out of 14 UML diagrams (State machines, Component, Deployment, Activity, Use Case, etc.), 12 are niche or domain-specific. In **99% of Low-Level Design (LLD) interviews** and production engineering reviews, an engineer is required to produce:
+1. **Class Diagram**: Before writing code, you draw the classes, attributes, visibility, and relationships.
+2. **Sequence Diagram**: To map multi-step business workflows and identify edge cases (e.g., ATM withdrawals, payment checkouts).
 
 ---
 
-## 2. Anatomy of a Class in UML
+## 2. Class Diagram Anatomy
 
-A UML class is rendered as a rectangle divided into **three compartments**:
+A class is represented by a rectangle partitioned into **three compartments**:
+
+```text
+┌────────────────────────────────────────────────────────┐
+│                      Car Class                         │  <- 1. Class Name (Italic if abstract,
+├────────────────────────────────────────────────────────┤     <<interface>> if interface)
+│ - brand : String                                       │
+│ - model : String                                       │  <- 2. Attributes (Fields)
+│ # currentSpeed : int                                   │     [visibility] name : type
+│ - isEngineOn : boolean                                 │
+├────────────────────────────────────────────────────────┤
+│ + startEngine() : void                                 │  <- 3. Methods (Operations)
+│ + accelerate(increment : int) : void                   │     [visibility] name(params) : returnType
+│ + brake() : void                                       │
+└────────────────────────────────────────────────────────┘
+```
+
+### Visibility Modifiers
+
+| Symbol | Access Modifier | Accessible Within Class? | Accessible by Child Classes? | Accessible Outside World? |
+| :---: | :--- | :---: | :---: | :---: |
+| **`+`** | `public` | Yes | Yes | Yes |
+| **`-`** | `private` | Yes | No | No |
+| **`#`** | `protected` | Yes | Yes | No |
+| **`~`** | `package-private` *(default in Java)* | Yes | Yes *(if in same package)* | No |
+
+---
+
+## 3. Relationships in Class Diagrams
+
+Relationships are divided into **Class-Level** (structural inheritance) and **Object-Level** (associations and compositions).
 
 ```mermaid
 classDiagram
-    class BankAccount {
-        <<Entity>>
-        -String accountNumber
-        #double balance
-        +String accountHolderName
-        ~boolean isActive
-        +deposit(double amount) void
-        +withdraw(double amount) boolean
-        #calculateInterest() double
-        -logAuditTrail(String op) void
+    class Vehicle {
+        <<interface>>
+        +drive() void
     }
+
+    class Engine {
+        -int horsepower
+        +start() void
+    }
+
+    class MusicPlayer {
+        -String brand
+        +playMusic() void
+    }
+
+    class Driver {
+        -String licenseNumber
+        +operate(Car car) void
+    }
+
+    class GPSNavigation {
+        +getRoute(String dest) String
+    }
+
+    class Car {
+        -Engine engine
+        -MusicPlayer musicPlayer
+        +navigate(GPSNavigation gps) void
+    }
+
+    class ManualCar {
+        -int currentGear
+        +shiftGear(int gear) void
+    }
+
+    Vehicle <|.. Car : Realization (implements)
+    Car <|-- ManualCar : Generalization (extends)
+    Car *-- Engine : Composition (Strong Lifecycle)
+    Car o-- MusicPlayer : Aggregation (Weak Lifecycle)
+    Driver --> Car : Association (Knows / Interacts)
+    Car ..> GPSNavigation : Dependency (Uses as parameter)
 ```
 
-### Visibility Modifiers Notation:
-| Symbol | Access Modifier | Meaning |
-| :---: | :--- | :--- |
-| `+` | **Public** | Accessible by any class in any package |
-| `-` | **Private** | Accessible only within this declaring class |
-| `#` | **Protected** | Accessible within package and by subclasses |
-| `~` | **Package / Default** | Accessible only by classes in the same package |
+### Detailed Relationship Summary Table
+
+| Relationship | Type | Description & Lifecycle Rule | UML Notation |
+| :--- | :--- | :--- | :---: |
+| **Generalization** | Class | "IS-A" Class Inheritance (`ManualCar extends Car`). Subclass inherits state and behavior. | Solid line with hollow triangle pointing to parent |
+| **Realization** | Class | "CAN-DO" Interface implementation (`Car implements Vehicle`). Class satisfies contract. | Dashed line with hollow triangle pointing to interface |
+| **Association** | Object | "KNOWS-A" connection. Two objects communicate as peers (`Driver` operates `Car`). | Solid line with open arrow (`-->`) |
+| **Aggregation** | Object | **Weak "HAS-A" Ownership**. Lifetimes are independent! If `Car` is scrapped, `MusicPlayer` can be extracted and reused. | Solid line with **hollow diamond** at parent (`o--`) |
+| **Composition** | Object | **Strong "CONTAINS-A" Ownership**. Lifetimes are strictly coupled! If `Car` is destroyed, its chassis-welded `Engine` ceases to exist as a functional unit. | Solid line with **filled diamond** at parent (`*--`) |
+| **Dependency** | Object | **"USES-A" Temporary Link**. An object receives another object as a temporary method argument (`car.navigate(gps)`). | Dashed line with open arrow (`..>`) |
+
+### Subjectivity in LLD: Aggregation vs Composition
+The instructor emphasizes that in real systems, the boundary between aggregation and composition can be subjective:
+- **Example — Zomato / Swiggy Restaurant & Menu**:
+  - If your system allows a shared catalog menu to exist independently in the database: $\to$ **Aggregation**.
+  - If a restaurant closure completely cascades and purges its menu items from the database: $\to$ **Composition**.
 
 ---
 
-## 3. The 6 Core Class Relationships
+## 4. Sequence Diagrams: Modeling Dynamic Workflows
 
-Understanding these relationships and their exact notations is the single most tested skill in LLD interviews:
+While Class Diagrams model the static skeleton, **Sequence Diagrams** model how objects collaborate chronologically over time.
 
-```mermaid
-classDiagram
-    %% 1. Generalization
-    Vehicle <|-- Car : 1. Generalization (IS-A)
-    
-    %% 2. Realization
-    Drivable <|.. Car : 2. Realization (Implements)
-    
-    %% 3. Association
-    Car --> Driver : 3. Association (HAS-A)
-    
-    %% 4. Aggregation
-    Department o-- Professor : 4. Aggregation (Weak HAS-A)
-    
-    %% 5. Composition
-    House *-- Room : 5. Composition (Strong HAS-A)
-    
-    %% 6. Dependency
-    Chef ..> Recipe : 6. Dependency (USES-A)
+```text
+Elements of a Sequence Diagram:
+1. Participants / Lifelines: Vertical dashed lines representing object lifecycles over time.
+2. Activation Bar (Focus of Control): Thin vertical rectangle showing when an object is actively executing.
+3. Synchronous Call (Solid arrow with filled arrowhead): Caller blocks and waits for execution to complete.
+4. Reply / Return Message (Dashed arrow with open arrowhead): Returns control and data back to caller.
+5. Asynchronous Call (Solid arrow with open stick arrowhead): Fire-and-forget; caller proceeds without waiting.
+6. Create Message: Arrow pointing directly into the creation of a new object box.
+7. Destroy Message: Terminating arrow ending in a large bold 'X', signaling garbage collection / destruction.
 ```
 
-### 1. Generalization (Inheritance)
-- **Concept**: `IS-A` relationship between child class and parent class.
-- **Notation**: Solid line with a hollow triangle pointing to the superclass (`───▷`).
-- *Code Example*: `public class Car extends Vehicle { ... }`
-
-### 2. Realization (Implementation)
-- **Concept**: A concrete class contracts to implement an interface.
-- **Notation**: Dashed line with a hollow triangle pointing to the interface (`- - -▷`).
-- *Code Example*: `public class Car implements Drivable { ... }`
-
-### 3. Association
-- **Concept**: A loose structural relationship where one class knows about another class.
-- **Notation**: Solid line with an open arrow (`───>`). Multiplicity can be labeled (`1`, `*`, `0..1`).
-- *Code Example*: `public class Car { private Driver driver; }`
-
-### 4. Aggregation (Weak "HAS-A")
-- **Concept**: A **whole-part** relationship where parts can exist **independently** of the whole. If the parent container is deleted, the child objects continue to exist.
-- **Notation**: Solid line with a **hollow diamond** at the parent/container end (`◇───`).
-- *Real-World Analogy*: A **Room** and **Furniture** (Sofa/Bed). If the room is demolished, the sofa can be moved outside—it does not perish!
-- *Code Example*:
-  ```java
-  public class Department {
-      private List<Professor> professors; // Professors exist independently!
-      public Department(List<Professor> profs) { this.professors = profs; }
-  }
-  ```
-
-### 5. Composition (Strong "HAS-A")
-- **Concept**: An exclusive **whole-part** relationship where parts **cannot exist** without the whole. The parent manages the lifecycle of the child. When the parent is destroyed, all its composite parts are destroyed.
-- **Notation**: Solid line with a **filled diamond** at the parent/container end (`◆───`).
-- *Real-World Analogy*: A **Building** and its **Rooms**; or a **Human Body** and its **Heart**. If the body dies, the heart cannot exist on its own in the wild.
-- *Code Example*:
-  ```java
-  public class Order {
-      private final List<OrderItem> items = new ArrayList<>(); // Lifecycle strictly bound!
-      public void addItem(String prod, int qty) { items.add(new OrderItem(prod, qty)); }
-  }
-  ```
-
-### 6. Dependency ("USES-A")
-- **Concept**: A temporary, transient relationship where one class relies on another class for a specific operation (passed as a method argument, or instantiated locally inside a method).
-- **Notation**: Dashed line with an open arrow (`- - ->`).
-- *Real-World Analogy*: A **Chef** uses a **Recipe Book** while cooking, but does not retain it as permanent state.
-- *Code Example*:
-  ```java
-  public class OrderProcessor {
-      public void process(Order order, PaymentGateway gateway) { // Dependency via argument
-          gateway.charge(order.getTotal());
-      }
-  }
-  ```
+### Combined Fragments in Sequence Diagrams
+- **`alt` (Alternative / If-Else)**: Models conditional branching (e.g., PIN is correct vs PIN is invalid).
+- **`opt` (Option / If)**: Models optional steps that execute only if a specific condition is met (no `else`).
+- **`loop`**: Models repetitive execution (e.g., retrying PIN entry up to 3 times, or counting notes).
 
 ---
 
-## 4. Aggregation vs. Composition: Interview Cheat Sheet
+## 5. Canonical Lecture Example: ATM Cash Withdrawal Sequence
 
-| Feature | Aggregation (Weak HAS-A) | Composition (Strong HAS-A) |
-| :--- | :--- | :--- |
-| **UML Symbol** | Hollow Diamond (`◇`) on container | Filled Diamond (`◆`) on container |
-| **Lifecycle Dependency** | **Independent**. Part survives if whole is destroyed. | **Dependent**. Part is destroyed when whole is destroyed. |
-| **Ownership** | **Shared ownership**. Object can belong to multiple containers. | **Exclusive ownership**. Object belongs to exactly one container. |
-| **Code Implementation** | Part is injected from outside (via Constructor/Setter). | Part is instantiated internally inside the container. |
-| **Examples** | `School ◇-- Student`, `Department ◇-- Professor` | `Car ◆-- Engine`, `House ◆-- Room`, `Order ◆-- OrderItem` |
-
----
-
-## 5. Sequence Diagrams: Modeling Dynamic Interactions
-
-While Class Diagrams model static structure, **Sequence Diagrams** model how objects collaborate and send messages over time to accomplish a specific business use case.
-
-### Core Elements of a Sequence Diagram:
-1. **Actor / Object**: Depicted at the top as boxes (e.g. `:ATMCardReader`).
-2. **Lifeline**: A vertical dashed line extending downward from the object representing its existence over time.
-3. **Activation Bar**: A thin vertical rectangle on the lifeline indicating the object is actively executing code.
-4. **Message Types**:
-   - `->>` **Synchronous Call**: Solid line with filled arrow. Sender blocks until receiver returns.
-   - `->` **Asynchronous Call**: Solid line with open stick arrow. Non-blocking fire-and-forget.
-   - `-->>` **Return Message**: Dashed line with open arrow. Returning control or value back to caller.
-   - `Loopback Arrow`: Self-invocation of private/internal method.
-
----
-
-## 6. End-to-End Case Study: ATM Cash Withdrawal Sequence Diagram
-
-Let's trace a complete real-world banking scenario: A user inserts their card, authenticates PIN, requests cash withdrawal, and receives dispensed cash.
+The instructor demonstrates the end-to-end sequence for a user withdrawing money from an ATM:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Customer as User
-    participant Reader as ATM CardReader
-    participant Controller as ATM Controller
-    participant Bank as Core Banking System
+    actor User as User (Customer)
+    participant ATM as ATM Machine
+    participant Txn as Transaction
+    participant Bank as Bank Account
     participant Dispenser as Cash Dispenser
-    participant Printer as Receipt Printer
 
-    Customer->>Reader: Insert Card
-    Reader->>Controller: readCardData(cardNumber)
-    Controller-->>Customer: Prompt "Enter 4-Digit PIN"
+    User->>ATM: withdraw(accountNum, pin, amount)
+    activate ATM
     
-    Customer->>Controller: submitPIN(1234)
-    Controller->>Bank: authenticate(cardNum, 1234)
-    Bank-->>Controller: Auth Success (Token)
-    
-    Controller-->>Customer: Display "Enter Amount to Withdraw"
-    Customer->>Controller: requestWithdrawal($200)
-    
-    Controller->>Bank: validateAndDeductBalance(cardNum, $200)
+    ATM->>Txn: create(txnId, amount)
+    activate Txn
+    Note over Txn: Transaction object instantiated
+
+    Txn->>Bank: verifyPin(pin)
     activate Bank
-    Note over Bank: Bank checks account balance >= $200<br/>Deducts $200 from database atomically
-    Bank-->>Controller: Transaction Approved (TxnId: #9042)
+    Bank-->>Txn: pinValid: true
     deactivate Bank
-    
-    Controller->>Dispenser: dispenseCash($200)
-    activate Dispenser
-    Note over Dispenser: Physical mechanical rollers<br/>count 10x $20 bills
-    Dispenser-->>Customer: Physical Cash Released
-    Dispenser-->>Controller: Cash Dispensed Confirmation
-    deactivate Dispenser
-    
-    Controller->>Printer: printReceipt(TxnId, $200, remainingBal)
-    Printer-->>Customer: Eject Printed Receipt
-    
-    Controller->>Reader: ejectCard()
-    Reader-->>Customer: Return Physical Card
-    Controller-->>Customer: Session Finished ("Thank You")
+
+    Txn->>Bank: checkBalance(amount)
+    activate Bank
+    Bank-->>Txn: sufficientBalance: true
+    deactivate Bank
+
+    alt Sufficient Balance
+        Txn->>Bank: deductAmount(amount)
+        activate Bank
+        Bank-->>Txn: debitSuccess: true
+        deactivate Bank
+
+        Txn->>Dispenser: dispenseCash(amount)
+        activate Dispenser
+        Dispenser->>User: Physical Cash Delivered
+        Dispenser-->>Txn: dispenseComplete: true
+        deactivate Dispenser
+
+        Txn-->>ATM: transactionCompleted: true
+    else Insufficient Balance / Invalid Pin
+        Txn-->>ATM: transactionFailed("Insufficient Funds")
+    end
+
+    destroy Txn
+    Note over Txn: Transaction destroyed ('X')
+
+    ATM-->>User: ejectCard() & printReceipt()
+    deactivate ATM
 ```
 
 ---
 
-## 7. Common Interview Pitfalls
+## 6. Complete Java Implementation: ATM Domain
 
-1. **Confusing Dependency with Association**:
-   - Storing an object reference in an instance field (`private Engine engine;`) is **Association/Composition**.
-   - Accepting an object as a method parameter (`public void print(Document doc)`) is **Dependency**.
-2. **Reverse Arrow Directions**:
-   - In UML, inheritance arrows point **from child to parent** (child knows parent, parent does NOT know child).
-   - In sequence diagrams, arrows point in the direction of the **request flow**.
-3. **Drawing God Objects in Sequence Diagrams**:
-   - Avoid creating an "Omnipotent Manager" that makes 50 calls while all other objects sit completely passive. Delegate responsibilities evenly across cohesive domain entities.
+Here is the clean Java implementation matching the sequence and class diagram concepts taught in the lecture:
+
+```java
+import java.util.*;
+
+// 1. Account Entity
+class BankAccount {
+    private final String accountNumber;
+    private final String correctPin;
+    private double balance;
+
+    public BankAccount(String accountNumber, String pin, double initialBalance) {
+        this.accountNumber = accountNumber;
+        this.correctPin = pin;
+        this.balance = initialBalance;
+    }
+
+    public boolean verifyPin(String enteredPin) {
+        return this.correctPin.equals(enteredPin);
+    }
+
+    public boolean hasSufficientBalance(double amount) {
+        return this.balance >= amount;
+    }
+
+    public boolean deductAmount(double amount) {
+        if (!hasSufficientBalance(amount)) return false;
+        this.balance -= amount;
+        System.out.printf("[Bank] Deducted ₹%.2f. Remaining balance: ₹%.2f\n", amount, balance);
+        return true;
+    }
+
+    public double getBalance() { return balance; }
+}
+
+// 2. Cash Dispenser (Component)
+class CashDispenser {
+    public boolean dispense(double amount) {
+        System.out.printf("[Dispenser] Dispensing ₹%.2f in physical cash...\n", amount);
+        return true;
+    }
+}
+
+// 3. Short-lived Transaction (Created and Destroyed per request)
+class Transaction {
+    private final String transactionId;
+    private final double amount;
+    private final BankAccount account;
+    private final CashDispenser dispenser;
+
+    public Transaction(String transactionId, double amount, BankAccount account, CashDispenser dispenser) {
+        this.transactionId = transactionId;
+        this.amount = amount;
+        this.account = account;
+        this.dispenser = dispenser;
+    }
+
+    public boolean execute(String pin) {
+        System.out.println("[Transaction " + transactionId + "] Started.");
+
+        // Step 1: Verify PIN
+        if (!account.verifyPin(pin)) {
+            System.out.println("[Transaction Error] Invalid PIN!");
+            return false;
+        }
+
+        // Step 2: Check balance
+        if (!account.hasSufficientBalance(amount)) {
+            System.out.println("[Transaction Error] Insufficient funds!");
+            return false;
+        }
+
+        // Step 3: Deduct money
+        account.deductAmount(amount);
+
+        // Step 4: Dispense physical cash
+        dispenser.dispense(amount);
+
+        System.out.println("[Transaction " + transactionId + "] Successfully executed.");
+        return true;
+    }
+}
+
+// 4. ATM Context (Long-lived Orchestrator)
+class ATM {
+    private final CashDispenser dispenser;
+    private int transactionCounter = 0;
+
+    public ATM() {
+        this.dispenser = new CashDispenser(); // Composition
+    }
+
+    public void withdrawCash(BankAccount account, String pin, double amount) {
+        System.out.println("\n--- ATM Withdrawal Request: ₹" + amount + " ---");
+
+        // Dynamic Object Creation matching Sequence Diagram
+        transactionCounter++;
+        Transaction txn = new Transaction("TXN-" + transactionCounter, amount, account, dispenser);
+
+        boolean success = txn.execute(pin);
+
+        if (success) {
+            System.out.println("[ATM] Please collect your cash and receipt.");
+        } else {
+            System.out.println("[ATM] Transaction could not be completed. Please try again.");
+        }
+
+        // Transaction object is dereferenced and garbage-collected (Lifecycle Destroy 'X')
+        txn = null;
+    }
+}
+
+// 5. Test Driver
+public class Main {
+    public static void main(String[] args) {
+        ATM atm = new ATM();
+        BankAccount account = new BankAccount("AC-987654", "1234", 5000.0);
+
+        // Test 1: Successful withdrawal
+        atm.withdrawCash(account, "1234", 1500.0);
+
+        // Test 2: Invalid PIN
+        atm.withdrawCash(account, "9999", 500.0);
+
+        // Test 3: Insufficient Funds
+        atm.withdrawCash(account, "1234", 10000.0);
+    }
+}
+```
+
+---
+
+## 7. Execution Trace
+
+```text
+--- ATM Withdrawal Request: ₹1500.0 ---
+[Transaction TXN-1] Started.
+[Bank] Deducted ₹1500.00. Remaining balance: ₹3500.00
+[Dispenser] Dispensing ₹1500.00 in physical cash...
+[Transaction TXN-1] Successfully executed.
+[ATM] Please collect your cash and receipt.
+
+--- ATM Withdrawal Request: ₹500.0 ---
+[Transaction TXN-2] Started.
+[Transaction Error] Invalid PIN!
+[ATM] Transaction could not be completed. Please try again.
+
+--- ATM Withdrawal Request: ₹10000.0 ---
+[Transaction TXN-3] Started.
+[Transaction Error] Insufficient funds!
+[ATM] Transaction could not be completed. Please try again.
+```
+
+---
+
+## Quick Revision
+
+### Core Idea
+UML provides standardized blueprints for software systems. **Class Diagrams** model static architecture (classes, attributes, visibility, and structural relationships). **Sequence Diagrams** model dynamic behavior (time-ordered interactions between objects, message passing, object lifecycle creation/destruction, and branching).
+
+### Remember
+* Visibility symbols: `+` (public), `-` (private), `#` (protected), `~` (package-private).
+* Relationship hierarchy:
+  * Generalization (Solid line, hollow triangle) = Class Inheritance (`IS-A`).
+  * Realization (Dashed line, hollow triangle) = Interface Implementation (`CAN-DO`).
+  * Simple Association (Solid arrow `-->`) = Peer interaction (`KNOWS-A`).
+  * Aggregation (Hollow diamond `o--`) = Weak ownership; independent lifecycles (`Car` o-- `MusicPlayer`).
+  * Composition (Filled diamond `*--`) = Strong ownership; coupled lifecycles (`Car` *-- `Engine`).
+  * Dependency (Dashed arrow `..>`) = Method parameter reference (`USES-A`).
+* Sequence diagram message types: Synchronous (solid filled arrow), Asynchronous (solid open arrow), Return (dashed open arrow), Create (arrow to new box), Destroy ('X' termination).
+
+### Java Implementation Idea
+* Match every UML relationship in Java code:
+  * Aggregation: Object injected into constructor or setter from outside.
+  * Composition: Object instantiated internally inside parent constructor (`new Engine()`).
+  * Dependency: Object passed strictly as a method parameter (`public void navigate(GPS gps)`).
+
+### Most Important Interview Point
+* Always explain **Aggregation vs Composition** in terms of **lifecycle coupling**: If the parent container is deleted, do the child parts continue to exist? (Yes $\to$ Aggregation, No $\to$ Composition).
+* In LLD interviews, draw the Class Diagram first to agree on entities, then sketch a Sequence Diagram for the most critical user workflow (e.g. `withdrawCash` or `processPayment`).
+
+### Common Trap
+* Using a filled diamond for Aggregation or a hollow diamond for Composition. (Remember: Filled diamond = Heavy/Permanent weld = Composition).
+* Forgetting to depict activation bars or using solid return arrows instead of dashed arrows in sequence diagrams.

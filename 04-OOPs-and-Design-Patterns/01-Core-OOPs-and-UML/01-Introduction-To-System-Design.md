@@ -1,170 +1,398 @@
-# 01. Introduction To System Design (LLD vs. HLD)
+# 01. Introduction To System Design (LLD vs HLD vs DSA)
 
-> 💡 **Quick Revision Anchor**: 
-> - **DSA**: Optimizes algorithms & data structures (single problem / function level: *"Find shortest path"*).
-> - **LLD**: Optimizes code modularity, design patterns, classes, interfaces, maintainability, and clean architecture (*"How Rider, Driver, Trip, and FareStrategy interact"*).
-> - **HLD**: Optimizes distributed systems, scalability, databases, load balancing, caching, and network architecture (*"How to handle 10M requests across multi-region data centers"*).
+> 💡 **Quick Revision Anchor**: A comprehensive foundational guide distinguishing **DSA**, **LLD (Low-Level Design)**, and **HLD (High-Level Design)** through the lecture's story of **Anurag & Maurya at QuickRide**. Demonstrates why algorithms alone cannot build an application, why code structure, entity relationships, data security, and plug-and-play modularity matter, and why **"If DSA is the brain of an application, LLD is its skeleton."**
 
 ---
 
-## 1. Why System Design? (The Transition from DSA to Real Systems)
+## 1. What This Lecture Covers
 
-In competitive programming and Data Structures & Algorithms (DSA), problems have well-defined inputs and expected outputs:
-- *"Given an array of $N$ integers, find two numbers that sum up to $K$."*
-- *"Find the shortest path in a weighted graph using Dijkstra's algorithm."*
+1. What is System Design and why does it exist?
+2. The isolated nature of DSA (Data Structures & Algorithms) vs building a complete software system.
+3. The Tale of Two Engineers at **QuickRide**: **Anurag** (DSA expert, 0 LLD) vs **Maurya** (DSA + LLD practitioner).
+4. Why jumping directly to algorithms (e.g., Dijkstra on city graphs) fails in real-world application design.
+5. What LLD actually solves:
+   - Identifying Entities and Objects
+   - Establishing Object Relationships and Interactions
+   - Enforcing Data Security & Encapsulation (e.g., masking phone numbers)
+   - Decoupling third-party integrations (Notification, Payment Gateways)
+   - Plug-and-Play Reusability (Rider Mapping in QuickRide vs Food Delivery in Zomato/Swiggy vs Courier Delivery in Amazon/Blinkit)
+   - Code Maintainability, Extensibility, and minimizing bugs.
+6. The exact distinction between **HLD**, **LLD**, and **DSA**.
+7. The Golden Metaphor: Brain vs Skeleton vs Infrastructure.
 
-However, knowing Dijkstra's algorithm does **not** give you the architectural capability to build Google Maps or Uber. Why?
-Because in production engineering:
-1. **Requirements evolve constantly**: Marketing asks for a new discount coupon model, a new vehicle tier (Uber Auto, Uber Moto), or an alternate payment gateway (UPI, Stripe, Apple Pay).
-2. **Multiple engineers collaborate**: 50+ developers touch the same codebase simultaneously. Poorly structured code causes merge conflicts, regression bugs, and codebase collapse.
-3. **Systems must scale and run 24/7**: The code must not only compute the result, but must also be testable, extensible, readable, and resilient to failure.
+---
+
+## 2. DSA vs Real-World Software Applications
+
+In competitive programming or computer science coursework, problems are isolated:
+- *"Given an unsorted array, sort it in $O(N \log N)$ time."* (Solution: QuickSort, MergeSort, InsertionSort).
+- *"Find the shortest path in a weighted graph."* (Solution: Dijkstra's Algorithm).
+
+```text
+       Isolated Problem (DSA)                 Complete Software Application (LLD)
+   ┌─────────────────────────────┐        ┌──────────────────────────────────────────────┐
+   │ Sort an array / find path   │   VS   │  User books ride, Driver gets matched,       │
+   │ Input -> Algorithm -> Output│        │  Live GPS tracking, Payment handled,         │
+   └─────────────────────────────┘        │  SMS/Push notified, Phone numbers masked     │
+                                          └──────────────────────────────────────────────┘
+```
+
+When you build a full production application around these algorithmic cores, you encounter **Low-Level Design (LLD)**. LLD is the discipline of structuring the code, objects, responsibilities, and interactions that bring algorithms to life inside a sustainable system.
+
+---
+
+## 3. The Story of Two Engineers at QuickRide
+
+To clearly understand why LLD is necessary, the instructor introduces two college graduates joining a ride-booking startup called **QuickRide** (an Ola/Uber clone):
+
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                               QUICKRIDE                                │
+│                     (Ride-Hailing Startup Platform)                    │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                  ┌─────────────────┴─────────────────┐
+                  ▼                                   ▼
+        ┌───────────────────┐               ┌───────────────────┐
+        │      ANURAG       │               │      MAURYA       │
+        ├───────────────────┤               ├───────────────────┤
+        │ • DSA Expert      │               │ • DSA Expert      │
+        │ • Knows 0 LLD     │               │ • Strong in LLD   │
+        └───────────────────┘               └───────────────────┘
+```
+
+Their engineering manager presents the challenge:
+> *"We need to design and build our core QuickRide ride-booking application. Figure out the problems and design the architecture."*
+
+---
+
+### Anurag's Perspective (The Naive / Pure DSA Approach)
+
+Because Anurag only knows DSA, he equates **"building an application"** with **"writing an algorithm"**. He immediately dives into algorithmic subproblems:
+
+1. **Problem 1 — How to take a user from Source to Destination?**
+   - Anurag thinks: *"I will model the entire city as a Graph where intersections are nodes and roads are weighted edges (weights representing distance and traffic). I'll run Dijkstra's shortest-path algorithm to navigate the cab."*
+2. **Problem 2 — How to map a user to a nearby driver?**
+   - Anurag thinks: *"I will represent all drivers on a 2D coordinate grid, calculate Euclidean distances, and use a Min-Heap to find the nearest driver."*
+
+Anurag presents this to his engineering manager, confident he has "designed" QuickRide.
+
+---
+
+### The Manager's Critique of Anurag's Design
+
+The manager rejects Anurag's design because it is **an algorithm without an application**. The manager points out critical missing fundamentals:
+
+```text
+                           ANURAG'S BLIND SPOTS
+  ┌───────────────────────────────────────────────────────────────────────┐
+  │ 1. Where are the domain Objects / Entities?                          │
+  │ 2. What are the Relationships and Interactions between these objects? │
+  │ 3. How is Data Security enforced?                                     │
+  │    (e.g., Rider & User phone numbers MUST be masked once ride ends)   │
+  │ 4. How do we integrate Notifications (Push, SMS, In-App)?            │
+  │ 5. How do we integrate third-party Payment Gateways (Razorpay/Paytm)? │
+  │ 6. What happens when the app scales to millions of users?             │
+  └───────────────────────────────────────────────────────────────────────┘
+```
+
+Anurag has no answers because algorithms do not dictate object contracts, data boundaries, or external system integrations.
+
+---
+
+### Maurya's Perspective (The LLD Approach)
+
+Maurya understands that algorithms come *later*. The first priority is building the **structural skeleton** of the application.
 
 ```mermaid
 graph TD
-    subgraph "System Engineering Pyramid"
-        HLD["High-Level Design (HLD)<br/>Microservices, Kafka, Redis, SQL/NoSQL, Load Balancers, Scalability"]
-        LLD["Low-Level Design (LLD / OOD)<br/>Classes, Interfaces, SOLID Principles, Design Patterns, Modularity"]
-        DSA["Data Structures & Algorithms (DSA)<br/>Arrays, Trees, Graphs, Sorting, Time & Space Complexity"]
+    subgraph "Core Domain Entities (Identified by Maurya)"
+        User[User / Customer]
+        Driver[Driver / Rider]
+        Ride[Ride Request & Booking]
+        Location[Location Coordinates]
     end
-    DSA --> LLD
-    LLD --> HLD
+
+    subgraph "Decoupled Integration Modules"
+        Payment[Payment Gateway Interface]
+        Notification[Notification Engine Interface]
+    end
+
+    User -->|requests| Ride
+    Ride -->|assigned to| Driver
+    Driver -->|tracks| Location
+    Ride -->|triggers payment| Payment
+    Ride -->|broadcasts status| Notification
 ```
+
+Maurya addresses each foundational design dimension:
+
+#### 1. Entity Identification & Relationships
+- Defines core objects: `User`, `Driver` (or Rider), `Ride`, `Location`, `Payment`, and `Notification`.
+- Models how a `User` interacts with a `Ride`, how a `Driver` accepts a `Ride`, and how locations update dynamically.
+
+#### 2. Data Security & Encapsulation
+- Protects sensitive data: `User` and `Driver` phone numbers must be encapsulated.
+- While a ride is active, a proxy or masked communication channel is used.
+- Once the ride transitions to `COMPLETED`, the driver must no longer have access to the user's personal details.
+
+#### 3. Plug-and-Play Reusability (Loose Coupling)
+- `Notification` and `Payment` must **not** be tightly coupled to the QuickRide business logic.
+- They must be independent, plug-and-play modules:
+  - If tomorrow the company builds a food delivery app (**Zomato / Swiggy clone**) or e-commerce platform, the same `NotificationEngine` and `PaymentGateway` abstractions must plug in seamlessly without rewriting.
+
+#### 4. Generic Matching Engines
+- The driver-allocation logic is not hardcoded into the ride class.
+- It is designed as an interchangeable **Matching Strategy**:
+  - In **QuickRide**: Matches passenger to closest available cab driver.
+  - In **Zomato / Swiggy**: Matches restaurant order to closest delivery partner.
+  - In **Amazon / Blinkit**: Matches warehouse parcel to delivery agent.
+- Same underlying architectural contract, adapted cleanly across domains.
 
 ---
 
-## 2. DSA vs. LLD vs. HLD: Detailed Comparison
+## 4. Why Good LLD is Vital for Enterprise Systems
 
-| Parameter | DSA | Low-Level Design (LLD) | High-Level Design (HLD) |
-| :--- | :--- | :--- | :--- |
-| **Scope** | Function / In-memory algorithm | Component / Class / Object relationships | Whole system / Cluster / Network architecture |
-| **Primary Goal** | Minimize Time & Space complexity ($O(N)$, $O(\log N)$) | Maximize Code Readability, Extensibility, Reusability, Testability | Maximize Throughput, Availability, Reliability, Fault Tolerance |
-| **Key Questions Answered** | *"Which data structure gives $O(1)$ lookup?"* | *"Which design pattern prevents `if-else` explosion when adding new ride types?"* | *"Should we use PostgreSQL or Cassandra? Do we need a message queue like Kafka?"* |
-| **Artifacts Produced** | Functions, algorithmic logic, unit test cases | Class diagrams, Sequence diagrams, Interfaces, Design Patterns, SOLID code | Architecture diagrams, Database schemas, API contracts, Network topologies |
-| **Interview Format** | 45 min live coding on LeetCode-style problem | 60 min machine coding / object modeling of real app (e.g. Splitwise, TicTacToe) | 45-60 min system architecture whiteboard discussion (e.g. Design Netflix) |
+The instructor highlights four major goals achieved by clean Low-Level Design:
 
----
-
-## 3. Monolithic vs. Microservices Architecture
-
-During High-Level Design, architects choose how components are deployed and scaled:
-
-```mermaid
-flowchart TD
-    subgraph Monolith["Monolithic Architecture"]
-        UI1[Web UI] --> App[Single Deployable Binary<br/>- User Auth Module<br/>- Payment Module<br/>- Order Module<br/>- Inventory Module]
-        App --> DB1[(Single Shared DB)]
-    end
-
-    subgraph Microservices["Microservices Architecture"]
-        UI2[Client Apps] --> AGW[API Gateway]
-        AGW --> AuthSvc[Auth Service]
-        AGW --> PaySvc[Payment Service]
-        AGW --> OrderSvc[Order Service]
-        AuthSvc --> DBAuth[(Auth DB)]
-        PaySvc --> DBPay[(Payment DB)]
-        OrderSvc --> DBOrder[(Order DB)]
-    end
-```
-
-| Parameter | Monolithic Architecture | Microservices Architecture |
+| Goal | Why It Matters | Consequence of Failure |
 | :--- | :--- | :--- |
-| **Deployment** | Single unified war/jar binary | Independent containerized services (Docker/K8s) |
-| **Scaling** | Scale the whole application | Scale only bottleneck services (e.g. scale Payment during Black Friday) |
-| **Blast Radius** | A memory leak in one module crashes the entire system | Isolated failure; service mesh circuit breakers prevent cascade |
-| **Complexity** | Simple debugging & transactional ACID consistency | Distributed data, eventual consistency, network latency, saga patterns |
+| **Maintainability** | Code is readable, well-structured, and easy for any engineer to understand. | Spaghetti code; nobody understands who changes what; high onboarding friction. |
+| **Extensibility** | New features (e.g., EV cab category, UPI payment, coupon discounts) can be added without modifying existing code. | Modifying old code breaks existing features (violates Open/Closed Principle). |
+| **Testability & Minimal Bugs** | Loosely coupled classes with clear interfaces allow isolated unit testing. | Untestable monolith; fixing one bug creates three new regression bugs. |
+| **Reusability** | Modular components can be shared across multiple systems via plug-and-play interfaces. | Duplicate copy-paste code throughout different repositories. |
 
 ---
 
-## 4. Understanding Non-Functional Requirements (NFRs)
-
-When an interviewer asks you to design a system, they evaluate whether you understand both **Functional Requirements** (what the system does) and **Non-Functional Requirements** (how the system behaves under load, failures, and growth).
+## 5. The Three Dimensions: HLD vs LLD vs DSA
 
 ```mermaid
-mindmap
-  root((System NFRs))
-    Scalability
-      Vertical Scaling
-      Horizontal Scaling
-    Availability
-      Uptime SLAs
-      Fault Tolerance
-      Redundancy
-    Reliability
-      Data Integrity
-      Crash Recovery
-    Performance
-      Latency
-      Throughput
+graph LR
+    HLD["High-Level Design (HLD)<br/>System Architecture & Infrastructure<br/>(Databases, Microservices, Scale, Caching)"]
+    LLD["Low-Level Design (LLD)<br/>Code Structure & Object Modeling<br/>(Classes, Interfaces, SOLID, Patterns)"]
+    DSA["Data Structures & Algorithms (DSA)<br/>Algorithmic Execution Inside Methods<br/>(Dijkstra, Heaps, HashMaps, Trees)"]
+
+    HLD -->|contains services designed with| LLD
+    LLD -->|uses for optimization| DSA
 ```
 
-### 1. Scalability (Vertical vs. Horizontal)
-- **Vertical Scaling (Scale-Up)**: Adding more CPU cores, RAM, or SSD storage to a single server instance.
-  - *Pros*: Simple, no distributed synchronization needed.
-  - *Cons*: Hard hardware ceiling; expensive; single point of failure (SPOF).
-- **Horizontal Scaling (Scale-Out)**: Adding more commodity server instances behind a Load Balancer.
-  - *Pros*: Virtually unlimited growth; high availability.
-  - *Cons*: Requires stateless application layers, distributed databases, network coordination.
+### Detailed Comparison Table
 
-### 2. Availability vs. Reliability
-- **Availability**: The percentage of time a system remains operational and accessible to process requests.
-  $$\text{Availability} = \frac{\text{Total Uptime}}{\text{Total Uptime} + \text{Total Downtime}}$$
-  - *High Availability Target*: **99.999% ("Five Nines")** $\approx$ under 5.26 minutes of downtime per entire year!
-- **Reliability**: The probability that a system performs its intended function correctly without errors or data loss over a specified interval.
-  - *Key Takeaway*: A system can be **available** (responding with HTTP 500 errors quickly) but **unreliable** (failing to complete bookings). Reliability requires correct execution.
-
-### 3. Latency vs. Throughput
-- **Latency**: The time taken to process a single request from the moment it is sent until the response is received (measured in milliseconds, e.g., $p99 < 50\text{ ms}$).
-- **Throughput**: The number of requests the system can process per unit of time (measured in Requests Per Second - RPS, or Transactions Per Second - TPS).
-- *Analogy*: Think of a highway.
-  - **Latency** is how long it takes one car to travel from point A to point B (speed).
-  - **Throughput** is how many cars pass through a toll booth per minute (capacity).
+| Aspect | High-Level Design (HLD) | Low-Level Design (LLD) | Data Structures & Algorithms (DSA) |
+| :--- | :--- | :--- | :--- |
+| **Primary Focus** | **System Architecture** | **Code Structure** | **Algorithmic Efficiency** |
+| **Scope** | Macro / Global (Inter-system) | Micro / Service-level (Intra-service) | Local / Function-level (In-memory) |
+| **Key Questions** | • What tech stack to use?<br/>• SQL vs NoSQL vs Hybrid?<br/>• How to scale to millions of requests?<br/>• Load balancers, caches, CDN, cloud cost? | • What classes and interfaces to create?<br/>• What design patterns to apply?<br/>• How to decouple modules?<br/>• How to adhere to SOLID principles? | • Which data structure minimizes space?<br/>• How to achieve $O(N \log N)$ or $O(1)$ lookup?<br/>• How to find shortest path or topological sort? |
+| **Key Deliverables** | Architecture diagrams, network topologies, data schema, scale strategy. | Class diagrams, sequence diagrams, design pattern implementations, Java code. | Time and space complexity analysis, algorithmic proof, function code. |
 
 ---
 
-## 5. The Real-World LLD Example: Ride-Hailing App (Uber / Ola)
+## 6. The Golden Metaphor
 
-Let's illustrate how DSA, LLD, and HLD collaborate in a single feature: **Matching a rider with the nearest driver**.
+The instructor summarizes the relationship between all three disciplines in one unforgettable sentence:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Rider as Rider App
-    participant LB as Load Balancer (HLD)
-    participant Matcher as RideMatchingService (LLD)
-    participant Strategy as MatchingStrategy (LLD)
-    participant SpatialIdx as Geospatial QuadTree / Heap (DSA)
-    participant DB as Postgres / Redis (HLD)
+> 🧠 **"If DSA is the BRAIN of an application, LLD is its SKELETON, and HLD is the INFRASTRUCTURE it lives in."**
 
-    Rider->>LB: POST /rides/request (lat, lng, rideType)
-    LB->>Matcher: Forward request
-    Matcher->>Strategy: findDrivers(location, rideType)
-    Note over Strategy: Strategy Pattern selects<br/>NearestDriverStrategy vs CheapestDriverStrategy
-    Strategy->>SpatialIdx: queryKNearestNeighbors(radius=3km)
-    Note over SpatialIdx: DSA: Min-Heap / QuadTree<br/>calculates distance in O(log N)
-    SpatialIdx-->>Strategy: List of 5 nearest Driver IDs
-    Strategy->>DB: Check driver availability & status
-    DB-->>Strategy: Driver #1042 Available
-    Strategy-->>Matcher: Driver #1042 selected
-    Matcher-->>Rider: Ride Confirmed (Driver #1042 arriving in 3 mins)
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│ HLD: The City & Roads (Cloud infrastructure, servers, network, DB)     │
+│                                                                        │
+│   ┌────────────────────────────────────────────────────────────────┐   │
+│   │ LLD: The Human Skeleton (Bones, joints, structure, interfaces) │   │
+│   │                                                                │   │
+│   │   ┌────────────────────────────────────────────────────────┐   │   │
+│   │   │ DSA: The Brain (Thinking, calculation, logic, formulas)│   │   │
+│   │   └────────────────────────────────────────────────────────┘   │   │
+│   └────────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **DSA Component**: A Geospatial QuadTree or Min-Heap calculates the closest drivers in $O(\log N)$ time.
-2. **LLD Component**:
-   - `Rider` and `Driver` classes inherit from a base `User` class.
-   - `MatchingStrategy` interface with implementations `NearestDriverStrategy`, `SurgeOptimizedStrategy`, and `SharedRideStrategy`.
-   - `Trip` class tracks lifecycle states (`REQUESTED`, `ACCEPTED`, `IN_TRANSIT`, `COMPLETED`).
-3. **HLD Component**:
-   - Microservices communicate over gRPC / REST.
-   - WebSocket servers stream driver GPS updates every 4 seconds.
-   - Redis stores real-time driver coordinates with TTL.
+Without a skeleton (LLD), the brain (DSA) collapses into a heap of flesh and cannot move. Without an environment (HLD), the body has nowhere to function.
 
 ---
 
-## 6. Interview Preparation Roadmap
+## 7. Java Representation: Maurya's QuickRide Architecture
 
-When approaching an LLD / Machine Coding interview:
-1. **Clarify Requirements (First 5–10 mins)**: Identify actors, functional use cases, constraints, and out-of-scope items.
-2. **Identify Core Entities & Relationships (Next 5–10 mins)**: Identify nouns (Classes) and verbs (Methods). Determine `IS-A` (Inheritance) vs `HAS-A` (Composition) relationships.
-3. **Apply Design Patterns Judiciously**: Do not force patterns. Use **Strategy** for interchangeable behaviors, **Factory** for object creation, **Observer** for event-driven updates, and **State** for complex status lifecycles.
-4. **Adhere to SOLID Principles**: Single responsibility classes, interface-driven programming, and dependency injection.
-5. **Implement Extensible, Compilable Code**: Write clean Java code with proper access modifiers, validation, error handling, and thread safety.
+Here is the clean Java structure illustrating how Maurya models QuickRide with loose coupling, data security, and plug-and-play modules:
+
+```java
+import java.util.*;
+
+// 1. Data Security & Encapsulation: User and Driver Entities
+class User {
+    private final String userId;
+    private final String name;
+    private final String phoneNumber; // Sensitive data
+
+    public User(String userId, String name, String phoneNumber) {
+        this.userId = userId;
+        this.name = name;
+        this.phoneNumber = phoneNumber;
+    }
+
+    public String getUserId() { return userId; }
+    public String getName() { return name; }
+    // Masked phone number prevents exposing personal info
+    public String getMaskedPhone() {
+        return "XXXXX-" + phoneNumber.substring(Math.max(0, phoneNumber.length() - 4));
+    }
+}
+
+class Driver {
+    private final String driverId;
+    private final String name;
+    private double currentLatitude;
+    private double currentLongitude;
+    private boolean isAvailable;
+
+    public Driver(String driverId, String name, double lat, double lon) {
+        this.driverId = driverId;
+        this.name = name;
+        this.currentLatitude = lat;
+        this.currentLongitude = lon;
+        this.isAvailable = true;
+    }
+
+    public String getDriverId() { return driverId; }
+    public String getName() { return name; }
+    public double getLatitude() { return currentLatitude; }
+    public double getLongitude() { return currentLongitude; }
+    public boolean isAvailable() { return isAvailable; }
+    public void setAvailable(boolean available) { isAvailable = available; }
+}
+
+// 2. Reusable Matching Strategy (Used in QuickRide, Zomato, Blinkit)
+interface MatchingStrategy {
+    Driver matchDriver(double pickupLat, double pickupLon, List<Driver> availableDrivers);
+}
+
+// Nearest driver selection using Euclidean distance
+class NearestDriverStrategy implements MatchingStrategy {
+    @Override
+    public Driver matchDriver(double pickupLat, double pickupLon, List<Driver> availableDrivers) {
+        Driver bestMatch = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (Driver driver : availableDrivers) {
+            if (!driver.isAvailable()) continue;
+            double dist = Math.hypot(driver.getLatitude() - pickupLat, driver.getLongitude() - pickupLon);
+            if (dist < minDistance) {
+                minDistance = dist;
+                bestMatch = driver;
+            }
+        }
+        return bestMatch;
+    }
+}
+
+// 3. Plug-and-Play Third-Party Integrations (Open/Closed Principle)
+interface NotificationService {
+    void sendNotification(String recipient, String message);
+}
+
+class PushNotificationService implements NotificationService {
+    @Override
+    public void sendNotification(String recipient, String message) {
+        System.out.println("[Push Notification -> " + recipient + "]: " + message);
+    }
+}
+
+interface PaymentService {
+    boolean processPayment(String userId, double amount);
+}
+
+class ThirdPartyPaymentService implements PaymentService {
+    @Override
+    public boolean processPayment(String userId, double amount) {
+        System.out.println("[Payment Gateway]: Successfully debited ₹" + amount + " from user " + userId);
+        return true;
+    }
+}
+
+// 4. Core Orchestrator: QuickRide Service
+class QuickRideService {
+    private final List<Driver> drivers = new ArrayList<>();
+    private final MatchingStrategy matchingStrategy;
+    private final NotificationService notificationService;
+    private final PaymentService paymentService;
+
+    public QuickRideService(MatchingStrategy matchingStrategy,
+                            NotificationService notificationService,
+                            PaymentService paymentService) {
+        this.matchingStrategy = matchingStrategy;
+        this.notificationService = notificationService;
+        this.paymentService = paymentService;
+    }
+
+    public void registerDriver(Driver driver) {
+        drivers.add(driver);
+    }
+
+    public void bookRide(User user, double pickupLat, double pickupLon, double dropLat, double dropLon) {
+        System.out.println("\n[QuickRide]: Booking ride for " + user.getName() + " (Phone: " + user.getMaskedPhone() + ")");
+
+        // Step 1: Algorithmic matching delegated to strategy
+        Driver assignedDriver = matchingStrategy.matchDriver(pickupLat, pickupLon, drivers);
+        if (assignedDriver == null) {
+            notificationService.sendNotification(user.getName(), "No drivers available nearby. Please try again.");
+            return;
+        }
+
+        assignedDriver.setAvailable(false);
+        notificationService.sendNotification(user.getName(), "Driver " + assignedDriver.getName() + " assigned to your ride!");
+
+        // Step 2: Trip lifecycle
+        System.out.println("[QuickRide]: Trip in progress from (" + pickupLat + "," + pickupLon + ") to (" + dropLat + "," + dropLon + ")");
+
+        // Step 3: Payment & Completion
+        double fare = 250.00;
+        paymentService.processPayment(user.getUserId(), fare);
+        assignedDriver.setAvailable(true);
+
+        notificationService.sendNotification(user.getName(), "Ride completed! Masked receipt generated.");
+    }
+}
+
+// 5. Test Driver
+public class Main {
+    public static void main(String[] args) {
+        MatchingStrategy strategy = new NearestDriverStrategy();
+        NotificationService notification = new PushNotificationService();
+        PaymentService payment = new ThirdPartyPaymentService();
+
+        QuickRideService quickRide = new QuickRideService(strategy, notification, payment);
+
+        // Register Drivers
+        quickRide.registerDriver(new Driver("D1", "Ramesh", 12.9716, 77.5946));
+        quickRide.registerDriver(new Driver("D2", "Suresh", 12.9352, 77.6245));
+
+        // User books a ride
+        User user = new User("U101", "Pooja", "9876543210");
+        quickRide.bookRide(user, 12.9720, 77.5950, 12.9279, 77.6271);
+    }
+}
+```
+
+---
+
+## Quick Revision
+
+### Core Idea
+System design transforms isolated algorithms (DSA) into complete, scalable, and resilient software applications. While DSA optimizes individual operations in-memory, **LLD (Low-Level Design)** architects the modular code structure, class hierarchies, SOLID principles, and data boundaries inside a service, and **HLD (High-Level Design)** orchestrates distributed system topology, caching, and databases across the network.
+
+### Remember
+* The Story of QuickRide: Anurag jumped straight to Dijkstra graph traversal and failed because an application requires entities, relationships, privacy, and modular integrations. Maurya succeeded by designing the object skeleton first.
+* Data security matters at the LLD level: Customer and driver phone numbers must be masked to protect privacy after ride completion.
+* Reusability: Notification, Payment, and Matching abstractions should be plug-and-play across QuickRide, Zomato, Swiggy, Amazon, and Blinkit.
+
+### Java Implementation Idea
+* Define interfaces for cross-cutting capabilities (`MatchingStrategy`, `NotificationService`, `PaymentService`) so concrete implementations can be swapped without modifying the core business orchestrator (`QuickRideService`).
+* Encapsulate sensitive fields within private access modifiers and expose only masked views (`getMaskedPhone()`).
+
+### Most Important Interview Point
+* Always explain the hierarchy: *"If DSA is the brain of an application, LLD is its skeleton, and HLD is the environment/infrastructure it lives in."*
+* Never begin an LLD interview by writing algorithmic loops. Start by clarifying requirements, identifying domain entities, establishing relationships, and defining interfaces.
+
+### Common Trap
+* Confusing LLD with writing an algorithm. (e.g., spending the entire interview coding Dijkstra's algorithm instead of modeling `User`, `Driver`, `Ride`, and `Payment` abstractions).
+* Hardcoding third-party dependencies (like SMS or Razorpay) directly inside business logic classes rather than programming to interfaces.

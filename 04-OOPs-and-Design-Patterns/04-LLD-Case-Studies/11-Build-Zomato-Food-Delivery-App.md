@@ -1,163 +1,376 @@
-# 11. Build Zomato / Swiggy — Food Delivery App LLD
+# 11. Build Zomato Food Delivery App LLD ("Tomato App")
 
-> 💡 **Quick Revision Anchor**: `Cart to Order Pipeline, Payment Strategy, Order Status Lifecycle`
+## 1. Problem Statement
+
+Design a production-grade Low-Level Object-Oriented system for an online food delivery application (modeled after **Zomato / Swiggy**, named **Tomato** in the lecture). The system models the end-to-end customer journey:
+- **Location-Based Restaurant Search**: Finding nearby restaurants based on user geolocation.
+- **Cart & Menu Management**: Browsing dishes (e.g. Chhole Bhature, Samosa), managing single-restaurant shopping carts.
+- **Order Creation & Factories**: Immediate delivery orders vs. Future scheduled delivery orders via **Factory Method** (`NowOrderFactory`, `ScheduledOrderFactory`).
+- **Pluggable Payment Processing**: Encapsulating checkout transactions through the **Strategy Pattern** (UPI, Credit/Debit Card, NetBanking).
+- **Notification Subsystem**: Dispatching order placement alerts to users.
+- **System Orchestration**: Evaluating the architectural role and trade-offs of the top-level **`TomatoApp` Orchestrator (Facade)** versus modern decentralized API controller/service layers.
+
+```mermaid
+mindmap
+  root((Tomato Food Delivery App))
+    Design Methodology
+      Bottom-Up Decomposition
+      Scope Management in 1hr Interview
+    Domain Models & Managers
+      User & Cart (Composition)
+      Restaurant & MenuItem
+      RestaurantManager (Location Indexing)
+    Order Lifecycle & Factory
+      Order Aggregate (PENDING, PAID, CANCELLED)
+      OrderFactory Hierarchy
+        NowOrderFactory
+        ScheduledOrderFactory
+    Payment Processing
+      PaymentStrategy (UPI, Card, NetBanking)
+    Notification Subsystem
+      NotificationService
+      Extensible Multi-Channel (Push, SMS, WhatsApp)
+    System Orchestration
+      TomatoApp Facade / Orchestrator
+      Trade-offs: SRP vs Centralized Facade
+      Modern Decoupled Controllers/Services
+```
 
 ---
 
-## 1. Problem Scope & Functional Requirements
+## 2. Requirements & Scope Management
 
-Design a **Low-Level Architecture for an online Food Delivery Platform** (like Zomato or Swiggy) capable of handling millions of hungry users, restaurant partners, and delivery workflows.
+### Functional Requirements
+1. **User Management**: Model user accounts with unique IDs, names, and geographic locations (e.g. Delhi).
+2. **Restaurant Discovery**: Search restaurants filtering by city/location.
+3. **Menu & Cart Management**: View restaurant menus; add/remove items to cart; enforce single-restaurant cart constraints and calculate bill totals.
+4. **Order Placement & Scheduling**: Support ordering food now or scheduling an order for later via `OrderFactory`.
+5. **Payment Processing**: Execute transactions via pluggable payment mechanisms (UPI, Card, NetBanking).
+6. **Order Notification**: Send confirmation alerts upon successful payment.
 
-### Functional Requirements:
-1. **User & Restaurant Directory**: Search restaurants, browse menus, and view item details.
-2. **Cart Management**: Add/remove menu items, compute subtotal, apply taxes and delivery fees.
-3. **Order Placement**: Convert Cart into an active `Order` with unique ID and timestamps.
-4. **Flexible Payments**: Support interchangeable payment methods (UPI, Credit Card, Cash on Delivery) via **Strategy Pattern**.
-5. **Order Lifecycle State Machine**: Track status (`PLACED`, `ACCEPTED`, `PREPARING`, `DISPATCHED`, `DELIVERED`, `CANCELLED`).
-6. **Notification Hooks**: Dispatch notifications to user and restaurant on status transitions.
+### Non-Functional Requirements
+1. **Extensibility**: Adding new payment gateways or order types must not break existing order processing.
+2. **Cohesion**: Clear separation between domain models (entities), managers (in-memory repositories), factories, and services.
+3. **Interview Scope Realism**: In a 45-60 minute interview, candidates cannot build the entire real-world Zomato. Focus on the end-to-end "Happy Flow" with pristine UML contracts, patterns, and architectural trade-off analysis.
 
 ---
 
-## 2. Domain Entity & Class Architecture
+## 3. Architecture & Package Structure
+
+The system is organized into clean domain layers following the **Bottom-Up** design methodology:
+
+```text
+com.tomato.app
+├── models/             -> User, Cart, Restaurant, MenuItem, Order, OrderType, OrderStatus
+├── managers/           -> RestaurantManager, OrderManager (stateful repositories)
+├── factories/          -> OrderFactory, NowOrderFactory, ScheduledOrderFactory
+├── strategies/         -> PaymentStrategy, UpiPaymentStrategy, CardPaymentStrategy, NetBankingStrategy
+├── services/           -> NotificationService
+├── utils/              -> TimeUtils
+└── TomatoApp.java      -> Top-level facade / orchestrator
+```
+
+---
+
+## 4. Class Diagram
 
 ```mermaid
 classDiagram
+    %% Core Entities
     class User {
-        -String userId
+        -int id
         -String name
-        -String email
-        -String deliveryAddress
-    }
-
-    class MenuItem {
-        -String itemId
-        -String name
-        -double price
-    }
-
-    class Restaurant {
-        -String restaurantId
-        -String name
-        -String address
-        -List~MenuItem~ menu
-        +getMenu() List~MenuItem~
-    }
-
-    class CartItem {
-        -MenuItem item
-        -int quantity
-        +getSubtotal() double
+        -String location
+        -Cart cart
+        +User(int id, String name, String location)
+        +getCart() Cart
     }
 
     class Cart {
         -Restaurant restaurant
-        -List~CartItem~ items
-        +addItem(MenuItem item, int qty) void
-        +calculateTotal() double
+        -List~MenuItem~ items
+        +addItem(MenuItem item) void
         +clear() void
+        +getTotalCost() double
+        +getRestaurant() Restaurant
+        +getItems() List~MenuItem~
     }
 
-    class OrderStatus {
-        <<enumeration>>
-        PENDING
-        CONFIRMED
-        PREPARING
-        OUT_FOR_DELIVERY
-        DELIVERED
-        CANCELLED
+    class MenuItem {
+        -String code
+        -String name
+        -double price
+        +MenuItem(String code, String name, double price)
+        +getPrice() double
     }
 
-    class Order {
-        -String orderId
-        -User user
-        -Restaurant restaurant
-        -List~CartItem~ items
-        -double totalAmount
-        -OrderStatus status
-        -PaymentStrategy paymentMethod
-        +updateStatus(OrderStatus s) void
+    class Restaurant {
+        -int id
+        -String name
+        -String location
+        -List~MenuItem~ menu
+        +findItemByCode(String code) MenuItem
     }
 
+    User *-- Cart : Composition
+    Cart o-- Restaurant : References
+    Cart o-- MenuItem : Contains
+    Restaurant *-- MenuItem : Aggregation
+
+    %% Managers
+    class RestaurantManager {
+        -List~Restaurant~ restaurants
+        +searchByLocation(String location) List~Restaurant~
+    }
+
+    %% Payment Strategy
     class PaymentStrategy {
         <<interface>>
         +pay(double amount) boolean
     }
+    class UpiPaymentStrategy { +pay(double amount) boolean }
+    class CardPaymentStrategy { +pay(double amount) boolean }
+    PaymentStrategy <|.. UpiPaymentStrategy
+    PaymentStrategy <|.. CardPaymentStrategy
 
-    Restaurant o-- MenuItem
-    Cart o-- CartItem
-    CartItem --> MenuItem
-    Order o-- CartItem
-    Order --> OrderStatus
-    Order --> PaymentStrategy
+    %% Order Factory Hierarchy
+    class OrderFactory {
+        <<abstract>>
+        +createOrder(User user, PaymentStrategy payment) Order*
+    }
+    class NowOrderFactory { +createOrder(User user, PaymentStrategy payment) Order }
+    class ScheduledOrderFactory { +createOrder(User user, PaymentStrategy payment) Order }
+    OrderFactory <|-- NowOrderFactory
+    OrderFactory <|-- ScheduledOrderFactory
+
+    %% Orchestrator
+    class TomatoApp {
+        -RestaurantManager restaurantManager
+        -NotificationService notificationService
+        +searchRestaurants(String location) List~Restaurant~
+        +selectRestaurant(User user, Restaurant r) void
+        +addToCart(User user, String itemCode) void
+        +checkoutNow(User user, PaymentStrategy payment) Order
+        +payForOrder(Order order) boolean
+    }
+
+    TomatoApp --> RestaurantManager
+    TomatoApp --> OrderFactory
+    TomatoApp --> NotificationService
 ```
 
 ---
 
-## 3. Java Implementation Walkthrough
+## 5. End-to-End Happy Flow: Sequence Diagram
 
-### 1. Domain Entities: Restaurant, Item, Cart
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Customer as User (Aditya, Delhi)
+    participant App as TomatoApp (Orchestrator)
+    participant RM as RestaurantManager
+    participant Cart as User's Cart
+    participant OF as NowOrderFactory
+    participant PS as UpiPaymentStrategy
+    participant NS as NotificationService
+
+    Customer->>App: searchRestaurants("Delhi")
+    App->>RM: searchByLocation("Delhi")
+    RM-->>App: List [Bikaner Sweets]
+    App-->>Customer: Show Restaurants
+
+    Customer->>App: selectRestaurant(Bikaner)
+    App->>Cart: setRestaurant(Bikaner)
+
+    Customer->>App: addToCart("CHHOLE_BHATURE")
+    App->>Cart: addItem(Chhole Bhature, ₹120)
+    Customer->>App: addToCart("SAMOSA")
+    App->>Cart: addItem(Samosa, ₹15)
+
+    Customer->>App: checkoutNow(upiStrategy)
+    App->>OF: createOrder(user, upiStrategy)
+    OF-->>App: Order (Total: ₹135, Status: PENDING)
+
+    Customer->>App: payForOrder(order)
+    App->>PS: pay(135.0)
+    PS-->>App: Payment Successful
+    App->>NS: sendNotification(order)
+    NS-->>Customer: Alert: "New Order Placed with Bikaner Sweets!"
+    App-->>Customer: Order Confirmation
+```
+
+---
+
+## 6. Complete Java Implementation
+
 ```java
-public record MenuItem(String id, String name, double price) {}
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
-public class Restaurant {
-    private final String id;
+// ============================================================================
+// 1. MODELS LAYER
+// ============================================================================
+
+public class MenuItem {
+    private final String code;
     private final String name;
-    private final List<MenuItem> menu = new ArrayList<>();
+    private final double price;
 
-    public Restaurant(String id, String name) {
-        this.id = id;
+    public MenuItem(String code, String name, double price) {
+        this.code = code;
         this.name = name;
+        this.price = price;
     }
 
-    public void addMenuItem(MenuItem item) { menu.add(item); }
-    public List<MenuItem> getMenu() { return Collections.unmodifiableList(menu); }
+    public String getCode() { return code; }
     public String getName() { return name; }
+    public double getPrice() { return price; }
+
+    @Override
+    public String toString() {
+        return name + " (₹" + price + ")";
+    }
 }
 
-public class CartItem {
-    private final MenuItem item;
-    private int quantity;
+public class Restaurant {
+    private final int id;
+    private final String name;
+    private final String location;
+    private final List<MenuItem> menu = new ArrayList<>();
 
-    public CartItem(MenuItem item, int quantity) {
-        this.item = item;
-        this.quantity = quantity;
+    public Restaurant(int id, String name, String location) {
+        this.id = id;
+        this.name = name;
+        this.location = location;
     }
 
-    public double getSubtotal() { return item.price() * quantity; }
-    public MenuItem getItem() { return item; }
-    public int getQuantity() { return quantity; }
-    public void increment(int qty) { this.quantity += qty; }
+    public void addMenuItem(MenuItem item) {
+        menu.add(item);
+    }
+
+    public MenuItem findItemByCode(String code) {
+        return menu.stream()
+                .filter(item -> item.getCode().equalsIgnoreCase(code))
+                .findFirst()
+                .orElse(null);
+    }
+
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public String getLocation() { return location; }
+    public List<MenuItem> getMenu() { return Collections.unmodifiableList(menu); }
 }
 
 public class Cart {
-    private final Restaurant restaurant;
-    private final List<CartItem> items = new ArrayList<>();
+    private Restaurant restaurant;
+    private final List<MenuItem> items = new ArrayList<>();
 
-    public Cart(Restaurant restaurant) {
+    public void setRestaurant(Restaurant restaurant) {
+        if (this.restaurant != null && this.restaurant.getId() != restaurant.getId()) {
+            items.clear(); // Reset cart if ordering from a different restaurant
+            System.out.println("⚠️ Switched restaurant! Previous cart items cleared.");
+        }
         this.restaurant = restaurant;
     }
 
-    public void addItem(MenuItem item, int qty) {
-        for (CartItem ci : items) {
-            if (ci.getItem().id().equals(item.id())) {
-                ci.increment(qty);
-                return;
-            }
-        }
-        items.add(new CartItem(item, qty));
+    public void addItem(MenuItem item) {
+        if (restaurant == null) throw new IllegalStateException("Select a restaurant first!");
+        items.add(item);
     }
 
-    public double calculateTotal() {
-        return items.stream().mapToDouble(CartItem::getSubtotal).sum();
+    public void clear() {
+        items.clear();
+        restaurant = null;
     }
 
-    public List<CartItem> getItems() { return Collections.unmodifiableList(items); }
+    public double getTotalCost() {
+        return items.stream().mapToDouble(MenuItem::getPrice).sum();
+    }
+
     public Restaurant getRestaurant() { return restaurant; }
+    public List<MenuItem> getItems() { return Collections.unmodifiableList(items); }
 }
-```
 
-### 2. Payment Strategy
-```java
+public class User {
+    private final int id;
+    private final String name;
+    private final String location;
+    private final Cart cart;
+
+    public User(int id, String name, String location) {
+        this.id = id;
+        this.name = name;
+        this.location = location;
+        this.cart = new Cart(); // Cart has a strict composition relationship with User
+    }
+
+    public int getId() { return id; }
+    public String getName() { return name; }
+    public String getLocation() { return location; }
+    public Cart getCart() { return cart; }
+}
+
+public enum OrderStatus {
+    PENDING_PAYMENT,
+    PAID,
+    PREPARING,
+    OUT_FOR_DELIVERY,
+    DELIVERED,
+    CANCELLED
+}
+
+public enum OrderType {
+    DELIVERY_NOW,
+    SCHEDULED
+}
+
+public class Order {
+    private final String orderId;
+    private final User user;
+    private final Restaurant restaurant;
+    private final List<MenuItem> items;
+    private final double totalAmount;
+    private final PaymentStrategy paymentStrategy;
+    private final OrderType orderType;
+    private final LocalDateTime scheduledTime;
+    private OrderStatus status;
+
+    public Order(String orderId, User user, Restaurant restaurant, List<MenuItem> items,
+                 double totalAmount, PaymentStrategy paymentStrategy, OrderType orderType,
+                 LocalDateTime scheduledTime) {
+        this.orderId = orderId;
+        this.user = user;
+        this.restaurant = restaurant;
+        this.items = new ArrayList<>(items);
+        this.totalAmount = totalAmount;
+        this.paymentStrategy = paymentStrategy;
+        this.orderType = orderType;
+        this.scheduledTime = scheduledTime;
+        this.status = OrderStatus.PENDING_PAYMENT;
+    }
+
+    public boolean processPayment() {
+        if (paymentStrategy.pay(totalAmount)) {
+            this.status = OrderStatus.PAID;
+            return true;
+        }
+        return false;
+    }
+
+    public String getOrderId() { return orderId; }
+    public User getUser() { return user; }
+    public Restaurant getRestaurant() { return restaurant; }
+    public List<MenuItem> getItems() { return Collections.unmodifiableList(items); }
+    public double getTotalAmount() { return totalAmount; }
+    public OrderStatus getStatus() { return status; }
+    public LocalDateTime getScheduledTime() { return scheduledTime; }
+}
+
+// ============================================================================
+// 2. STRATEGIES LAYER: PAYMENT STRATEGY PATTERN
+// ============================================================================
+
 public interface PaymentStrategy {
     boolean pay(double amount);
 }
@@ -165,102 +378,269 @@ public interface PaymentStrategy {
 public class UpiPaymentStrategy implements PaymentStrategy {
     private final String upiId;
 
-    public UpiPaymentStrategy(String upiId) { this.upiId = upiId; }
-
-    @Override
-    public boolean pay(double amount) {
-        System.out.println("Initiating ₹" + amount + " UPI transfer to VPA: " + upiId);
-        return true; // Simulate gateway success
+    public UpiPaymentStrategy(String upiId) {
+        this.upiId = upiId;
     }
-}
 
-public class CashOnDeliveryStrategy implements PaymentStrategy {
     @Override
     public boolean pay(double amount) {
-        System.out.println("Order flagged for Cash On Delivery: ₹" + amount + " to be collected upon drop-off.");
+        System.out.println("📱 [UPI] Authenticating VPA: " + upiId + " for amount ₹" + amount);
+        System.out.println("✅ [UPI] Payment of ₹" + amount + " successful!");
         return true;
     }
 }
-```
 
-### 3. Order Aggregate & State Machine
-```java
-public enum OrderStatus {
-    CREATED, PAID, ACCEPTED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED
-}
+public class CardPaymentStrategy implements PaymentStrategy {
+    private final String cardNumber;
 
-public class Order {
-    private final String orderId;
-    private final String userId;
-    private final Restaurant restaurant;
-    private final List<CartItem> items;
-    private final double totalAmount;
-    private OrderStatus status;
-
-    public Order(String orderId, String userId, Cart cart) {
-        this.orderId = orderId;
-        this.userId = userId;
-        this.restaurant = cart.getRestaurant();
-        this.items = new ArrayList<>(cart.getItems());
-        this.totalAmount = cart.calculateTotal();
-        this.status = OrderStatus.CREATED;
+    public CardPaymentStrategy(String cardNumber) {
+        this.cardNumber = cardNumber;
     }
 
-    public boolean processPayment(PaymentStrategy paymentStrategy) {
-        if (paymentStrategy.pay(totalAmount)) {
-            this.status = OrderStatus.PAID;
-            return true;
-        }
-        this.status = OrderStatus.CANCELLED;
-        return false;
-    }
-
-    public void updateStatus(OrderStatus newStatus) {
-        this.status = newStatus;
-        System.out.println("Order [" + orderId + "] status changed to: " + newStatus);
+    @Override
+    public boolean pay(double amount) {
+        System.out.println("💳 [Card] Charging card ending in " + cardNumber.substring(cardNumber.length() - 4) + " for ₹" + amount);
+        System.out.println("✅ [Card] Transaction approved!");
+        return true;
     }
 }
-```
 
-### 4. Food Delivery Service (Orchestrator Facade)
-```java
-public class FoodDeliveryService {
-    private final Map<String, Restaurant> restaurantDirectory = new HashMap<>();
+// ============================================================================
+// 3. FACTORIES LAYER: ORDER FACTORY METHOD PATTERN
+// ============================================================================
 
-    public void registerRestaurant(Restaurant r) {
-        restaurantDirectory.put(r.getName(), r);
+public abstract class OrderFactory {
+    public abstract Order createOrder(User user, PaymentStrategy paymentStrategy);
+}
+
+public class NowOrderFactory extends OrderFactory {
+    @Override
+    public Order createOrder(User user, PaymentStrategy paymentStrategy) {
+        Cart cart = user.getCart();
+        String orderId = "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return new Order(orderId, user, cart.getRestaurant(), cart.getItems(),
+                cart.getTotalCost(), paymentStrategy, OrderType.DELIVERY_NOW, LocalDateTime.now());
+    }
+}
+
+public class ScheduledOrderFactory extends OrderFactory {
+    private final LocalDateTime deliveryTime;
+
+    public ScheduledOrderFactory(LocalDateTime deliveryTime) {
+        this.deliveryTime = deliveryTime;
     }
 
-    public Order checkout(String userId, Cart cart, PaymentStrategy paymentMethod) {
-        String orderId = "ORD-" + UUID.randomUUID().toString().substring(0, 8);
-        Order order = new Order(orderId, userId, cart);
-        
-        if (order.processPayment(paymentMethod)) {
-            order.updateStatus(OrderStatus.ACCEPTED);
-            System.out.println("Notification sent to " + cart.getRestaurant().getName() + " to prepare food.");
+    @Override
+    public Order createOrder(User user, PaymentStrategy paymentStrategy) {
+        Cart cart = user.getCart();
+        String orderId = "SCHED-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        return new Order(orderId, user, cart.getRestaurant(), cart.getItems(),
+                cart.getTotalCost(), paymentStrategy, OrderType.SCHEDULED, deliveryTime);
+    }
+}
+
+// ============================================================================
+// 4. MANAGERS & SERVICES LAYER
+// ============================================================================
+
+public class RestaurantManager {
+    private final List<Restaurant> restaurants = new ArrayList<>();
+
+    public void addRestaurant(Restaurant restaurant) {
+        restaurants.add(restaurant);
+    }
+
+    public List<Restaurant> searchByLocation(String location) {
+        List<Restaurant> matches = new ArrayList<>();
+        for (Restaurant r : restaurants) {
+            if (r.getLocation().equalsIgnoreCase(location)) {
+                matches.add(r);
+            }
         }
-        return order;
+        return matches;
+    }
+}
+
+public class NotificationService {
+    public void sendOrderConfirmation(Order order) {
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        System.out.println("\n🔔 [Notification Service] Alert to Customer: " + order.getUser().getName());
+        System.out.println("==================================================");
+        System.out.println("Order ID        : " + order.getOrderId());
+        System.out.println("Restaurant      : " + order.getRestaurant().getName());
+        System.out.println("Items Ordered   : " + order.getItems());
+        System.out.println("Total Paid      : ₹" + order.getTotalAmount());
+        System.out.println("Delivery Slot   : " + order.getScheduledTime().format(dtf));
+        System.out.println("Status          : " + order.getStatus());
+        System.out.println("==================================================\n");
+    }
+}
+
+// ============================================================================
+// 5. ORCHESTRATOR / FACADE: TOMATO APP
+// ============================================================================
+
+public class TomatoApp {
+    private final RestaurantManager restaurantManager = new RestaurantManager();
+    private final NotificationService notificationService = new NotificationService();
+
+    public void registerRestaurant(Restaurant restaurant) {
+        restaurantManager.addRestaurant(restaurant);
+    }
+
+    public List<Restaurant> searchRestaurants(String location) {
+        return restaurantManager.searchByLocation(location);
+    }
+
+    public void selectRestaurant(User user, Restaurant restaurant) {
+        user.getCart().setRestaurant(restaurant);
+    }
+
+    public void addToCart(User user, String itemCode) {
+        Cart cart = user.getCart();
+        if (cart.getRestaurant() == null) {
+            throw new IllegalStateException("Please select a restaurant first!");
+        }
+        MenuItem item = cart.getRestaurant().findItemByCode(itemCode);
+        if (item != null) {
+            cart.addItem(item);
+            System.out.println("🛒 Added " + item.getName() + " to " + user.getName() + "'s cart.");
+        } else {
+            System.out.println("❌ Item code not found in restaurant menu!");
+        }
+    }
+
+    public Order checkoutNow(User user, PaymentStrategy paymentStrategy) {
+        OrderFactory factory = new NowOrderFactory();
+        return factory.createOrder(user, paymentStrategy);
+    }
+
+    public boolean payForOrder(Order order) {
+        boolean success = order.processPayment();
+        if (success) {
+            notificationService.sendOrderConfirmation(order);
+            order.getUser().getCart().clear(); // Clear cart after successful checkout
+        }
+        return success;
+    }
+}
+
+// ============================================================================
+// 6. DRIVER DEMO (HAPPY FLOW)
+// ============================================================================
+
+public class TomatoFoodAppDemo {
+    public static void main(String[] args) {
+        System.out.println("==================================================");
+        System.out.println("       WELCOME TO TOMATO FOOD DELIVERY APP        ");
+        System.out.println("==================================================\n");
+
+        TomatoApp tomato = new TomatoApp();
+
+        // 1. Setup Restaurant & Menu
+        Restaurant bikaner = new Restaurant(501, "Bikaner Sweets", "Delhi");
+        bikaner.addMenuItem(new MenuItem("CHHOLE_BHATURE", "Chole Bhature", 120.0));
+        bikaner.addMenuItem(new MenuItem("SAMOSA", "Crispy Samosa", 15.0));
+        bikaner.addMenuItem(new MenuItem("GULAB_JAMUN", "Gulab Jamun (2 pcs)", 50.0));
+        tomato.registerRestaurant(bikaner);
+
+        // 2. Customer Arrives
+        User aditya = new User(1001, "Aditya", "Delhi");
+        System.out.println("👤 User " + aditya.getName() + " logged in from " + aditya.getLocation() + ".\n");
+
+        // 3. Search & Select Restaurant
+        System.out.println("🔍 Searching restaurants in Delhi...");
+        List<Restaurant> found = tomato.searchRestaurants("Delhi");
+        if (found.isEmpty()) {
+            System.out.println("No restaurants found!");
+            return;
+        }
+        Restaurant selected = found.get(0);
+        System.out.println("🍴 Selected Restaurant: " + selected.getName() + "\n");
+        tomato.selectRestaurant(aditya, selected);
+
+        // 4. Add items to cart
+        tomato.addToCart(aditya, "CHHOLE_BHATURE");
+        tomato.addToCart(aditya, "SAMOSA");
+        System.out.println("Total Cart Value: ₹" + aditya.getCart().getTotalCost() + "\n");
+
+        // 5. Checkout with UPI Strategy
+        PaymentStrategy upi = new UpiPaymentStrategy("aditya@okaxis");
+        Order order = tomato.checkoutNow(aditya, upi);
+        System.out.println("📄 Order created with ID: " + order.getOrderId() + ". Processing payment...");
+
+        // 6. Execute Payment & Trigger Notifications
+        tomato.payForOrder(order);
     }
 }
 ```
 
 ---
 
-## 4. Design Patterns Applied
+## 7. Deep Dive: Architectural Critique & Modern Decoupling
 
-| Pattern | Where Used | Value Delivered |
-| :--- | :--- | :--- |
-| **Strategy Pattern** | `PaymentStrategy` (UPI, Cards, COD) | Eliminates conditional switch-cases when adding new payment options (e.g. Wallets). |
-| **State Pattern** | `OrderStatus` Lifecycle | Enforces valid status transitions (e.g., cannot transition directly from `CANCELLED` to `DELIVERED`). |
-| **Facade Pattern** | `FoodDeliveryService` | High-level orchestrator coordinating search, checkout, payment, and notifications. |
-| **Observer Pattern (Extension)**| `OrderTracker` | Notifies customer mobile app and delivery driver when status becomes `PREPARING` or `OUT_FOR_DELIVERY`. |
+A critical architectural interview discussion highlighted in the lecture:
+
+### The `TomatoApp` Orchestrator (Facade) Trade-Off
+In the design above, `TomatoApp` acts as a **Facade / Orchestrator**:
+- **Advantage**: Provides a single, unified entry point for client frontends, shielding them from knowing about `RestaurantManager`, `OrderFactory`, `Cart`, or `NotificationService`.
+- **Trade-off & Critique**: `TomatoApp` knows about almost every subsystem in the application, creating high cognitive coupling and technically stretching the **Single Responsibility Principle** and **Principle of Least Knowledge (Law of Demeter)**.
+
+```text
+               Centralized Facade                  Modern Decoupled Architecture
+        ┌───────────────────────────────┐        ┌───────────────────────────────┐
+        │          TomatoApp            │        │        API Gateway            │
+        │   (Central Orchestrator)      │        └───────┬───────────────┬───────┘
+        └───────┬───────────────┬───────┘                │               │
+                │               │                        ▼               ▼
+                ▼               ▼                ┌──────────────┐ ┌──────────────┐
+         ┌─────────────┐ ┌─────────────┐         │RestaurantCtrl│ │ OrderCtrl    │
+         │RestaurantMgr│ │OrderFactory │         └──────┬───────┘ └──────┬───────┘
+         └─────────────┘ └─────────────┘                ▼                ▼
+                                                 ┌──────────────┐ ┌──────────────┐
+                                                 │RestaurantSvc │ │ OrderSvc     │
+                                                 └──────────────┘ └──────────────┘
+```
+
+### Modern Production Architecture (Spring Boot / Distributed Services)
+In real-world enterprise engineering:
+1. **Controller Layer (REST APIs)**:
+   - `GET /api/v1/restaurants?location=delhi` $\rightarrow$ Handled by `RestaurantController`.
+   - `POST /api/v1/orders` $\rightarrow$ Handled by `OrderController`.
+2. **Service Layer**:
+   - `RestaurantService` queries databases, indexes geolocation coordinates, and manages menus.
+   - `OrderService` coordinates payment gateways and dispatches asynchronous event messages to Apache Kafka or RabbitMQ.
+3. **Event-Driven Notifications**:
+   - `OrderPlacedEvent` is published to an event bus; independent notification microservices consume the event and send multi-channel push, SMS, and WhatsApp alerts without coupling to the order service.
 
 ---
 
-## 5. Key Edge Cases & Interview Traps
+## 8. Interview Questions & Key Discussion Points
 
-1. **Items from Multiple Restaurants in One Cart**:
-   - In real-world Swiggy/Zomato, a user cannot mix items from two different restaurants in the same cart without explicit warning.
-   - Guard check: If `cart.getRestaurant() != selectedItem.restaurant`, throw `ConflictingRestaurantException` or prompt user to clear previous cart.
-2. **Item Out-of-Stock during Checkout**:
-   - Validate stock availability right before processing payment, not just when adding to cart.
+1. **Why use Factory Method for Order creation (`NowOrderFactory` vs `ScheduledOrderFactory`)?**
+   - *Answer*: Immediate orders calculate their delivery timestamp as `LocalDateTime.now()`, whereas scheduled orders validate future delivery windows and require different slot assignment logic. Encapsulating this inside distinct factory subclasses isolates order initialization logic and satisfies the Open/Closed Principle.
+2. **How does the Cart enforce single-restaurant ordering?**
+   - *Answer*: `Cart.setRestaurant()` checks if the new restaurant ID matches the current restaurant ID. If a user attempts to add items from a different restaurant, the cart clears previous items or prompts the user with a confirmation warning before switching.
+3. **What happens if you only pass `User` to `createOrder()`?**
+   - *Answer*: Since `User` has a `Cart`, and `Cart` has `Restaurant` and `MenuItem` list, passing `User` is sufficient to extract all order details. However, passing parameters explicitly can make factories independent of the `User` aggregate structure. Both approaches reflect valid architectural trade-offs between coupling and parameter brevity.
+
+---
+
+## 9. Quick Revision
+
+### Core Idea
+A complete food delivery low-level system ("Tomato") built bottom-up: models (`User`, `Cart`, `Restaurant`, `MenuItem`), `RestaurantManager` for geographic discovery, `PaymentStrategy` for swappable checkouts, `OrderFactory` for immediate vs scheduled deliveries, and `TomatoApp` as the client-facing orchestrator.
+
+### Remember
+- **Bottom-Up**: Build atomic domain models first (`MenuItem` $\rightarrow$ `Restaurant` $\rightarrow$ `Cart` $\rightarrow$ `User`), then add services and orchestrators.
+- **Cart Composition**: `User` **HAS-A** `Cart` (one-to-one strict lifecycle ownership).
+- **Payment Strategy**: Decouples payment engines (`UPI`, `Card`) from order execution.
+
+### Java Implementation Idea
+Model domain classes cleanly, implement `OrderFactory` with `NowOrderFactory` and `ScheduledOrderFactory`, and use `PaymentStrategy` interface with `pay(double amount)` returning a boolean status.
+
+### Most Important Interview Point
+Discuss the evolution from a monolithic orchestrator class (`TomatoApp`) to modern separated Controller/Service REST architecture and event-driven notifications.
+
+### Common Trap
+Mixing cart items from multiple restaurants without validation. Always enforce single-restaurant integrity when adding items to the cart.

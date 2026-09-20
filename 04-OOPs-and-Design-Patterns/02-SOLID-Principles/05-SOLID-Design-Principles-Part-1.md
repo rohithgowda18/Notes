@@ -1,279 +1,584 @@
-# 05. SOLID Design Principles — Part 1: SRP & OCP
+# 05. SOLID Design Principles — Part 1 (SRP, OCP, LSP)
 
-> 💡 **Quick Revision Anchor**: 
-> - **S (Single Responsibility Principle)**: A class should have **one, and only one, reason to change** (single actor / stakeholder ownership).
-> - **O (Open/Closed Principle)**: Software entities should be **open for extension, but closed for modification** (achieved via interfaces & polymorphism).
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-ready examination of the first three SOLID principles introduced by Robert C. Martin ("Uncle Bob") in 2000. Covers **Single Responsibility Principle (SRP)** through the decomposition of a monolithic **ShoppingCart**, **Open/Closed Principle (OCP)** through interface-driven **CartPersistence (SQL, Mongo, File)**, and **Liskov Substitution Principle (LSP)** through the classic **Bank Account Hierarchy (Savings, Current, FixedDeposit)** and why client-side `instanceof` checks signify architectural failure.
 
 ---
 
-## 1. What are the SOLID Principles & Why Do They Matter?
+## 1. Why SOLID Principles?
 
-Introduced by **Robert C. Martin ("Uncle Bob")**, the **SOLID** principles are the gold standard for writing robust, maintainable, extensible, and clean object-oriented software.
+Without disciplined architectural guidelines, production codebases deteriorate over time into **spaghetti code** plagued by:
+1. **Maintainability Issues**: Adding a simple feature requires modifying dozens of unrelated files, introducing hidden regression bugs.
+2. **Readability Collapse**: Complex, tightly coupled classes with high cognitive load that take weeks for new engineers to understand.
+3. **Rigidity & Fragility**: A change in the database layer unexpectedly breaks invoice generation or checkout logic.
 
-```mermaid
-mindmap
-  root((SOLID Principles))
-    S: Single Responsibility
-      One reason to change
-      High cohesion
-    O: Open / Closed
-      Extend via polymorphism
-      Never modify tested code
-    L: Liskov Substitution
-      Subtypes must be substitutable
-      Preserve invariants
-    I: Interface Segregation
-      Lean, client-specific interfaces
-      No forced empty methods
-    D: Dependency Inversion
-      Depend on abstractions
-      Decouple high & low levels
+In 2000, computer scientist **Robert C. Martin ("Uncle Bob")** published the SOLID design principles to eliminate these vulnerabilities.
+
+```text
+    S ──> Single Responsibility Principle (SRP)
+    O ──> Open/Closed Principle (OCP)
+    L ──> Liskov Substitution Principle (LSP)          [Covered in Part 1]
+    ──────────────────────────────────────────────────────────────────────
+    I ──> Interface Segregation Principle (ISP)        [Covered in Part 2]
+    D ──> Dependency Inversion Principle (DIP)
 ```
-
-### The 4 Symptoms of Rotten Code (Why Systems Collapse without SOLID):
-1. **Rigidity**: A tendency for software to be difficult to change. A single simple modification forces a cascade of changes across multiple dependent modules.
-2. **Fragility**: Software breaks in places that have no conceptual relationship to the area that was modified.
-3. **Immobility**: Inability to reuse software components in other projects because modules are glued tightly together.
-4. **Viscosity**: Designing the system cleanly is so tedious that developers take the "hacky" shortcut, rotting the codebase further.
 
 ---
 
-## 2. Single Responsibility Principle (SRP)
+## 2. Principle 1: Single Responsibility Principle (SRP)
 
-> **Formal Definition**: *"A class should have one, and only one, reason to change."*
->
-> In practical enterprise engineering, Uncle Bob reformulated this as: *"A module should be responsible to one, and only one, **actor or stakeholder**."*
+> **"A class should have one, and only one, reason to change."**
 
-### The Anti-Pattern: The "God Object" ShoppingCart
-Consider an e-commerce checkout flow where a developer puts everything into `ShoppingCart`:
-
-```mermaid
-flowchart LR
-    subgraph GodClass["❌ God Class: ShoppingCart"]
-        direction TB
-        F1["1. Cart Management & Tax Calculations"]
-        F2["2. Invoice Layout & HTML/PDF Generation"]
-        F3["3. SQL Database Queries & Persistence"]
-    end
-
-    Actor1["Finance / Accountant Team"] -->|Demands change to| F1
-    Actor2["UI / Marketing Team"] -->|Demands change to| F2
-    Actor3["DBA / Infra Team"] -->|Demands change to| F3
-
-    style GodClass fill:#fee2e2,stroke:#ef4444,color:#b91c1c
-```
-
-```java
-// ❌ VIOLATION OF SRP: 3 completely different stakeholders alter this single file!
-public class ShoppingCart {
-    private List<Product> items = new ArrayList<>();
-
-    public void addItem(Product product) { items.add(product); }
-
-    // Responsibility 1: Business Logic & Tax Calculation (Finance Actor)
-    public double calculateTotalWithTax() {
-        double subtotal = items.stream().mapToDouble(Product::getPrice).sum();
-        return subtotal + (subtotal * 0.18); // 18% GST
-    }
-
-    // Responsibility 2: Presentation & Formatting (Marketing Actor)
-    public void printInvoice() {
-        System.out.println("====== OFFICIAL INVOICE ======");
-        for (Product item : items) {
-            System.out.println(item.getName() + " - $" + item.getPrice());
-        }
-        System.out.println("Total Amount Due: $" + calculateTotalWithTax());
-    }
-
-    // Responsibility 3: Database Persistence (DBA Actor)
-    public void saveToMySQL() {
-        String sql = "INSERT INTO orders (total_price) VALUES (" + calculateTotalWithTax() + ")";
-        System.out.println("Executing SQL: " + sql);
-    }
-}
-```
-
-#### Why is this dangerous in production?
-- **Merge Conflicts**: If the marketing team changes invoice formatting while the finance team changes tax brackets, both submit pull requests on `ShoppingCart.java`, risking nasty merge errors.
-- **Testing Nightmare**: You cannot unit-test pricing formulas without bringing database drivers and printing mock dependencies into the test harness.
-- **Cascading Bugs**: A minor bug introduced while tweaking SQL persistence can crash total price calculation for active buyers!
+A class must focus strictly on a single concern. If a class has multiple reasons to change, it is overloaded with responsibilities and must be broken down.
 
 ---
 
-### The Clean Solution (Applying SRP)
+### The Naive Monolithic Design (SRP Violation)
 
-Decompose `ShoppingCart` into three independent, highly cohesive classes:
+Consider an e-commerce `ShoppingCart` class designed naively:
 
 ```mermaid
 classDiagram
     class ShoppingCart {
-        -List~Product~ items
-        +addItem(Product p) void
-        +getItems() List~Product~
-        +calculateTotalWithTax() double
+        -List~Product~ products
+        +addProduct(Product p) void
+        +calculateTotal() double
+        +printInvoice() void
+        +saveToDatabase() void
     }
-    class InvoicePrinter {
-        +printInvoice(ShoppingCart cart) void
-    }
-    class ShoppingCartRepository {
-        +save(ShoppingCart cart) void
-    }
-
-    ShoppingCart <-- InvoicePrinter : Uses data
-    ShoppingCart <-- ShoppingCartRepository : Persists data
+    note for ShoppingCart "3 Reasons to Change!\n1. Discount/pricing rules change\n2. Invoice layout/format changes\n3. Database technology changes"
 ```
 
 ```java
-// ✅ 1. Pure Domain Entity & Business Rules (Owned by Finance)
-public class ShoppingCart {
-    private final List<Product> items = new ArrayList<>();
+// VIOLATION OF SRP
+class ShoppingCart {
+    private List<Product> products = new ArrayList<>();
 
-    public void addItem(Product product) { items.add(product); }
-    public List<Product> getItems() { return Collections.unmodifiableList(items); }
+    public void addProduct(Product p) { products.add(p); }
 
-    public double calculateTotalWithTax() {
-        double subtotal = items.stream().mapToDouble(Product::getPrice).sum();
-        return subtotal + (subtotal * 0.18);
+    // Responsibility 1: Business Logic
+    public double calculateTotal() {
+        double total = 0;
+        for (Product p : products) total += p.getPrice();
+        return total;
     }
-}
 
-// ✅ 2. Pure Presentation Layer (Owned by Marketing / Frontend)
-public class InvoicePrinter {
-    public void printInvoice(ShoppingCart cart) {
-        System.out.println("====== OFFICIAL TAX INVOICE ======");
-        for (Product item : cart.getItems()) {
-            System.out.printf("%-20s : $%.2f\n", item.getName(), item.getPrice());
+    // Responsibility 2: Presentation & Formatting Logic
+    public void printInvoice() {
+        System.out.println("=== Invoice ===");
+        for (Product p : products) {
+            System.out.println(p.getName() + " : ₹" + p.getPrice());
         }
-        System.out.println("----------------------------------");
-        System.out.printf("Total Amount: $%.2f\n", cart.calculateTotalWithTax());
+        System.out.println("Total: ₹" + calculateTotal());
     }
-}
 
-// ✅ 3. Pure Persistence Layer (Owned by Infrastructure / DBAs)
-public class ShoppingCartRepository {
-    public void saveToDatabase(ShoppingCart cart) {
-        System.out.println("Saving cart with " + cart.getItems().size() + " items to SQL DB.");
+    // Responsibility 3: Database Persistence Logic
+    public void saveToDatabase() {
+        System.out.println("Connecting to MySQL... INSERT INTO cart_items...");
     }
 }
 ```
 
----
-
-## 3. Open/Closed Principle (OCP)
-
-> **Formal Definition**: *"Software entities (classes, modules, functions) should be open for extension, but closed for modification."*
->
-> - **Open for Extension**: The behavior of the module can be extended to support new business requirements.
-> - **Closed for Modification**: Extending the module does **never** require altering its existing, tested, and deployed source code.
-
-### The Anti-Pattern: The `if-else` / `switch` Explosion
-Suppose our repository needs to support saving carts to **MySQL**, **MongoDB**, and **AWS S3 File Storage**:
-
-```java
-// ❌ VIOLATION OF OCP: Modifying existing tested class for every new storage backend!
-public class BadCartStorage {
-    public void save(ShoppingCart cart, String storageType) {
-        if (storageType.equalsIgnoreCase("SQL")) {
-            System.out.println("Persisting cart to MySQL relational database...");
-        } else if (storageType.equalsIgnoreCase("MONGO")) {
-            System.out.println("Persisting cart JSON BSON document to MongoDB...");
-        } else if (storageType.equalsIgnoreCase("S3_FILE")) {
-            System.out.println("Writing cart to AWS S3 bucket as JSON file...");
-        } else if (storageType.equalsIgnoreCase("REDIS")) {
-            // Added 6 months later: Had to modify tested code!
-            System.out.println("Writing to Redis cache...");
-        } else {
-            throw new IllegalArgumentException("Unsupported storage: " + storageType);
-        }
-    }
-}
-```
-
-#### Why does this violate OCP?
-Every time marketing or infra introduces a new storage medium (e.g. Cassandra, DynamoDB), you must **open** `BadCartStorage.java`, edit the `if-else` chain, and re-test all previous storage paths. A single typo in the SQL block could break relational writes while adding Cassandra support!
+### Why This Fails:
+`ShoppingCart` has **three distinct reasons to change**:
+1. **Business Rules**: Changing how discounts or taxes are computed forces a change in `ShoppingCart`.
+2. **Presentation Format**: Marketing wants invoices printed in HTML/PDF rather than console text $\to$ forces a change in `ShoppingCart`.
+3. **Storage Engine**: Migration from MySQL to MongoDB or PostgreSQL $\to$ forces a change in `ShoppingCart`.
 
 ---
 
-### The Clean Solution (Applying OCP via Polymorphism)
+### Refactoring to Adhere to SRP
 
-Extract an interface (`PersistenceStorage`) that establishes a common contract. New storage targets become separate classes that implement this interface:
+We decompose the monolithic class into three dedicated, single-responsibility classes:
 
 ```mermaid
 classDiagram
-    class PersistenceStorage {
-        <<interface>>
-        +save(ShoppingCart cart) void
-    }
-    class SqlPersistence {
-        +save(ShoppingCart cart) void
-    }
-    class MongoPersistence {
-        +save(ShoppingCart cart) void
-    }
-    class S3FilePersistence {
-        +save(ShoppingCart cart) void
-    }
-    class CartPersistenceService {
-        -PersistenceStorage storage
-        +CartPersistenceService(PersistenceStorage s)
-        +persist(ShoppingCart cart) void
+    class ShoppingCart {
+        -List~Product~ products
+        +addProduct(Product p) void
+        +getProducts() List~Product~
+        +calculateTotal() double
     }
 
-    PersistenceStorage <|.. SqlPersistence
-    PersistenceStorage <|.. MongoPersistence
-    PersistenceStorage <|.. S3FilePersistence
-    CartPersistenceService --> PersistenceStorage : Delegates to
+    class CartInvoicePrinter {
+        -ShoppingCart cart
+        +printInvoice() void
+    }
+
+    class CartDBStorage {
+        -ShoppingCart cart
+        +saveToDatabase() void
+    }
+
+    CartInvoicePrinter --> ShoppingCart : Has-A
+    CartDBStorage --> ShoppingCart : Has-A
 ```
 
 ```java
-// 1. Stable Contract (Closed for Modification)
-public interface PersistenceStorage {
-    void save(ShoppingCart cart);
-}
+// 1. Core Domain Entity: Sole reason to change = Cart item management & calculation
+class ShoppingCart {
+    private final List<Product> products = new ArrayList<>();
 
-// 2. Concrete Extensions (Open for Extension)
-public class SqlPersistence implements PersistenceStorage {
-    @Override
-    public void save(ShoppingCart cart) {
-        System.out.println("Persisting cart to MySQL relational database.");
+    public void addProduct(Product p) { products.add(p); }
+    public List<Product> getProducts() { return Collections.unmodifiableList(products); }
+
+    public double calculateTotal() {
+        double total = 0;
+        for (Product p : products) total += p.getPrice();
+        return total;
     }
 }
 
-public class MongoPersistence implements PersistenceStorage {
-    @Override
-    public void save(ShoppingCart cart) {
-        System.out.println("Persisting cart BSON to MongoDB.");
+// 2. Presentation Layer: Sole reason to change = Invoice template/format modifications
+class CartInvoicePrinter {
+    private final ShoppingCart cart;
+
+    public CartInvoicePrinter(ShoppingCart cart) {
+        this.cart = cart;
+    }
+
+    public void printInvoice() {
+        System.out.println("--- OFFICIAL TAX INVOICE ---");
+        for (Product p : cart.getProducts()) {
+            System.out.printf("• %s : ₹%.2f\n", p.getName(), p.getPrice());
+        }
+        System.out.printf("Net Total: ₹%.2f\n", cart.calculateTotal());
+        System.out.println("----------------------------");
     }
 }
 
-public class S3FilePersistence implements PersistenceStorage {
-    @Override
-    public void save(ShoppingCart cart) {
-        System.out.println("Persisting cart JSON snapshot to AWS S3 bucket.");
-    }
-}
+// 3. Persistence Layer: Sole reason to change = Storage mechanism changes
+class CartDBStorage {
+    private final ShoppingCart cart;
 
-// 3. Client Service: Relies purely on the abstraction
-public class CartPersistenceService {
-    private final PersistenceStorage storage;
-
-    public CartPersistenceService(PersistenceStorage storage) {
-        this.storage = storage;
+    public CartDBStorage(ShoppingCart cart) {
+        this.cart = cart;
     }
 
-    public void persist(ShoppingCart cart) {
-        this.storage.save(cart); // Polymorphic dispatch!
+    public void saveToDatabase() {
+        System.out.println("[DB Persistence] Successfully saved Cart with "
+                + cart.getProducts().size() + " items to SQL DB.");
     }
 }
 ```
 
 ---
 
-## 4. Key Interview Questions & Trade-offs
+## 3. Principle 2: Open/Closed Principle (OCP)
 
-1. **"Does SRP mean a class should only have one method?"**
-   - *Answer*: **No!** SRP is about *reasons to change*, not method count. A `UserAccount` class can have 10 methods (`changePassword()`, `updateProfile()`, `verifyEmail()`, etc.) as long as all of them serve a single cohesive responsibility: managing user identity.
-2. **"How do SRP and OCP complement each other?"**
-   - *Answer*: If a class violates SRP (e.g. handles both business logic and database persistence), it is virtually impossible to make it follow OCP. By first separating responsibilities into focused classes (SRP), we can wrap those responsibilities behind polymorphic interfaces (OCP).
-3. **"Can a codebase be 100% closed to all modifications?"**
-   - *Answer*: No. 100% closure is impossible. If the fundamental requirements change, code must change. OCP aims for **strategic closure**: anticipate the most likely directions of change (e.g. payment options, notification channels, storage formats) and protect against them using abstractions.
+> **"Software entities (classes, modules, functions) should be OPEN for extension, but CLOSED for modification."**
+
+You should be able to introduce new behavior or features by **adding new code**, not by altering existing, tested code.
+
+---
+
+### The Naive Modification Approach (OCP Violation)
+
+Suppose business requirements demand saving cart data not just to SQL, but also to **MongoDB** and to local **Flat Files**.
+
+The naive developer opens `CartDBStorage` and adds new methods:
+
+```java
+// VIOLATION OF OCP
+class CartDBStorage {
+    public void saveToSQL() { /* SQL logic */ }
+    public void saveToMongo() { /* Mongo logic */ }   // NEW MODIFICATION!
+    public void saveToFile() { /* File logic */ }     // NEW MODIFICATION!
+}
+```
+
+### Why This Fails:
+- Every time a new storage medium (Redis, S3, Cassandra) is introduced, the developer must reopen and mutate `CartDBStorage`.
+- Modifying tested production code risks breaking existing SQL persistence.
+- Tightly couples the persistence class to every concrete storage technology.
+
+---
+
+### Refactoring to Adhere to OCP: Abstraction & Polymorphism
+
+We define a stable interface contract (`CartPersistence`). New storage targets implement this contract as new, independent classes.
+
+```mermaid
+classDiagram
+    class CartPersistence {
+        <<interface>>
+        +save(ShoppingCart cart) void
+    }
+
+    class SQLPersistence {
+        +save(ShoppingCart cart) void
+    }
+
+    class MongoPersistence {
+        +save(ShoppingCart cart) void
+    }
+
+    class FilePersistence {
+        +save(ShoppingCart cart) void
+    }
+
+    CartPersistence <|.. SQLPersistence
+    CartPersistence <|.. MongoPersistence
+    CartPersistence <|.. FilePersistence
+```
+
+```java
+// Stable Interface Contract: Closed for modification
+interface CartPersistence {
+    void save(ShoppingCart cart);
+}
+
+// Extension 1: SQL Storage
+class SQLPersistence implements CartPersistence {
+    @Override
+    public void save(ShoppingCart cart) {
+        System.out.printf("[SQL Persistence] Persisted %d items (Total ₹%.2f) to MySQL.\n",
+                cart.getProducts().size(), cart.calculateTotal());
+    }
+}
+
+// Extension 2: MongoDB Storage (Added WITHOUT touching SQLPersistence!)
+class MongoPersistence implements CartPersistence {
+    @Override
+    public void save(ShoppingCart cart) {
+        System.out.printf("[MongoDB] Persisted JSON Document for %d items into 'carts' collection.\n",
+                cart.getProducts().size());
+    }
+}
+
+// Extension 3: File Storage
+class FilePersistence implements CartPersistence {
+    @Override
+    public void save(ShoppingCart cart) {
+        System.out.printf("[File Storage] Appended cart receipt to /var/log/carts.txt\n");
+    }
+}
+```
+If tomorrow the team wants `RedisPersistence`, they simply write a new class `class RedisPersistence implements CartPersistence`. Zero existing classes are modified!
+
+---
+
+## 4. Principle 3: Liskov Substitution Principle (LSP)
+
+> **"If $S$ is a subtype of $T$, then objects of type $T$ may be replaced with objects of type $S$ without altering any of the desirable properties of the program (correctness, task performed, etc.)."**
+>
+> *In plain English*: **A derived subclass must be completely substitutable for its base class without breaking client expectations or throwing unexpected exceptions.** Subclasses should extend base class capabilities, never contract or violate base class invariants.
+
+---
+
+### The Classic Bank Account Problem (LSP Violation)
+
+Consider a banking system with `SavingsAccount`, `CurrentAccount`, and `FixedDepositAccount`:
+
+```mermaid
+classDiagram
+    class Account {
+        <<abstract>>
+        +deposit(double amount) void*
+        +withdraw(double amount) void*
+    }
+
+    class SavingsAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+
+    class CurrentAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+
+    class FixedDepositAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+
+    Account <|-- SavingsAccount
+    Account <|-- CurrentAccount
+    Account <|-- FixedDepositAccount : VIOLATES LSP!
+    note for FixedDepositAccount "Fixed Deposit does not allow withdrawals before maturity!\nThrows RuntimeException on withdraw()!"
+```
+
+```java
+// VIOLATION OF LSP
+abstract class Account {
+    public abstract void deposit(double amount);
+    public abstract void withdraw(double amount);
+}
+
+class SavingsAccount extends Account {
+    private double balance = 0;
+    @Override public void deposit(double amount) { balance += amount; }
+    @Override public void withdraw(double amount) { balance -= amount; }
+}
+
+class FixedDepositAccount extends Account {
+    private double balance = 0;
+    @Override public void deposit(double amount) { balance += amount; }
+
+    @Override
+    public void withdraw(double amount) {
+        // Fixed deposits lock funds! Cannot withdraw on demand!
+        throw new UnsupportedOperationException("Withdrawals not allowed on Fixed Deposit Account!");
+    }
+}
+```
+
+### The Client Crash:
+When a client processes accounts polymorphically:
+```java
+List<Account> accounts = List.of(new SavingsAccount(), new FixedDepositAccount());
+for (Account acc : accounts) {
+    acc.deposit(5000);
+    acc.withdraw(1000); // CRASH! Throws UnsupportedOperationException on FixedDeposit!
+}
+```
+
+---
+
+### The Bad Fix: Client-Side Type Checking (Anti-Pattern)
+
+Developers often attempt to patch this by adding `instanceof` checks:
+
+```java
+// ANTI-PATTERN: Client now tightly coupled to concrete account types!
+for (Account acc : accounts) {
+    acc.deposit(5000);
+    if (!(acc instanceof FixedDepositAccount)) { // VIOLATES OCP & LSP!
+        acc.withdraw(1000);
+    }
+}
+```
+This is an architectural failure. The client now needs to know the exact internal constraints of every subclass. If tomorrow we add `PublicProvidentFundAccount`, we must update every `if-else` block in the client!
+
+---
+
+### The Proper Refactoring to Adhere to LSP: Hierarchy Segregation
+
+The root flaw was forcing `withdraw()` into the base class when not all accounts support withdrawals. We segregate the hierarchy:
+
+```mermaid
+classDiagram
+    class DepositOnlyAccount {
+        <<abstract>>
+        +deposit(double amount) void*
+    }
+
+    class WithdrawableAccount {
+        <<abstract>>
+        +withdraw(double amount) void*
+    }
+
+    class SavingsAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+
+    class CurrentAccount {
+        +deposit(double amount) void
+        +withdraw(double amount) void
+    }
+
+    class FixedDepositAccount {
+        +deposit(double amount) void
+    }
+
+    DepositOnlyAccount <|-- WithdrawableAccount
+    WithdrawableAccount <|-- SavingsAccount
+    WithdrawableAccount <|-- CurrentAccount
+    DepositOnlyAccount <|-- FixedDepositAccount
+```
+
+```java
+// 1. Base abstraction for any account that accepts deposits
+abstract class DepositOnlyAccount {
+    protected double balance;
+
+    public DepositOnlyAccount(double initialBalance) {
+        this.balance = initialBalance;
+    }
+
+    public abstract void deposit(double amount);
+    public double getBalance() { return balance; }
+}
+
+// 2. Sub-abstraction specifically for accounts supporting withdrawals
+abstract class WithdrawableAccount extends DepositOnlyAccount {
+    public WithdrawableAccount(double initialBalance) {
+        super(initialBalance);
+    }
+
+    public abstract void withdraw(double amount);
+}
+
+// 3. Savings Account inherits Withdrawable
+class SavingsAccount extends WithdrawableAccount {
+    public SavingsAccount(double initialBalance) { super(initialBalance); }
+
+    @Override
+    public void deposit(double amount) {
+        balance += amount;
+        System.out.printf("[Savings] Deposited ₹%.2f. New Balance: ₹%.2f\n", amount, balance);
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        if (balance >= amount) {
+            balance -= amount;
+            System.out.printf("[Savings] Withdrew ₹%.2f. Remaining: ₹%.2f\n", amount, balance);
+        } else {
+            System.out.println("[Savings] Insufficient funds!");
+        }
+    }
+}
+
+// 4. Current Account inherits Withdrawable
+class CurrentAccount extends WithdrawableAccount {
+    public CurrentAccount(double initialBalance) { super(initialBalance); }
+
+    @Override
+    public void deposit(double amount) {
+        balance += amount;
+        System.out.printf("[Current] Deposited ₹%.2f. New Balance: ₹%.2f\n", amount, balance);
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        balance -= amount; // Current accounts may allow overdraft
+        System.out.printf("[Current] Withdrew ₹%.2f. Balance: ₹%.2f\n", amount, balance);
+    }
+}
+
+// 5. Fixed Deposit inherits directly from DepositOnlyAccount!
+class FixedDepositAccount extends DepositOnlyAccount {
+    public FixedDepositAccount(double initialBalance) { super(initialBalance); }
+
+    @Override
+    public void deposit(double amount) {
+        balance += amount;
+        System.out.printf("[Fixed Deposit] Deposited ₹%.2f into lock-in. Total: ₹%.2f\n", amount, balance);
+    }
+}
+```
+
+### The Clean Client Execution (100% LSP Compliant)
+Clients that require withdrawals accept `WithdrawableAccount`. Clients that only need deposits accept `DepositOnlyAccount`. **Zero runtime exceptions, zero `instanceof` checks!**
+
+```java
+class BankingClient {
+    public static void processWithdrawable(List<WithdrawableAccount> accounts, double depAmount, double withAmount) {
+        for (WithdrawableAccount acc : accounts) {
+            acc.deposit(depAmount);
+            acc.withdraw(withAmount); // Guaranteed to succeed on all subtypes!
+        }
+    }
+
+    public static void processDepositOnly(List<DepositOnlyAccount> accounts, double depAmount) {
+        for (DepositOnlyAccount acc : accounts) {
+            acc.deposit(depAmount);
+        }
+    }
+}
+```
+
+---
+
+## 5. Complete Java Driver & Verification
+
+```java
+class Product {
+    private final String name;
+    private final double price;
+
+    public Product(String name, double price) {
+        this.name = name;
+        this.price = price;
+    }
+
+    public String getName() { return name; }
+    public double getPrice() { return price; }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        System.out.println("=== 1. SRP & OCP Verification ===");
+        ShoppingCart cart = new ShoppingCart();
+        cart.addProduct(new Product("Mechanical Keyboard", 4500.0));
+        cart.addProduct(new Product("Wireless Mouse", 1800.0));
+
+        // SRP: Invoice generation
+        CartInvoicePrinter printer = new CartInvoicePrinter(cart);
+        printer.printInvoice();
+
+        // OCP: Storage extension via polymorphic persistence
+        CartPersistence sqlStorage = new SQLPersistence();
+        CartPersistence mongoStorage = new MongoPersistence();
+        sqlStorage.save(cart);
+        mongoStorage.save(cart);
+
+        System.out.println("\n=== 2. LSP Verification ===");
+        List<WithdrawableAccount> withdrawableAccounts = List.of(
+                new SavingsAccount(10000.0),
+                new CurrentAccount(25000.0)
+        );
+        List<DepositOnlyAccount> depositOnlyAccounts = List.of(
+                new FixedDepositAccount(50000.0)
+        );
+
+        System.out.println("Processing Withdrawable Accounts:");
+        BankingClient.processWithdrawable(withdrawableAccounts, 2000.0, 5000.0);
+
+        System.out.println("\nProcessing Deposit-Only Accounts:");
+        BankingClient.processDepositOnly(depositOnlyAccounts, 10000.0);
+    }
+}
+```
+
+---
+
+## 6. Execution Trace
+
+```text
+=== 1. SRP & OCP Verification ===
+--- OFFICIAL TAX INVOICE ---
+• Mechanical Keyboard : ₹4500.00
+• Wireless Mouse : ₹1800.00
+Net Total: ₹6300.00
+----------------------------
+[SQL Persistence] Persisted 2 items (Total ₹6300.00) to MySQL.
+[MongoDB] Persisted JSON Document for 2 items into 'carts' collection.
+
+=== 2. LSP Verification ===
+Processing Withdrawable Accounts:
+[Savings] Deposited ₹2000.00. New Balance: ₹12000.00
+[Savings] Withdrew ₹5000.00. Remaining: ₹7000.00
+[Current] Deposited ₹2000.00. New Balance: ₹27000.00
+[Current] Withdrew ₹5000.00. Balance: ₹22000.00
+
+Processing Deposit-Only Accounts:
+[Fixed Deposit] Deposited ₹10000.00 into lock-in. Total: ₹60000.00
+```
+
+---
+
+## Quick Revision
+
+### Core Idea
+SOLID principles prevent code rot. **SRP** mandates that a class has only one reason to change, isolating business logic, presentation, and persistence. **OCP** enforces that software entities be open for extension via interfaces but closed for modification. **LSP** guarantees that derived subclasses are seamlessly substitutable for their parent classes without throwing unexpected exceptions or forcing client-side `instanceof` checks.
+
+### Remember
+* Historical context: Introduced by Robert C. Martin ("Uncle Bob") in 2000.
+* Canonical SRP Example: `ShoppingCart` was split into `ShoppingCart` (items/total), `CartInvoicePrinter` (invoice formatting), and `CartDBStorage` (database persistence).
+* Canonical OCP Example: Instead of adding `saveToMongo()` and `saveToFile()` inside `CartDBStorage`, an interface `CartPersistence` was created with polymorphic implementations.
+* Canonical LSP Example: `FixedDepositAccount` cannot support `withdraw()`. Forcing it to throw an exception breaks LSP. Segregating into `DepositOnlyAccount` and `WithdrawableAccount` preserves substitutability.
+
+### Java Implementation Idea
+* Identify methods that serve different actors/concerns in a class and extract them into separate classes (SRP).
+* Program to interfaces (`CartPersistence persistence`) rather than concrete classes (`SQLPersistence`) to allow runtime extension without modifying callers (OCP).
+* Never throw `UnsupportedOperationException` in an overridden method; segregate the base class hierarchy instead (LSP).
+
+### Most Important Interview Point
+* Whenever you see `instanceof` checks in client code (`if (account instanceof FixedDepositAccount)`), call it out immediately as a dual violation of **OCP** (client must be modified for new types) and **LSP** (subtypes cannot be substituted transparently).
+
+### Common Trap
+* Thinking SRP means "a class should have only one method". (SRP means a class has only one *responsibility/reason to change*; a shopping cart can have multiple methods like `add`, `remove`, `calculateTotal` as long as they all serve cart management).
+* Believing LSP is just about compiler-level inheritance. (LSP is about **behavioral compatibility**; code that compiles fine can still catastrophically violate LSP at runtime if a child breaks base class contracts).

@@ -1,217 +1,230 @@
 # 03. Inheritance & Polymorphism in OOPs
 
-> 💡 **Quick Revision Anchor**: 
-> - **Inheritance (`IS-A`)**: Enables code reuse and hierarchical type extension.
-> - **Compile-Time Polymorphism**: Method Overloading (Static Binding resolved at compile time).
-> - **Runtime Polymorphism**: Method Overriding (Dynamic Method Dispatch via VTable resolved at runtime).
+> 💡 **Quick Revision Anchor**: A comprehensive study guide exploring **Inheritance** (code reuse, parent-child hierarchies, access specifiers, and the Diamond Problem) and **Polymorphism** (Compile-time Method Overloading vs Runtime Method Overriding / Dynamic Method Dispatch). Features the lecture's canonical car hierarchy (**Suzuki WagonR ManualCar** vs **Tesla Model S ElectricCar**), the **Dog & Cat Animal sound** analogy, and the unified capstone code uniting all 4 OOP pillars (Abstraction, Encapsulation, Inheritance, Polymorphism).
 
 ---
 
-## 1. Inheritance: Concepts & Mechanics
+## 1. What This Lecture Covers
 
-Inheritance is a fundamental OOP mechanism where a new class (known as the **Subclass / Derived / Child Class**) acquires the attributes and methods of an existing class (known as the **Superclass / Base / Parent Class**).
+1. **Inheritance**:
+   - Why duplicate common state and behavior when classes share an "IS-A" relationship?
+   - Parent (Base) Class vs Child (Derived) Class.
+   - The role of `protected` vs `private` vs `public` access specifiers during inheritance.
+   - Forms of Inheritance: Single, Multi-level, Hierarchical, Multiple (and the Diamond Problem), and Hybrid.
+   - Why Java prohibits multiple class inheritance and uses interfaces instead.
+2. **Polymorphism ("Many Forms")**:
+   - Real-world analogies: Animal sounds (`Dog` barks vs `Cat` meows), human roles (teacher, parent, customer).
+   - **Compile-Time (Static) Polymorphism**: Method Overloading (same name, distinct signatures).
+   - **Runtime (Dynamic) Polymorphism**: Method Overriding & Dynamic Method Dispatch (virtual functions, parent reference pointing to child instance).
+3. **Unified Capstone Example**:
+   - A single cohesive Java program uniting all 4 pillars of OOP using **Suzuki WagonR** and **Tesla Model S**.
+
+---
+
+## 2. Pillar 3: Inheritance (Code Reuse & Hierarchical Modeling)
+
+### Problem: Code Duplication Across Car Variants
+Imagine creating a `ManualCar` and an `ElectricCar`. Both vehicles possess:
+- Characteristics: `brand`, `model`, `isEngineOn`, `currentSpeed`.
+- Behaviors: `startEngine()`, `stopEngine()`, `accelerate()`, `brake()`.
+
+Without inheritance, every new vehicle type duplicates dozens of lines of identical fields and methods. 
+
+### Solution: Base Class Extraction
+We extract common attributes into a parent `Car` class. Subclasses inherit these features and introduce only their **specialized** properties:
+- `ManualCar` adds: `currentGear` and `shiftGear(int gear)`.
+- `ElectricCar` adds: `batteryPercentage` and `chargeBattery()`.
 
 ```mermaid
 classDiagram
-    class Vehicle {
+    class Car {
+        <<abstract>>
         #String brand
         #String model
+        #boolean isEngineOn
+        #int currentSpeed
         +startEngine() void
         +stopEngine() void
+        +accelerate() void*
+        +brake() void
     }
-    class Car {
-        -int numberOfDoors
-        +openTrunk() void
+
+    class ManualCar {
+        -int currentGear
+        +shiftGear(int gear) void
+        +accelerate() void
     }
+
     class ElectricCar {
-        -int batteryCapacityKWh
+        -int batteryPercentage
         +chargeBattery() void
+        +accelerate() void
     }
-    Vehicle <|-- Car : IS-A
+
+    Car <|-- ManualCar : IS-A
     Car <|-- ElectricCar : IS-A
 ```
 
-### Key Advantages of Inheritance:
-1. **Code Reusability**: Eliminates boilerplate duplication across related domains.
-2. **Polymorphic Base Contract**: Subclasses can be treated uniformly as instances of their superclass.
-3. **Extensibility**: Specialized child behaviors can be introduced without modifying the superclass.
+---
+
+## 3. Access Specifiers in Inheritance
+
+How access modifiers govern inheritance visibility:
+
+| Modifier | Inside Same Class | Derived / Child Class | Outside World / Client |
+| :--- | :---: | :---: | :---: |
+| **`private`** | Yes | **No** (Hidden completely) | **No** |
+| **`protected`** | Yes | **Yes** (Inherited & accessible) | **No** |
+| **`public`** | Yes | **Yes** | **Yes** |
+| *(Java default / package-private)* | Yes | **Yes** (if in same package) | **No** |
+
+> 🔑 **Key Takeaway**: If fields in `Car` are `private`, child classes like `ManualCar` cannot access them directly. By marking them **`protected`**, we preserve encapsulation from external clients while granting child classes direct internal access.
 
 ---
 
-## 2. The 5 Types of Inheritance
+## 4. The 5 Forms of Inheritance & The Diamond Problem
 
-```mermaid
-graph TD
-    subgraph "1. Single"
-        A1[Class A] --> B1[Class B]
-    end
-    subgraph "2. Multilevel"
-        A2[Vehicle] --> B2[Car] --> C2[ElectricCar]
-    end
-    subgraph "3. Hierarchical"
-        A3[Vehicle] --> B3[Car]
-        A3 --> C3[Motorcycle]
-        A3 --> D3[Truck]
-    end
-    subgraph "4. Multiple (Interfaces in Java)"
-        A4[Interface A] --> C4[Class C]
-        B4[Interface B] --> C4
-    end
-    subgraph "5. Hybrid"
-        H1[Class A] --> H2[Class B]
-        H1 --> H3[Class C]
-        H2 --> H4[Class D]
-        H3 --> H4
-    end
+```text
+1. Single Inheritance:           2. Multi-Level Inheritance:
+      Car                            Vehicle
+       │                                │
+       ▼                                ▼
+   ManualCar                           Car
+                                        │
+                                        ▼
+                                    SportsCar
+
+3. Hierarchical Inheritance:     4. Multiple Inheritance (The Diamond Problem):
+          Car                                  A (Vehicle)
+       ┌───┴───┐                               ┌───┴───┐
+       ▼       ▼                               ▼       ▼
+   Manual   Electric                       B (Car)   C (Boat)
+                                               └───┬───┘
+                                                   ▼
+                                           D (AmphibiousVehicle)
 ```
 
-### The Diamond Problem in Multiple Inheritance
-Why doesn't Java support multiple class inheritance?
-
-```mermaid
-flowchart TD
-    A["Class A<br/>void display() { print 'A'; }"]
-    B["Class B extends A<br/>void display() { print 'B'; }"]
-    C["Class C extends A<br/>void display() { print 'C'; }"]
-    D["Class D extends B, C<br/>❓ Which display() does D inherit?"]
-
-    A --> B
-    A --> C
-    B --> D
-    C --> D
-
-    style D fill:#fee2e2,stroke:#ef4444,color:#b91c1c
-```
-
-- If `Class D` instantiates and calls `d.display()`, the compiler cannot determine whether to execute `B`'s version or `C`'s version. This is the **Diamond Problem**.
-- In C++, this is resolved using `virtual inheritance`.
-- **Java's Solution**: Java bans multiple inheritance of **classes** (state & implementation ambiguity), but allows multiple inheritance of **interfaces** (contract realization), because until Java 8, interfaces had no implementation, and default methods require explicit override resolution (`B.super.display()`).
+### The Diamond Problem Explained
+- Class $B$ and Class $C$ inherit from Class $A$. Both override a method `turnOnEngine()`.
+- Class $D$ attempts to inherit from both $B$ and $C$ simultaneously.
+- When an instance of $D$ calls `turnOnEngine()`, the compiler cannot determine whether to execute $B$'s version or $C$'s version (**ambiguity**).
+- **Language Decision**: C++ solves this using `virtual` base inheritance. **Java eliminates multiple class inheritance entirely** (`class D extends B, C` causes a compile error). Java instead supports multiple inheritance of type via **`interfaces`**.
 
 ---
 
-## 3. Polymorphism: Static vs. Dynamic
+## 5. Pillar 4: Polymorphism ("Many Forms")
 
-The word **Polymorphism** comes from the Greek: *Poly* (Many) + *Morph* (Forms). In programming, it represents the ability of an entity (method, object, or operator) to exhibit different behaviors under different execution contexts.
+The word **Polymorphism** originates from Greek: *Poly* (Many) + *Morph* (Form).
 
-```mermaid
-graph TD
-    Root((Polymorphism)) --> CompileTime["Compile-Time / Static Polymorphism<br/>(Early Binding)"]
-    Root --> Runtime["Runtime / Dynamic Polymorphism<br/>(Late Binding)"]
-    
-    CompileTime --> Overloading["Method Overloading<br/>Constructor Overloading"]
-    Runtime --> Overriding["Method Overriding<br/>Dynamic Method Dispatch (VTable)"]
+> **Polymorphism** is the capability of an operation or entity to exhibit different behaviors depending on the context or runtime object executing it.
+
+```text
+                                  POLYMORPHISM
+                                        │
+                  ┌─────────────────────┴─────────────────────┐
+                  ▼                                           ▼
+       Compile-Time (Static)                       Runtime (Dynamic)
+       • Method Overloading                        • Method Overriding
+       • Resolved at compile-time                  • Resolved at runtime via vtable
+       • Same name, different parameters           • Same signature across parent/child
 ```
 
 ---
 
-## 4. Method Overloading (Compile-Time Polymorphism)
-
-Method Overloading occurs when two or more methods in the **same class** share the **same method name**, but have **different parameter lists**.
-
-### Rules for Method Overloading:
-1. **Must differ in**:
-   - Number of arguments (`foo(int)` vs `foo(int, int)`), OR
-   - Types of arguments (`foo(int)` vs `foo(String)`), OR
-   - Order of argument types (`foo(int, String)` vs `foo(String, int)`).
-2. **Changing return type alone is NOT valid**:
-   ```java
-   int calculate(int a) { return a; }
-   double calculate(int a) { return (double)a; } // ❌ COMPILE ERROR: Duplicate method!
-   ```
-   *Why?* When a client calls `calculate(10);`, the compiler has no way to infer which method you intended to call from the call site alone.
+### A. Compile-Time Polymorphism (Method Overloading)
+Occurs within the same class. Methods share the **same name** but have **different parameter lists** (different count, types, or order).
 
 ```java
-public class NavigationSystem {
-    // 1. Basic route
-    public void navigate(String destination) {
-        System.out.println("Navigating to " + destination + " via default fastest route.");
+// Method Overloading Example
+class AccelerateExample {
+    // 1. Default acceleration by 20 km/h
+    public void accelerate() {
+        this.speed += 20;
     }
 
-    // 2. Overloaded: With avoiding tolls
-    public void navigate(String destination, boolean avoidTolls) {
-        System.out.println("Navigating to " + destination + " | Avoid Tolls: " + avoidTolls);
-    }
-
-    // 3. Overloaded: With intermediate waypoints
-    public void navigate(String destination, List<String> waypoints, boolean avoidTolls) {
-        System.out.println("Navigating to " + destination + " via " + waypoints.size() + " stops | Avoid Tolls: " + avoidTolls);
+    // 2. Overloaded: Acceleration to a specific target speed
+    public void accelerate(int targetSpeed) {
+        this.speed = targetSpeed;
     }
 }
 ```
+The compiler determines exactly which method to invoke at compile-time based on the arguments supplied.
 
 ---
 
-## 5. Method Overriding & Dynamic Dispatch (Runtime Polymorphism)
+### B. Runtime Polymorphism (Method Overriding & Dynamic Dispatch)
+Occurs across parent-child hierarchies. A subclass provides its own specialized implementation of a method that is already declared in its parent class.
 
-Method Overriding occurs when a subclass provides a **specific implementation** of a method that is already declared in its superclass.
+- **Real-World Analogy**: Both a `Dog` and a `Cat` are `Animals`. When instructed to `makeSound()`, the dog barks (*"Woof Woof!"*), while the cat meows (*"Meow Meow!"*).
+- **Car Analogy from Lecture**: Both `ManualCar` and `ElectricCar` accelerate.
+  - In a `ManualCar` (**Suzuki WagonR**), acceleration burns fuel and shifts mechanical gears (+20 km/h).
+  - In an `ElectricCar` (**Tesla Model S**), acceleration draws battery power (+15 km/h, battery drops by 2%).
 
-### Dynamic Method Dispatch (The VTable)
-At runtime, when a superclass reference variable points to a subclass object:
 ```java
-Vehicle myVehicle = new ElectricCar(); // Upcasting
-myVehicle.accelerate();                // Calls ElectricCar's accelerate()!
-```
-The JVM uses the **Virtual Method Table (VTable)** associated with the concrete heap object to dynamically dispatch the call to `ElectricCar.accelerate()`.
+// Parent reference pointing to child instances (Upcasting)
+Car myCar1 = new ManualCar("Suzuki", "WagonR");
+Car myCar2 = new ElectricCar("Tesla", "Model S");
 
-```mermaid
-sequenceDiagram
-    participant Main as Client Code
-    participant Ref as Vehicle Reference (Stack)
-    participant HeapObj as ElectricCar Instance (Heap)
-    participant VTable as ElectricCar VTable
-
-    Main->>Ref: Vehicle v = new ElectricCar()
-    Ref->>HeapObj: Reference points to Heap object
-    Main->>Ref: v.accelerate()
-    Ref->>HeapObj: Read object header / Type pointer
-    HeapObj->>VTable: Lookup method pointer for 'accelerate()'
-    VTable-->>Main: Executes ElectricCar.accelerate()!
+// Dynamic Method Dispatch: JVM looks up runtime object's vtable!
+myCar1.accelerate(); // Executes ManualCar logic
+myCar2.accelerate(); // Executes ElectricCar logic
 ```
 
 ---
 
-## 6. Overloading vs. Overriding: Comprehensive Comparison
+## 6. The Unified Capstone Java Implementation
 
-| Feature | Method Overloading | Method Overriding |
-| :--- | :--- | :--- |
-| **Binding Type** | **Static / Early Binding** (Resolved at compile time) | **Dynamic / Late Binding** (Resolved at runtime via VTable) |
-| **Location** | Within the **same class** | Across **Parent-Child class hierarchy** |
-| **Method Signature** | **Must be different** (parameters must differ) | **Must be strictly identical** (name, parameter list, order) |
-| **Return Type** | Can be anything (independent of parameters) | Must be same or **Covariant** (subtype of parent's return type) |
-| **Private / Static Methods** | Can be overloaded freely | **Cannot be overridden** (static methods are hidden, not overridden) |
-| **Performance** | Faster (no runtime lookup penalty) | Minor runtime dispatch overhead |
-
----
-
-## 7. Production Code: Complete Vehicle Hierarchy
+This complete implementation models the lecture's exact domain, demonstrating **Abstraction**, **Encapsulation**, **Inheritance**, and **Polymorphism** working in unison:
 
 ```java
-// Base Superclass
-public class Vehicle {
+// ==========================================
+// 1. BASE CLASS (Abstraction + Encapsulation)
+// ==========================================
+abstract class Car {
+    // Protected fields accessible by derived classes, hidden from outside world
     protected final String brand;
     protected final String model;
+    protected boolean isEngineOn;
     protected int currentSpeed;
 
-    public Vehicle(String brand, String model) {
+    public Car(String brand, String model) {
         this.brand = brand;
         this.model = model;
+        this.isEngineOn = false;
         this.currentSpeed = 0;
     }
 
-    public void start() {
-        System.out.println(brand + " " + model + " engine started.");
+    // Common inherited behaviors
+    public void startEngine() {
+        this.isEngineOn = true;
+        System.out.println("[" + brand + " " + model + "] Engine started.");
     }
 
-    // Overridable method
-    public void accelerate(int kmh) {
-        this.currentSpeed += kmh;
-        System.out.println(brand + " vehicle accelerating to " + currentSpeed + " km/h.");
+    public void stopEngine() {
+        this.isEngineOn = false;
+        this.currentSpeed = 0;
+        System.out.println("[" + brand + " " + model + "] Engine turned off.");
     }
+
+    public void brake() {
+        this.currentSpeed = Math.max(0, this.currentSpeed - 20);
+        System.out.println("[" + brand + " " + model + "] Braking applied. Speed: " + currentSpeed + " km/h");
+    }
+
+    // Polymorphic method: Declared in parent, overridden differently by subclasses
+    public abstract void accelerate();
+
+    // Overloaded method (Compile-Time Polymorphism)
+    public abstract void accelerate(int customIncrement);
+
+    public int getCurrentSpeed() { return currentSpeed; }
 }
 
-// Subclass 1: Manual Combustion Car
-public class ManualCar extends Vehicle {
-    private int currentGear;
+// ==========================================
+// 2. SUBCLASS 1: ManualCar (Suzuki WagonR)
+// ==========================================
+class ManualCar extends Car {
+    private int currentGear; // Specific to ManualCar
 
     public ManualCar(String brand, String model) {
         super(brand, model);
@@ -219,80 +232,150 @@ public class ManualCar extends Vehicle {
     }
 
     public void shiftGear(int gear) {
+        if (!isEngineOn) {
+            System.out.println("[ManualCar] Cannot shift gear. Engine is off!");
+            return;
+        }
         this.currentGear = gear;
-        System.out.println("Shifted to gear: " + currentGear);
+        System.out.println("[" + brand + " " + model + "] Shifted to Gear " + gear);
     }
 
-    // Method Overriding: Specialized combustion acceleration with clutch
+    // Runtime Polymorphic Overriding 1
     @Override
-    public void accelerate(int kmh) {
-        System.out.print("[Manual Car Gear " + currentGear + "] ");
-        super.accelerate(kmh);
+    public void accelerate() {
+        if (!isEngineOn) {
+            System.out.println("[ManualCar] Cannot accelerate. Engine is off!");
+            return;
+        }
+        this.currentSpeed += 20;
+        System.out.println("[" + brand + " " + model + "] Accelerated with gear pickup! Speed: " + currentSpeed + " km/h");
+    }
+
+    // Compile-Time Overloaded variant
+    @Override
+    public void accelerate(int customIncrement) {
+        if (!isEngineOn) return;
+        this.currentSpeed += customIncrement;
+        System.out.println("[" + brand + " " + model + "] Hard acceleration +" + customIncrement + " km/h! Speed: " + currentSpeed + " km/h");
     }
 }
 
-// Subclass 2: Electric Vehicle
-public class ElectricCar extends Vehicle {
-    private int batteryPercentage;
+// ==========================================
+// 3. SUBCLASS 2: ElectricCar (Tesla Model S)
+// ==========================================
+class ElectricCar extends Car {
+    private int batteryPercentage; // Specific to ElectricCar
 
-    public ElectricCar(String brand, String model, int initialBattery) {
+    public ElectricCar(String brand, String model) {
         super(brand, model);
-        this.batteryPercentage = initialBattery;
-    }
-
-    // Method Overriding: Instant torque delivery
-    @Override
-    public void accelerate(int kmh) {
-        if (batteryPercentage <= 0) {
-            System.out.println("❌ Battery depleted! Cannot accelerate.");
-            return;
-        }
-        this.currentSpeed += (kmh + 10); // Instant electric torque boost
-        this.batteryPercentage = Math.max(0, this.batteryPercentage - 2);
-        System.out.println("⚡ [Electric Instant Torque] " + brand + " reached " + currentSpeed + " km/h | Battery: " + batteryPercentage + "%");
+        this.batteryPercentage = 100;
     }
 
     public void chargeBattery() {
         this.batteryPercentage = 100;
-        System.out.println("🔋 Battery fully recharged to 100%.");
+        System.out.println("[" + brand + " " + model + "] Battery charged to 100% full.");
+    }
+
+    // Runtime Polymorphic Overriding 2
+    @Override
+    public void accelerate() {
+        if (!isEngineOn) {
+            System.out.println("[ElectricCar] Cannot accelerate. Electric motor is off!");
+            return;
+        }
+        this.currentSpeed += 15;
+        this.batteryPercentage = Math.max(0, this.batteryPercentage - 2);
+        System.out.println("[" + brand + " " + model + "] Silent electric acceleration! Speed: "
+                + currentSpeed + " km/h (Battery: " + batteryPercentage + "%)");
+    }
+
+    // Compile-Time Overloaded variant
+    @Override
+    public void accelerate(int customIncrement) {
+        if (!isEngineOn) return;
+        this.currentSpeed += customIncrement;
+        this.batteryPercentage = Math.max(0, this.batteryPercentage - 4);
+        System.out.println("[" + brand + " " + model + "] Ludicrous mode +" + customIncrement + " km/h! Speed: "
+                + currentSpeed + " km/h (Battery: " + batteryPercentage + "%)");
     }
 }
-```
 
-### Execution & Dynamic Dispatch in Action
-```java
+// ==========================================
+// 4. MAIN DRIVER
+// ==========================================
 public class Main {
     public static void main(String[] args) {
-        // Polymorphic collection
-        List<Vehicle> fleet = new ArrayList<>();
-        fleet.add(new ManualCar("Ford", "Mustang"));
-        fleet.add(new ElectricCar("Tesla", "Model S", 85));
+        System.out.println("=== Testing Inheritance & Polymorphism ===");
 
-        // Uniform invocation: Dynamic Dispatch routes to specific overrides!
-        for (Vehicle v : fleet) {
-            v.start();
-            v.accelerate(50);
-        }
+        // Dynamic Dispatch: Parent reference pointing to child instances
+        Car wagonR = new ManualCar("Suzuki", "WagonR");
+        Car tesla  = new ElectricCar("Tesla", "Model S");
+
+        // 1. ManualCar Flow
+        wagonR.startEngine();
+        ((ManualCar) wagonR).shiftGear(2); // Downcast to use specialized feature
+        wagonR.accelerate();               // Dynamic polymorphism (+20 km/h)
+        wagonR.accelerate(30);             // Method overloading (+30 km/h)
+        wagonR.brake();
+        wagonR.stopEngine();
+
+        System.out.println("----------------------------------------------");
+
+        // 2. ElectricCar Flow
+        tesla.startEngine();
+        ((ElectricCar) tesla).chargeBattery();
+        tesla.accelerate();                // Dynamic polymorphism (+15 km/h, -2% battery)
+        tesla.accelerate(25);              // Method overloading (+25 km/h, -4% battery)
+        tesla.brake();
+        tesla.stopEngine();
     }
 }
 ```
 
 ---
 
-## 8. Common Interview Traps & Questions
+## 7. Execution Trace
 
-1. **"Can we override `static` methods in Java?"**
-   - *Answer*: **No**. Static methods are associated with the class, not with any object instance. If a subclass declares a static method with the same signature, it is called **Method Hiding**, not overriding. The method called depends on the reference type at compile time, not the runtime object.
-2. **"Can constructors be inherited or overridden?"**
-   - *Answer*: **No**. Constructors are not members of a class and have the class's exact name, so they cannot be inherited or overridden. However, a child constructor must invoke a superclass constructor (`super()`) on its first line.
-3. **"What is Covariant Return Type?"**
-   - *Answer*: When overriding a method, the subclass method can return a subtype of the class returned by the superclass method:
-     ```java
-     class VehicleFactory {
-         public Vehicle createVehicle() { return new Vehicle("Base", "1"); }
-     }
-     class ElectricCarFactory extends VehicleFactory {
-         @Override
-         public ElectricCar createVehicle() { return new ElectricCar("Tesla", "3", 100); } // ✅ Covariant return
-     }
-     ```
+```text
+=== Testing Inheritance & Polymorphism ===
+[Suzuki WagonR] Engine started.
+[Suzuki WagonR] Shifted to Gear 2
+[Suzuki WagonR] Accelerated with gear pickup! Speed: 20 km/h
+[Suzuki WagonR] Hard acceleration +30 km/h! Speed: 50 km/h
+[Suzuki WagonR] Braking applied. Speed: 30 km/h
+[Suzuki WagonR] Engine turned off.
+----------------------------------------------
+[Tesla Model S] Engine started.
+[Tesla Model S] Battery charged to 100% full.
+[Tesla Model S] Silent electric acceleration! Speed: 15 km/h (Battery: 98%)
+[Tesla Model S] Ludicrous mode +25 km/h! Speed: 40 km/h (Battery: 94%)
+[Tesla Model S] Braking applied. Speed: 20 km/h
+[Tesla Model S] Engine turned off.
+```
+
+---
+
+## Quick Revision
+
+### Core Idea
+**Inheritance** establishes hierarchical "IS-A" relationships between classes, eliminating code duplication by allowing subclasses to inherit and extend base class functionality. **Polymorphism** allows a single method call to take different behavioral forms depending on compile-time method signatures (**Overloading**) or runtime object types (**Overriding via Dynamic Method Dispatch**).
+
+### Remember
+* Canonical cars from lecture: `Suzuki WagonR` (ManualCar with `shiftGear`) and `Tesla Model S` (ElectricCar with `chargeBattery`).
+* The 5 forms of Inheritance: Single, Multi-level, Hierarchical, Multiple (Diamond Problem), and Hybrid.
+* The Diamond Problem occurs when class $D$ inherits ambiguous duplicate methods from parents $B$ and $C$ who share ancestor $A$. Java resolves this by forbidding multiple class inheritance and using interfaces instead.
+* `protected` fields are accessible to derived subclasses but inaccessible to unrelated external clients.
+
+### Java Implementation Idea
+* Declare common fields and methods in an abstract base class (`Car`).
+* Use `super(brand, model)` in child constructors to initialize inherited base state.
+* Upcast child instances to parent references (`Car c = new ElectricCar(...)`) to leverage dynamic runtime dispatch.
+
+### Most Important Interview Point
+* **Compile-Time vs Runtime Polymorphism**:
+  * Compile-Time (Overloading): Same class, same method name, different parameter types/counts. Resolved by compiler.
+  * Runtime (Overriding): Parent-child hierarchy, identical method signatures, child provides specialized logic. Resolved at runtime by the JVM consulting the object's virtual table (vtable).
+
+### Common Trap
+* Claiming changing only the **return type** constitutes valid method overloading in Java. (Method overloading requires changing the parameter list; identical parameters with different return types cause a compiler error).
+* Attempting multiple class inheritance in Java (`class C extends A, B`), which is illegal.

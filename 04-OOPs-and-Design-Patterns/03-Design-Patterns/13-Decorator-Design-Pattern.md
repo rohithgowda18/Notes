@@ -1,223 +1,417 @@
 # 13. Decorator Design Pattern
 
-> 💡 **Quick Revision Anchor**: 
-> - **Type**: Structural Design Pattern.
-> - **Core Intent**: Attaches additional responsibilities and behaviors to an object **dynamically at runtime** without altering the underlying class or using subclass inheritance.
-> - **Motto**: A Decorator both **"IS-A"** component and **"HAS-A"** component simultaneously.
+## 1. Overview
 
----
+The **Decorator Design Pattern** is a structural design pattern that allows attaching new responsibilities and behaviors to an object **dynamically at runtime** without altering its underlying class or resorting to inheritance. A Decorator simultaneously **"IS-A"** Component (so it can substitute for it) and **"HAS-A"** Component (so it wraps and delegates to it).
 
-## 1. Context & The Class Explosion Problem
-
-Suppose you are building the billing engine for a custom Pizza Restaurant:
-- Base Pizzas: `Margherita` ($8.00), `Farmhouse` ($10.00).
-- Optional Toppings: `Extra Cheese` (+$1.50), `Jalapeno` (+$0.80), `Mushroom` (+$1.20), `Paneer` (+$2.00).
+In this lecture, the pattern is introduced through the classic **Super Mario Power-Up System**:
+- Base character: `Mario` (small, basic abilities).
+- Dynamic Power-Ups:
+  - **HeightUpDecorator** (Mushroom power-up: increases height/jump).
+  - **GunPowerDecorator** (Flower power-up: adds fireball shooting ability).
+  - **StarPowerDecorator** (Star power-up: grants invincibility and supersonic speed).
+- Real-world and enterprise extensions:
+  - **Text Formatting in Document Editors** (Raw Text decorated with `BoldDecorator`, `ItalicDecorator`, `UnderlineDecorator`).
+  - **Web Request Middleware / Form Validation Pipelines** (Decorating raw forms with `EmailValidationDecorator`, `SqlInjectionFilterDecorator`, `CsrfDecorator`).
 
 ```mermaid
-graph TD
-    subgraph "The Inheritance Explosion Nightmare (2^N Subclasses)"
-        P[Base Pizza] --> M[Margherita]
-        P --> F[Farmhouse]
-        M --> MC[MargheritaWithCheese]
-        M --> MJ[MargheritaWithJalapeno]
-        M --> MCJ[MargheritaWithCheeseAndJalapeno]
-        M --> MCJM[MargheritaWithCheeseJalapenoMushroom]
-    end
-    style P fill:#fee2e2,stroke:#ef4444,color:#b91c1c
+mindmap
+  root((Decorator Design Pattern))
+    Core Dilemma
+      Why Not Inheritance?
+      Compile-Time vs Runtime Dispatch
+      Combinatorial Class Explosion (2^N)
+    The Dual Relationship
+      IS-A Component (Polymorphic Substitution)
+      HAS-A Component (Delegation & Wrapping)
+    Primary Canonical Domain: Mario Game
+      ICharacter Interface: getAbilities()
+      Concrete Character: Mario
+      CharacterDecorator Abstract Wrapper
+      Concrete Power-Ups
+        HeightUpDecorator (Mushroom)
+        GunPowerDecorator (Flower)
+        StarPowerDecorator (Star)
+    Alternative Practical Domains
+      Text Editor Formatting (Bold, Italic, Underline)
+      Form Security Pipeline (SQL Injection, CSRF, Email)
+      Java IO Streams (BufferedInputStream, GZIPInputStream)
 ```
-
-### Why Subclassing Fails:
-With just 10 optional toppings, you would need $2^{10} = 1,024$ subclass permutations! Adding a new topping requires creating dozens of new classes, and changing topping prices requires editing multiple subclasses.
 
 ---
 
-## 2. The Decorator Architecture
+## 2. What Problem Are We Solving?
 
-Instead of static subclassing, we wrap an object inside another object that enhances its behavior:
+### Why Not Polymorphic Inheritance?
+Consider a game where characters can run:
+- A base class `Base` declares `run() { print("Running"); }`.
+- A subclass `Child` overrides `run() { print("Running with Skates"); }`.
+- At compile-time or startup, you can write `Base b = new Child(); b.run();`.
+- **The Critical Question**: *Can you dynamically layer multiple abilities onto an existing character at runtime without restarting or re-instantiating completely separate subclass branches?*
+
+### The Combinatorial Class Explosion ($2^N$)
+In Super Mario:
+- Mario starts basic.
+- Mario grabs a Mushroom $\rightarrow$ needs Height Up.
+- Mario grabs a Flower $\rightarrow$ needs Gun Power.
+- Mario grabs a Star $\rightarrow$ needs Invincibility.
+- Mario can have any combination of these simultaneously:
+  - `MarioWithHeightUp`
+  - `MarioWithGun`
+  - `MarioWithStar`
+  - `MarioWithHeightUpAndGun`
+  - `MarioWithHeightUpAndGunAndStar`
+- For $N$ independent power-ups or attributes, subclassing requires **$2^N$ concrete classes**!
+- Inheritance is completely rigid at runtime: if Mario loses the Gun power upon taking damage, an inheritance-based object cannot simply "shed" a parent class dynamically.
+
+---
+
+## 3. Core Concepts & The Dual Relationship
+
+The fundamental secret of the Decorator pattern is its **dual relationship** with the Component interface:
+
+```text
+                             ┌───────────────────────────────┐
+                             │    <<interface>> Component    │
+                             └───────────────▲───────────────┘
+                                             │
+                       ┌─────────────────────┴─────────────────────┐
+                       │ IS-A                                      │ IS-A
+        ┌──────────────┴──────────────┐             ┌──────────────┴──────────────┐
+        │      ConcreteComponent      │             │      Decorator (Wrapper)    │
+        │           (Mario)           │             ├─────────────────────────────┤
+        └─────────────────────────────┘             │ -Component wrappedComponent │──◇ HAS-A
+                                                    └──────────────▲──────────────┘
+                                                                   │ IS-A
+                                                    ┌──────────────┴──────────────┐
+                                                    │      Concrete Decorators    │
+                                                    │ (HeightUp, GunPower, Star)  │
+                                                    └─────────────────────────────┘
+```
+
+1. **Decorator IS-A Component**: By implementing `Component`, the decorator conforms to the exact same contract. Calling code treats decorated objects identically to plain ones.
+2. **Decorator HAS-A Component**: The decorator holds a reference to another `Component` instance. When a method is called, the decorator delegates to the inner wrapped component first, then layers on its own additional behavior.
+
+---
+
+## 4. Architectural Evolution: Super Mario System
 
 ```mermaid
 classDiagram
-    class BasePizza {
+    class Character {
         <<interface>>
-        +cost() double
-        +getDescription() String
+        +getAbilities() String
     }
 
-    class MargheritaPizza {
-        +cost() double
-        +getDescription() String
-    }
-    class FarmhousePizza {
-        +cost() double
-        +getDescription() String
+    class Mario {
+        +getAbilities() String
     }
 
-    class ToppingDecorator {
+    Character <|.. Mario : Implements
+
+    class CharacterDecorator {
         <<abstract>>
-        #BasePizza pizza
-        +cost() double
-        +getDescription() String
+        #Character wrappedCharacter
+        +CharacterDecorator(Character character)
+        +getAbilities() String
     }
 
-    class ExtraCheese {
-        +cost() double
-        +getDescription() String
-    }
-    class Jalapeno {
-        +cost() double
-        +getDescription() String
+    Character <|.. CharacterDecorator : Implements (IS-A)
+    CharacterDecorator o-- Character : Wraps (HAS-A)
+
+    class HeightUpDecorator {
+        +HeightUpDecorator(Character character)
+        +getAbilities() String
     }
 
-    BasePizza <|.. MargheritaPizza
-    BasePizza <|.. FarmhousePizza
-    BasePizza <|.. ToppingDecorator
-    ToppingDecorator <|-- ExtraCheese
-    ToppingDecorator <|-- Jalapeno
-    ToppingDecorator o-- BasePizza : Wraps (HAS-A)
+    class GunPowerDecorator {
+        +GunPowerDecorator(Character character)
+        +getAbilities() String
+    }
+
+    class StarPowerDecorator {
+        +StarPowerDecorator(Character character)
+        +getAbilities() String
+    }
+
+    CharacterDecorator <|-- HeightUpDecorator : Extends
+    CharacterDecorator <|-- GunPowerDecorator : Extends
+    CharacterDecorator <|-- StarPowerDecorator : Extends
 ```
 
-### The Recursive Unwinding Mechanism:
-When `myPizza.cost()` is invoked, the call cascades through layers of wrappers like a Russian nesting doll:
+---
+
+## 5. Sequence Diagram: Layering Power-Ups Dynamically
 
 ```mermaid
-flowchart LR
-    Client -->|cost()| EC["ExtraCheese Wrapper<br/>(+ $1.50)"]
-    EC -->|cost()| JL["Jalapeno Wrapper<br/>(+ $0.80)"]
-    JL -->|cost()| Core["Margherita Core<br/>($8.00)"]
-    
-    Core -- returns $8.00 --> JL
-    JL -- returns $8.80 --> EC
-    EC -- returns $10.30 --> Client
+sequenceDiagram
+    autonumber
+    actor Player as Gamer
+    participant Star as StarPowerDecorator
+    participant Gun as GunPowerDecorator
+    participant Height as HeightUpDecorator
+    participant Core as Mario (Concrete Character)
+
+    Note over Player,Core: Composition: Star(Gun(Height(Mario)))
+    Player->>Star: getAbilities()
+    activate Star
+    Star->>Gun: getAbilities()
+    activate Gun
+    Gun->>Height: getAbilities()
+    activate Height
+    Height->>Core: getAbilities()
+    activate Core
+    Core-->>Height: "Mario"
+    deactivate Core
+    Height-->>Gun: "Mario + [Height Up]"
+    deactivate Height
+    Gun-->>Star: "Mario + [Height Up] + [Gun Fireball]"
+    deactivate Gun
+    Star-->>Player: "Mario + [Height Up] + [Gun Fireball] + [Star Invincibility]"
+    deactivate Star
 ```
 
 ---
 
-## 3. Production Java Implementation
+## 6. Complete Java Implementation
 
 ```java
-// 1. Component Interface
-public interface BasePizza {
-    double cost();
-    String getDescription();
+import java.util.Objects;
+
+// ============================================================================
+// 1. COMPONENT CONTRACT
+// ============================================================================
+
+/**
+ * Base abstraction for any playable game character.
+ */
+public interface Character {
+    String getAbilities();
 }
 
-// 2. Concrete Components (The core items being decorated)
-public class MargheritaPizza implements BasePizza {
-    @Override public double cost() { return 8.00; }
-    @Override public String getDescription() { return "Margherita Pizza"; }
-}
+// ============================================================================
+// 2. CONCRETE COMPONENT
+// ============================================================================
 
-public class FarmhousePizza implements BasePizza {
-    @Override public double cost() { return 10.00; }
-    @Override public String getDescription() { return "Farmhouse Pizza"; }
-}
-
-// 3. Abstract Decorator (Both IS-A and HAS-A BasePizza)
-public abstract class ToppingDecorator implements BasePizza {
-    protected final BasePizza wrappedPizza;
-
-    public ToppingDecorator(BasePizza pizza) {
-        if (pizza == null) throw new IllegalArgumentException("Pizza cannot be null");
-        this.wrappedPizza = pizza;
+/**
+ * Core Mario character with base capabilities.
+ */
+public class Mario implements Character {
+    @Override
+    public String getAbilities() {
+        return "Mario (Small, Normal Speed)";
     }
 }
 
-// 4. Concrete Decorator 1: Extra Cheese
-public class ExtraCheeseDecorator extends ToppingDecorator {
-    public ExtraCheeseDecorator(BasePizza pizza) {
-        super(pizza);
+// ============================================================================
+// 3. BASE DECORATOR (DUAL IDENTITY: IS-A AND HAS-A)
+// ============================================================================
+
+/**
+ * Abstract decorator wrapping a Character reference.
+ */
+public abstract class CharacterDecorator implements Character {
+    protected final Character wrappedCharacter;
+
+    public CharacterDecorator(Character character) {
+        this.wrappedCharacter = Objects.requireNonNull(character, "Character to wrap cannot be null");
     }
 
     @Override
-    public double cost() {
-        return wrappedPizza.cost() + 1.50; // Add extra cheese surcharge
-    }
-
-    @Override
-    public String getDescription() {
-        return wrappedPizza.getDescription() + " + Extra Cheese";
+    public String getAbilities() {
+        return wrappedCharacter.getAbilities(); // Default delegation
     }
 }
 
-// Concrete Decorator 2: Jalapeno
-public class JalapenoDecorator extends ToppingDecorator {
-    public JalapenoDecorator(BasePizza pizza) {
-        super(pizza);
+// ============================================================================
+// 4. CONCRETE DECORATORS (POWER-UPS)
+// ============================================================================
+
+/**
+ * Mushroom Power-Up: Increases Mario's height and jump.
+ */
+public class HeightUpDecorator extends CharacterDecorator {
+    public HeightUpDecorator(Character character) {
+        super(character);
     }
 
     @Override
-    public double cost() {
-        return wrappedPizza.cost() + 0.80; // Add jalapeno surcharge
-    }
-
-    @Override
-    public String getDescription() {
-        return wrappedPizza.getDescription() + " + Jalapeno";
+    public String getAbilities() {
+        return super.getAbilities() + " + [Super Mushroom: Height Up & High Jump]";
     }
 }
 
-// Concrete Decorator 3: Mushroom
-public class MushroomDecorator extends ToppingDecorator {
-    public MushroomDecorator(BasePizza pizza) {
-        super(pizza);
+/**
+ * Flower Power-Up: Enables shooting fireballs.
+ */
+public class GunPowerDecorator extends CharacterDecorator {
+    public GunPowerDecorator(Character character) {
+        super(character);
     }
 
     @Override
-    public double cost() {
-        return wrappedPizza.cost() + 1.20;
-    }
-
-    @Override
-    public String getDescription() {
-        return wrappedPizza.getDescription() + " + Fresh Mushrooms";
+    public String getAbilities() {
+        return super.getAbilities() + " + [Fire Flower: Gun Fireballs]";
     }
 }
-```
 
-### Client Execution & Nesting:
-```java
-public class PizzaOrderDemo {
+/**
+ * Star Power-Up: Grants invincibility and supersonic speed.
+ */
+public class StarPowerDecorator extends CharacterDecorator {
+    public StarPowerDecorator(Character character) {
+        super(character);
+    }
+
+    @Override
+    public String getAbilities() {
+        return super.getAbilities() + " + [Star Power: Invincible & Supersonic Speed]";
+    }
+}
+
+// ============================================================================
+// 5. OTHER REAL-WORLD DOMAIN EXAMPLES (INSTRUCTOR LECTURE)
+// ============================================================================
+
+// --- Example A: Rich Text Editor Formatting ---
+public interface TextElement {
+    String render();
+}
+
+public class PlainText implements TextElement {
+    private final String text;
+    public PlainText(String text) { this.text = text; }
+    @Override public String render() { return text; }
+}
+
+public abstract class TextDecorator implements TextElement {
+    protected final TextElement inner;
+    public TextDecorator(TextElement inner) { this.inner = inner; }
+}
+
+public class BoldDecorator extends TextDecorator {
+    public BoldDecorator(TextElement inner) { super(inner); }
+    @Override public String render() { return "<b>" + inner.render() + "</b>"; }
+}
+
+public class ItalicDecorator extends TextDecorator {
+    public ItalicDecorator(TextElement inner) { super(inner); }
+    @Override public String render() { return "<i>" + inner.render() + "</i>"; }
+}
+
+public class UnderlineDecorator extends TextDecorator {
+    public UnderlineDecorator(TextElement inner) { super(inner); }
+    @Override public String render() { return "<u>" + inner.render() + "</u>"; }
+}
+
+// ============================================================================
+// 6. DRIVER DEMONSTRATION
+// ============================================================================
+public class DecoratorPatternDemo {
     public static void main(String[] args) {
-        // Order 1: Plain Margherita
-        BasePizza order1 = new MargheritaPizza();
-        System.out.println(order1.getDescription() + " = $" + order1.cost());
+        System.out.println("==================================================");
+        System.out.println("    SUPER MARIO DECORATOR PATTERN DEMO           ");
+        System.out.println("==================================================");
 
-        // Order 2: Margherita with Extra Cheese
-        BasePizza order2 = new ExtraCheeseDecorator(new MargheritaPizza());
-        System.out.println(order2.getDescription() + " = $" + order2.cost());
+        // 1. Basic Character
+        Character player = new Mario();
+        System.out.println("\nLevel 1 Start: " + player.getAbilities());
 
-        // Order 3: Farmhouse with Double Cheese and Jalapenos
-        BasePizza order3 = new JalapenoDecorator(
-                                new ExtraCheeseDecorator(
-                                    new ExtraCheeseDecorator(
-                                        new FarmhousePizza())));
-                                        
-        System.out.println(order3.getDescription() + " = $" + order3.cost());
-        // Output: Farmhouse Pizza + Extra Cheese + Extra Cheese + Jalapeno = $13.80
+        // 2. Mario collects a Super Mushroom
+        player = new HeightUpDecorator(player);
+        System.out.println("Power-up Grabbed: " + player.getAbilities());
+
+        // 3. Mario collects a Fire Flower
+        player = new GunPowerDecorator(player);
+        System.out.println("Power-up Grabbed: " + player.getAbilities());
+
+        // 4. Mario collects a Super Star
+        player = new StarPowerDecorator(player);
+        System.out.println("Power-up Grabbed: " + player.getAbilities());
+
+        System.out.println("\n==================================================");
+        System.out.println("    RICH TEXT FORMATTING DECORATOR DEMO          ");
+        System.out.println("==================================================");
+
+        TextElement formattedText = new UnderlineDecorator(
+                new ItalicDecorator(
+                        new BoldDecorator(
+                                new PlainText("Hello Coder Army!")
+                        )
+                )
+        );
+        System.out.println("\nRendered HTML Output:\n" + formattedText.render());
     }
 }
 ```
 
 ---
 
-## 4. Real-World Java Standard Library Example
+## 7. Deep Dive: Other Practical Use Cases
 
-The Java I/O framework (`java.io.*`) is the most famous real-world implementation of the Decorator pattern:
+### 1. Web Form Security & Validation Pipeline
+In web applications, forms submitted by users require multiple security inspections:
+- Base Component: `FormHandler`.
+- Decorators:
+  - `EmailValidationDecorator` (checks regex email format).
+  - `SqlInjectionFilterDecorator` (escapes malicious characters like `' OR 1=1--`).
+  - `CsrfProtectionDecorator` (validates secure token header).
+Each decorator inspects the request before forwarding it to the inner handler, acting like an extensible middleware chain.
 
+### 2. Java Standard Library `java.io`
+The most famous production example of the Decorator pattern is Java's I/O library:
 ```java
-// Java standard library I/O streams decorator stacking:
-InputStream fileStream = new FileInputStream("large_payload.gz");
-InputStream bufferedStream = new BufferedInputStream(fileStream); // Adds buffering
-InputStream decompressedStream = new GZIPInputStream(bufferedStream); // Adds gzip decompression
+InputStream stream = new GZIPInputStream(
+                        new BufferedInputStream(
+                            new FileInputStream("data.tar.gz")
+                        )
+                     );
 ```
-Here, `InputStream` is the base component, and each stream wrapper adds dynamic responsibilities (buffering, decompression, data parsing) without altering `FileInputStream`.
+- `FileInputStream`: Concrete component reading raw bytes from disk.
+- `BufferedInputStream`: Decorator adding memory buffer caching.
+- `GZIPInputStream`: Decorator transparently decompressing the stream on the fly.
 
 ---
 
-## 5. Decorator vs. Adapter vs. Proxy
+## 8. Comparison: Decorator vs. Adapter vs. Proxy
 
-| Pattern | Intent | Interface Relationship |
-| :--- | :--- | :--- |
-| **Decorator** | **Enhances / adds new behaviors** dynamically without altering the interface | Implements the **same** interface as the wrapped object. |
-| **Adapter** | **Converts incompatible interfaces** so two classes can collaborate | Exposes a **different** interface to the client than the wrapped adaptee. |
-| **Proxy** | **Controls access** (lazy loading, caching, auth, security) to the subject | Implements the **same** interface, but manages lifecycle or permissions rather than enriching behavior. |
+| Dimension | Decorator Pattern | Adapter Pattern | Proxy Pattern |
+| :--- | :--- | :--- | :--- |
+| **Primary Intent** | Dynamically add new behaviors/responsibilities to an object | Convert an incompatible interface into an expected target interface | Control access, manage lazy loading, caching, or security logging |
+| **Interface Relation** | Conforms to the **same** component interface | Translates to a **different** target interface | Conforms to the **same** subject interface |
+| **Wrapping Multiplicity** | Encourages arbitrary recursive layering (`D3(D2(D1(Core)))`) | Usually wraps a single adaptee object | Usually holds a 1-to-1 reference to a real subject |
+| **Mental Model** | *"Layering winter clothes on a person"* | *"A UK-to-US power plug converter"* | *"A security guard checking an ID badge at a door"* |
+
+---
+
+## 9. Interview Questions & Key Discussion Points
+
+1. **How does the Decorator Pattern eliminate the class explosion problem?**
+   - *Answer*: With inheritance, $N$ independent features require $2^N$ subclasses to represent every possible combination. With Decorator, you write exactly $N$ decorator classes and combine them dynamically in memory as needed ($O(N)$ code complexity instead of $O(2^N)$).
+2. **Why must the abstract decorator implement the component interface?**
+   - *Answer*: Implementing the component interface guarantees type conformance (**IS-A**). This allows the outermost decorated wrapper to be passed anywhere the original core component is expected, maintaining transparent interchangeability.
+3. **What are the disadvantages of the Decorator Pattern?**
+   - *Answer*:
+     - Can lead to long, nested stack traces that are difficult to debug.
+     - Breaks object identity: `decoratedObj instanceof Mario` returns `false` because the outer instance is of type `StarPowerDecorator`.
+
+---
+
+## 10. Quick Revision
+
+### Core Idea
+Decorator dynamically layers new responsibilities onto an object at runtime by wrapping it in an object that both implements (`IS-A`) and contains (`HAS-A`) the component interface.
+
+### Remember
+- Solves the $2^N$ subclass explosion problem.
+- Canonical lecture domain: **Super Mario** (base `Mario` decorated with `HeightUpDecorator`, `GunPowerDecorator`, `StarPowerDecorator`).
+- Recursive unwinding: calls cascade inward to the core and bubble results back outward.
+
+### Java Implementation Idea
+Define `Character` interface with `getAbilities()`, implement `Mario`, create abstract `CharacterDecorator` with `protected final Character wrappedCharacter`, and extend it with specific power-up classes.
+
+### Most Important Interview Point
+Cite `java.io.BufferedInputStream(new FileInputStream(...))` as the benchmark real-world production example of the Decorator pattern.
+
+### Common Trap
+Introducing new public methods in decorators that are missing from the `Component` interface. Doing so prevents clients from invoking them when holding a reference of type `Component`.
