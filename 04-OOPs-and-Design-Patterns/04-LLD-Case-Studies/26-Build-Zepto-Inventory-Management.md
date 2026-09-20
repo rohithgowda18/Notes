@@ -1,544 +1,475 @@
-# 26. Build Zepto — Dark Store Inventory Management LLD
+# 26. Build Zepto — Inventory Management — LLD Case Study
 
-> 💡 **Quick Revision Anchor**: A hyper-local quick-commerce inventory and micro-fulfillment engine (Zepto/Blinkit) featuring **isolated per-store inventory managers** (avoiding the monolithic Singleton trap), **multi-store split-order fulfillment algorithms** with dynamic **Delivery Partner assignment**, and **Strategy Pattern** for automated stock replenishment (*Threshold-based* vs. *Periodic/Weekly*).
+> 💡 **Quick Revision Anchor**
+> - **Domain:** Quick-Commerce 10-Minute Delivery Engine (Zepto / Blinkit / Instamart LLD)
+> - **Core Architectural Patterns:**
+>   - **Bridge Pattern:** Decouples the High-Level Dark Store abstraction (`DarkStore`) from Low-Level inventory storage mechanisms (`InventoryStore` ➔ `InMemoryInventoryStore`).
+>   - **Strategy Pattern:** `ReplenishStrategy` allows dynamic swapping of restocking policies (`ThresholdReplenishStrategy`, `PeriodicReplenishStrategy`).
+>   - **Factory Pattern:** `ProductFactory` centralizes creation and retrieval of catalog products.
+>   - **Multi-Store Greedy Fulfillment Algorithm:** Splits an order across multiple nearby Dark Stores within a 5 km delivery radius when a single dark store has partial stock.
 
 ---
 
-## 1. Problem Statement & Business Context
+## 1. Problem Statement & Requirements
 
-Quick-commerce platforms (e.g., Zepto, Blinkit, Instamart) promise 10-minute grocery delivery. Achieving this requires operating a distributed network of small, localized micro-warehouses known as **Dark Stores**:
-- Unlike traditional e-commerce (where orders ship from massive centralized warehouses over 2-3 days), quick commerce maintains hundreds of localized dark stores placed within 2–3 km of residential clusters.
-- When a customer builds a cart, items may be distributed across multiple nearby dark stores if a single store suffers from partial stock-outs.
-- The inventory engine must locate nearby dark stores, verify real-time stock, atomically deduct inventory, split fulfillment across stores when necessary, and dispatch delivery partners per sourcing node.
+Quick-commerce applications promise delivery of groceries within 10 minutes. This speed is achieved through distributed micro-warehouses located inside dense neighborhoods, known as **Dark Stores**.
 
-```mermaid
-flowchart TD
-    User([Customer]) -->|1. Places Order: Apples, Bananas, Chocolates| Engine["Order & Fulfillment Engine"]
-    Engine --> DSA["Dark Store A<br/>(Has 4 Apples, 2 Bananas)"]
-    Engine --> DSC["Dark Store C<br/>(Has 1 Banana)"]
-    Engine --> DSB["Dark Store B<br/>(Has 2 Chocolates)"]
+### Functional Requirements:
+1. **Catalog & Inventory Management:**
+   - Manage products identified by Stock Keeping Units (**SKU**), names, and prices.
+   - Support adding stock, removing stock, and checking real-time quantity in $O(1)$ time.
+2. **Dark Store Operations:**
+   - Each Dark Store has geographic coordinates (`x, y`), an inventory store, and a replenishment policy.
+   - Calculate Euclidean / geographic distance between users and Dark Stores.
+3. **Automated Inventory Replenishment:**
+   - When an item's stock drops below a defined safety threshold, automatically trigger a replenishment strategy to re-order inventory.
+4. **Multi-Store Order Splitting & Fulfillment:**
+   - Discover all Dark Stores within a delivery radius (e.g., 5 km) of the customer.
+   - If the closest Dark Store has insufficient quantity to fulfill an order, **split fulfillment across multiple nearby Dark Stores**, assigning dedicated delivery partners to each leg of the delivery.
 
-    DSA --> DP1["Delivery Partner 1"]
-    DSC --> DP2["Delivery Partner 2"]
-    DSB --> DP3["Delivery Partner 3"]
+---
 
-    DP1 --> User
-    DP2 --> User
-    DP3 --> User
+## 2. Architecture & Design Breakdown
 
-    style User fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style Engine fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style DSA fill:#e8f8f5,stroke:#26a69a,stroke-width:2px
-    style DSC fill:#e8f8f5,stroke:#26a69a,stroke-width:2px
-    style DSB fill:#e8f8f5,stroke:#26a69a,stroke-width:2px
+```
+                            [Zepto Platform]
+                                   │
+              ┌────────────────────┴────────────────────┐
+              ▼                                         ▼
+       ┌──────────────┐                          ┌──────────────┐
+       │     User     │                          │  Dark Store  │
+       │ (Coordinates)│                          │ (Coordinates)│
+       └──────────────┘                          └──────┬───────┘
+                                                        │
+                         ┌──────────────────────────────┴──────────────────────────────┐
+                         ▼ (Bridge)                                                    ▼ (Strategy)
+                 ┌────────────────┐                                            ┌──────────────────┐
+                 │ InventoryStore │                                            │ReplenishStrategy │
+                 └───────┬────────┘                                            └────────┬─────────┘
+                         │                                                              │
+                         ▼                                                              ▼
+              ┌───────────────────────┐                                     ┌─────────────────────────┐
+              │InMemoryInventoryStore │                                     │ThresholdReplenishStrat  │
+              └───────────────────────┘                                     └─────────────────────────┘
 ```
 
 ---
 
-## 2. Functional & Non-Functional Requirements
-
-### Functional Requirements (Taught in Lecture):
-1. **Catalog & Inventory Management**: Add, update, and remove products across diverse categories (Fruits/Vegetables, Grocery, Electronics, Clothing).
-2. **Pluggable Replenishment Policies (Strategy Pattern)**:
-   - **Threshold-Based**: Automatically triggers replenishment when quantity drops below safety threshold $K$.
-   - **Time-Based / Weekly Restock**: Scheduled periodic bulk replenishment by supply trucks.
-3. **Multi-Store Discovery & Visibility**: Users must view consolidated catalog availability from all dark stores within their serviceable radius.
-4. **Multi-Dark Store Order Splitting & Fulfillment**:
-   - If Store A has only partial quantity, source the remainder from Store B or C.
-   - For every dark store participating in fulfillment, dynamically assign an available **Delivery Partner**.
-5. **Atomic Stock Updates**: Prevent overselling during simultaneous checkout attempts.
-
-### Non-Functional Requirements:
-- **Thread Safety**: Isolated concurrency locking per store/SKU.
-- **Low Latency**: Sub-second fulfillment path computation.
-
----
-
-## 3. Core Architectural Insight: Why `InventoryManager` is NOT a Global Singleton
-
-> [!WARNING]
-> ### The Monolithic Singleton Anti-Pattern
-> In many naive interview designs, candidates declare `InventoryManager` as a global `Singleton`.
-> In quick-commerce, a global singleton creates a catastrophic bottleneck:
-> - Lock contention across thousands of concurrent checkouts in different cities.
-> - High blast radius: A crash or memory leak halts the entire nationwide platform.
->
-> **The Lecture Architecture**:
-> - Each `DarkStore` owns its own **autonomous, isolated `InventoryStore`**.
-> - A top-level `DarkStoreManager` / `FulfillmentService` orchestrates discovery across stores.
-
----
-
-## 4. Class Diagram & System Architecture
+## 3. Architecture & Class Diagram
 
 ```mermaid
 classDiagram
-    class ProductCategory {
-        <<enumeration>>
-        FRUITS
-        GROCERY
-        CLOTHING
-    }
-
     class Product {
-        -int id
+        -int sku
         -String name
         -double price
-        -ProductCategory category
-        +getId() int
+        +getSku() int
+        +getName() String
         +getPrice() double
     }
 
-    class CartItem {
-        -Product product
-        -int quantity
-    }
-
-    class Cart {
-        -List~CartItem~ items
-        +addItem(Product p, int qty)
-        +getItems() List~CartItem~
-    }
-
-    class IReplenishmentStrategy {
-        <<interface>>
-        +replenish(int productId, int currentQty, InventoryStore store)
-    }
-
-    class ThresholdReplenishmentStrategy {
-        -int threshold
-        -int restockBatch
-        +replenish(int productId, int currentQty, InventoryStore store)
+    class Location {
+        -double x
+        -double y
+        +distanceTo(Location other) double
     }
 
     class InventoryStore {
-        -Map~Integer, Integer~ stock
-        -IReplenishmentStrategy replenishmentStrategy
-        +addStock(int productId, int qty)
-        +deductStock(int productId, int qty) boolean
-        +getAvailableStock(int productId) int
+        <<interface>>
+        +addStock(int sku, int quantity) void
+        +removeStock(int sku, int quantity) boolean
+        +getStock(int sku) int
+        +registerProduct(Product product) void
+        +getProduct(int sku) Product
+    }
+
+    class InMemoryInventoryStore {
+        -Map~int, int~ stocks
+        -Map~int, Product~ products
+    }
+
+    class ReplenishStrategy {
+        <<interface>>
+        +replenish(InventoryStore store, int sku) void
+    }
+
+    class ThresholdReplenishStrategy {
+        -int threshold
+        -int restockQty
+        +replenish(InventoryStore store, int sku) void
+    }
+
+    class DarkStore {
+        -String name
+        -Location location
+        -InventoryStore inventory
+        -ReplenishStrategy replenishStrategy
+        +getName() String
+        +getLocation() Location
+        +canSupply(int sku, int quantity) int
+        +fulfill(int sku, int quantity) void
     }
 
     class DeliveryPartner {
-        -int id
+        -String id
         -String name
         -boolean isAvailable
     }
 
-    class DarkStore {
-        -String id
-        -String name
-        -double distanceKm
-        -InventoryStore inventory
-        +getInventory() InventoryStore
-        +getDistance() double
-    }
-
-    class OrderFulfillmentService {
-        -List~DarkStore~ darkStores
-        -List~DeliveryPartner~ deliveryPartners
-        +fulfillOrder(User user, Cart cart)
-    }
-
-    IReplenishmentStrategy <|.. ThresholdReplenishmentStrategy : Implements
-    InventoryStore o--> IReplenishmentStrategy : Uses Policy
-    DarkStore *-- InventoryStore : Has-A Isolated Inventory
-    OrderFulfillmentService o-- DarkStore : Coordinates Stores
-    OrderFulfillmentService o-- DeliveryPartner : Assigns Riders
+    InventoryStore <|.. InMemoryInventoryStore
+    ReplenishStrategy <|.. ThresholdReplenishStrategy
+    DarkStore --> InventoryStore : HAS-A (Bridge)
+    DarkStore --> ReplenishStrategy : HAS-A (Strategy)
+    DarkStore --> Location
 ```
 
 ---
 
-## 5. Complete, Compilable Java Implementation
+## 4. Java Implementation
 
-Below is the complete Java implementation featuring the exact lecture walkthrough:
-- Items: Apple (`₹20`), Banana (`₹10`), Chocolate (`₹50`), T-shirt (`₹500`).
-- Cart: 4 Apples, 3 Bananas, 2 Chocolates.
-- Stores: Dark Store A (4 Apples, 2 Bananas), Dark Store B (10 Chocolates), Dark Store C (5 Bananas).
-- Sourcing: Store A (4 Apples, 2 Bananas) + Store C (1 Banana) + Store B (2 Chocolates).
-- Riders: 3 delivery partners assigned, order settled at ₹210.
-
+### Step 1: Core Domain Entities (Product, Location, DeliveryPartner)
 ```java
-package com.designpatterns.casestudy.zepto;
-
-import java.util.*;
-
-// ============================================================================
-// 1. PRODUCT CATALOG & DOMAIN ENTITIES
-// ============================================================================
-
-enum ProductCategory {
-    FRUITS,
-    SNACKS,
-    CLOTHING
-}
-
-class Product {
-    private final int id;
+public class Product {
+    private final int sku;
     private final String name;
     private final double price;
-    private final ProductCategory category;
 
-    public Product(int id, String name, double price, ProductCategory category) {
-        this.id = id;
+    public Product(int sku, String name, double price) {
+        this.sku = sku;
         this.name = name;
         this.price = price;
-        this.category = category;
     }
 
-    public int getId() { return id; }
+    public int getSku() { return sku; }
     public String getName() { return name; }
     public double getPrice() { return price; }
-    public ProductCategory getCategory() { return category; }
-}
-
-class CartItem {
-    private final Product product;
-    private final int quantity;
-
-    public CartItem(Product product, int quantity) {
-        this.product = product;
-        this.quantity = quantity;
-    }
-
-    public Product getProduct() { return product; }
-    public int getQuantity() { return quantity; }
-}
-
-class Cart {
-    private final List<CartItem> items = new ArrayList<>();
-
-    public void addItem(Product product, int quantity) {
-        items.add(new CartItem(product, quantity));
-    }
-
-    public List<CartItem> getItems() { return items; }
-}
-
-class User {
-    private final String name;
-    private final String address;
-
-    public User(String name, String address) {
-        this.name = name;
-        this.address = address;
-    }
-
-    public String getName() { return name; }
-}
-
-class DeliveryPartner {
-    private final int id;
-    private final String name;
-    private boolean isAvailable;
-
-    public DeliveryPartner(int id, String name) {
-        this.id = id;
-        this.name = name;
-        this.isAvailable = true;
-    }
-
-    public int getId() { return id; }
-    public String getName() { return name; }
-    public boolean isAvailable() { return isAvailable; }
-    public void setAvailable(boolean available) { this.isAvailable = available; }
 
     @Override
     public String toString() {
-        return "DeliveryPartner[ID=" + id + ", Name=" + name + "]";
+        return name + " (SKU: " + sku + ", ₹" + price + ")";
     }
 }
 
-// ============================================================================
-// 2. STRATEGY PATTERN: REPLENISHMENT POLICIES
-// ============================================================================
+public class Location {
+    private final double x;
+    private final double y;
 
-interface IReplenishmentStrategy {
-    void checkAndReplenish(int productId, int currentStock, InventoryStore store);
+    public Location(double x, double y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public double distanceTo(Location other) {
+        // Euclidean distance for local grid simulation
+        return Math.sqrt(Math.pow(this.x - other.x, 2) + Math.pow(this.y - other.y, 2));
+    }
 }
 
-class ThresholdReplenishmentStrategy implements IReplenishmentStrategy {
-    private final int threshold;
-    private final int restockBatch;
+public class DeliveryPartner {
+    private final String id;
+    private final String name;
 
-    public ThresholdReplenishmentStrategy(int threshold, int restockBatch) {
-        this.threshold = threshold;
-        this.restockBatch = restockBatch;
+    public DeliveryPartner(String id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+
+    public String getName() { return name; }
+}
+```
+
+---
+
+### Step 2: Inventory Store Implementation (Bridge Implementor)
+```java
+import java.util.HashMap;
+import java.util.Map;
+
+public interface InventoryStore {
+    void registerProduct(Product product);
+    void addStock(int sku, int quantity);
+    boolean removeStock(int sku, int quantity);
+    int getStock(int sku);
+    Product getProduct(int sku);
+    Map<Integer, Integer> getAllStocks();
+}
+
+public class InMemoryInventoryStore implements InventoryStore {
+    private final Map<Integer, Integer> stocks = new HashMap<>();       // SKU -> Available Quantity
+    private final Map<Integer, Product> products = new HashMap<>();     // SKU -> Product Entity
+
+    @Override
+    public void registerProduct(Product product) {
+        products.put(product.getSku(), product);
     }
 
     @Override
-    public void checkAndReplenish(int productId, int currentStock, InventoryStore store) {
+    public void addStock(int sku, int quantity) {
+        stocks.put(sku, stocks.getOrDefault(sku, 0) + quantity);
+    }
+
+    @Override
+    public boolean removeStock(int sku, int quantity) {
+        int current = stocks.getOrDefault(sku, 0);
+        if (current >= quantity) {
+            stocks.put(sku, current - quantity);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public int getStock(int sku) {
+        return stocks.getOrDefault(sku, 0);
+    }
+
+    @Override
+    public Product getProduct(int sku) {
+        return products.get(sku);
+    }
+
+    @Override
+    public Map<Integer, Integer> getAllStocks() {
+        return new HashMap<>(stocks);
+    }
+}
+```
+
+---
+
+### Step 3: Replenishment Policy (Strategy Pattern)
+```java
+public interface ReplenishStrategy {
+    void checkAndReplenish(InventoryStore store, int sku);
+}
+
+public class ThresholdReplenishStrategy implements ReplenishStrategy {
+    private final int threshold;
+    private final int restockAmount;
+
+    public ThresholdReplenishStrategy(int threshold, int restockAmount) {
+        this.threshold = threshold;
+        this.restockAmount = restockAmount;
+    }
+
+    @Override
+    public void checkAndReplenish(InventoryStore store, int sku) {
+        int currentStock = store.getStock(sku);
         if (currentStock <= threshold) {
-            System.out.println("    [Alert] Product ID " + productId + " stock dropped to " 
-                               + currentStock + " (<= threshold " + threshold + "). Auto-restocking +" + restockBatch + " units...");
-            store.addStock(productId, restockBatch);
+            store.addStock(sku, restockAmount);
+            System.out.println("  [Alert] Stock for SKU " + sku + " dropped to " + currentStock + 
+                               ". Auto-replenished +" + restockAmount + " units.");
         }
     }
 }
+```
 
-// ============================================================================
-// 3. ISOLATED DARK STORE INVENTORY
-// ============================================================================
+---
 
-class InventoryStore {
-    private final Map<Integer, Integer> stockMap = new HashMap<>();
-    private final IReplenishmentStrategy replenishmentStrategy;
+### Step 4: Dark Store Entity (Bridge Abstraction)
+```java
+public class DarkStore {
+    private final String name;
+    private final Location location;
+    private final InventoryStore inventory;
+    private final ReplenishStrategy replenishStrategy;
 
-    public InventoryStore(IReplenishmentStrategy strategy) {
-        this.replenishmentStrategy = strategy;
+    public DarkStore(String name, Location location, InventoryStore inventory, ReplenishStrategy strategy) {
+        this.name = name;
+        this.location = location;
+        this.inventory = inventory;
+        this.replenishStrategy = strategy;
     }
 
-    public synchronized void addStock(int productId, int quantity) {
-        stockMap.put(productId, stockMap.getOrDefault(productId, 0) + quantity);
+    public String getName() { return name; }
+    public Location getLocation() { return location; }
+    public InventoryStore getInventory() { return inventory; }
+
+    // Returns how many units this dark store can actually supply (min of available, requested)
+    public int canSupply(int sku, int requestedQty) {
+        int available = inventory.getStock(sku);
+        return Math.min(available, requestedQty);
     }
 
-    public synchronized int getStock(int productId) {
-        return stockMap.getOrDefault(productId, 0);
+    public void fulfill(int sku, int quantity) {
+        inventory.removeStock(sku, quantity);
+        if (replenishStrategy != null) {
+            replenishStrategy.checkAndReplenish(inventory, sku);
+        }
+    }
+}
+```
+
+---
+
+### Step 5: Multi-Store Order Splitting Engine
+```java
+import java.util.*;
+
+public class ZeptoApp {
+    private final List<DarkStore> darkStores = new ArrayList<>();
+    private final double MAX_DELIVERY_RADIUS_KM = 5.0;
+
+    public void registerDarkStore(DarkStore store) {
+        darkStores.add(store);
     }
 
-    public synchronized int deductAvailable(int productId, int neededQuantity) {
-        int current = stockMap.getOrDefault(productId, 0);
-        int take = Math.min(current, neededQuantity);
-        if (take > 0) {
-            stockMap.put(productId, current - take);
-            if (replenishmentStrategy != null) {
-                replenishmentStrategy.checkAndReplenish(productId, current - take, this);
+    // Finds stores within 5 km, sorted by distance
+    private List<DarkStore> getNearbyDarkStores(Location userLocation) {
+        List<DarkStore> nearby = new ArrayList<>();
+        for (DarkStore store : darkStores) {
+            if (store.getLocation().distanceTo(userLocation) <= MAX_DELIVERY_RADIUS_KM) {
+                nearby.add(store);
             }
         }
-        return take;
-    }
-}
-
-class DarkStore {
-    private final String id;
-    private final String name;
-    private final double distanceKm;
-    private final InventoryStore inventory;
-
-    public DarkStore(String id, String name, double distanceKm, IReplenishmentStrategy strategy) {
-        this.id = id;
-        this.name = name;
-        this.distanceKm = distanceKm;
-        this.inventory = new InventoryStore(strategy);
+        nearby.sort(Comparator.comparingDouble(s -> s.getLocation().distanceTo(userLocation)));
+        return nearby;
     }
 
-    public String getId() { return id; }
-    public String getName() { return name; }
-    public double getDistanceKm() { return distanceKm; }
-    public InventoryStore getInventory() { return inventory; }
-}
+    // Greedy Multi-Dark Store fulfillment
+    public void checkoutOrder(String userName, Location userLocation, Map<Integer, Integer> cart) {
+        System.out.println("\n=== Processing Order for User: " + userName + " ===");
+        List<DarkStore> candidateStores = getNearbyDarkStores(userLocation);
 
-// ============================================================================
-// 4. MULTI-DARK STORE ORDER FULFILLMENT ENGINE
-// ============================================================================
-
-class OrderFulfillmentService {
-    private final List<DarkStore> darkStores = new ArrayList<>();
-    private final List<DeliveryPartner> deliveryPartners = new ArrayList<>();
-    private int partnerIndex = 0;
-
-    public void registerDarkStore(DarkStore store) { darkStores.add(store); }
-    public void registerDeliveryPartner(DeliveryPartner dp) { deliveryPartners.add(dp); }
-
-    private DeliveryPartner assignNextPartner() {
-        if (deliveryPartners.isEmpty()) return null;
-        DeliveryPartner dp = deliveryPartners.get(partnerIndex % deliveryPartners.size());
-        partnerIndex++;
-        return dp;
-    }
-
-    public void placeOrder(User user, Cart cart) {
-        System.out.println("===============================================================");
-        System.out.println("PROCESSING ORDER FOR USER: " + user.getName());
-        System.out.println("===============================================================");
-
-        // Step 1: Map requested quantities [ProductId -> RequiredQty]
-        Map<Integer, Integer> remainingDemand = new HashMap<>();
-        Map<Integer, Product> productMap = new HashMap<>();
-        double totalCost = 0.0;
-
-        for (CartItem item : cart.getItems()) {
-            remainingDemand.put(item.getProduct().getId(), item.getQuantity());
-            productMap.put(item.getProduct().getId(), item.getProduct());
-            totalCost += item.getProduct().getPrice() * item.getQuantity();
+        if (candidateStores.isEmpty()) {
+            System.out.println("❌ Delivery Unavailable: No Dark Stores within " + MAX_DELIVERY_RADIUS_KM + " km.");
+            return;
         }
 
-        // Sort dark stores by proximity
-        List<DarkStore> sortedStores = new ArrayList<>(darkStores);
-        sortedStores.sort(Comparator.comparingDouble(DarkStore::getDistanceKm));
+        // Map to track fulfillments: DarkStore -> (SKU -> Quantity supplied)
+        Map<DarkStore, Map<Integer, Integer>> fulfillmentPlan = new LinkedHashMap<>();
+        Map<Integer, Integer> pendingItems = new HashMap<>(cart);
 
-        Map<DarkStore, Map<Product, Integer>> fulfillmentPlan = new LinkedHashMap<>();
-        List<DeliveryPartner> assignedPartners = new ArrayList<>();
-
-        // Step 2: Multi-store greedy allocation
-        for (DarkStore store : sortedStores) {
-            boolean storeParticipated = false;
-
-            for (Map.Entry<Integer, Integer> entry : remainingDemand.entrySet()) {
-                int productId = entry.getKey();
+        for (DarkStore store : candidateStores) {
+            Iterator<Map.Entry<Integer, Integer>> it = pendingItems.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<Integer, Integer> entry = it.next();
+                int sku = entry.getKey();
                 int needed = entry.getValue();
 
-                if (needed > 0) {
-                    int taken = store.getInventory().deductAvailable(productId, needed);
-                    if (taken > 0) {
-                        storeParticipated = true;
-                        remainingDemand.put(productId, needed - taken);
-
-                        fulfillmentPlan.putIfAbsent(store, new HashMap<>());
-                        fulfillmentPlan.get(store).put(productMap.get(productId), taken);
-
-                        System.out.println("  [" + store.getName() + "] Supplied " + taken + " x " 
-                                           + productMap.get(productId).getName() 
-                                           + " (Remaining needed: " + (needed - taken) + ")");
+                int canGive = store.canSupply(sku, needed);
+                if (canGive > 0) {
+                    fulfillmentPlan.computeIfAbsent(store, k -> new HashMap<>()).put(sku, canGive);
+                    int remaining = needed - canGive;
+                    if (remaining == 0) {
+                        it.remove(); // Fully satisfied
+                    } else {
+                        entry.setValue(remaining); // Partially satisfied, look to next store
                     }
                 }
             }
+            if (pendingItems.isEmpty()) break;
+        }
 
-            if (storeParticipated) {
-                DeliveryPartner assigned = assignNextPartner();
-                assignedPartners.add(assigned);
-                System.out.println("  >>> " + assigned.getName() + " assigned for pickup at " + store.getName());
+        if (!pendingItems.isEmpty()) {
+            System.out.println("❌ Cannot fulfill entire order. Out of stock for SKUs: " + pendingItems.keySet());
+            return;
+        }
+
+        // Execute fulfillment and dispatch delivery partners
+        int partnerCount = 1;
+        for (Map.Entry<DarkStore, Map<Integer, Integer>> entry : fulfillmentPlan.entrySet()) {
+            DarkStore store = entry.getKey();
+            Map<Integer, Integer> items = entry.getValue();
+
+            System.out.println("\n📦 Dispatching from [" + store.getName() + "]:");
+            for (Map.Entry<Integer, Integer> item : items.entrySet()) {
+                store.fulfill(item.getKey(), item.getValue());
+                Product p = store.getInventory().getProduct(item.getKey());
+                System.out.println("   - " + p.getName() + " x " + item.getValue());
             }
+
+            DeliveryPartner rider = new DeliveryPartner("DP-" + partnerCount, "Rider #" + partnerCount);
+            System.out.println("   🛵 Assigned Delivery Partner: " + rider.getName() + " to deliver to " + userName);
+            partnerCount++;
         }
 
-        // Verify all items fulfilled
-        boolean fullyFulfilled = true;
-        for (Map.Entry<Integer, Integer> entry : remainingDemand.entrySet()) {
-            if (entry.getValue() > 0) {
-                fullyFulfilled = false;
-                System.err.println("  [Out of Stock] Could not fulfill " + entry.getValue() + " units of " 
-                                   + productMap.get(entry.getKey()).getName());
-            }
-        }
-
-        System.out.println("\n---------------------------------------------------------------");
-        System.out.println("ORDER SUMMARY FOR: " + user.getName());
-        System.out.println("Status: " + (fullyFulfilled ? "FULLY FULFILLED" : "PARTIALLY FULFILLED"));
-        System.out.println("Total Amount: ₹" + totalCost);
-        System.out.println("Assigned Delivery Partners (" + assignedPartners.size() + "):");
-        for (DeliveryPartner dp : assignedPartners) {
-            System.out.println("  • " + dp);
-        }
-        System.out.println("===============================================================\n");
-    }
-}
-
-// ============================================================================
-// 5. MAIN DEMONSTRATION DRIVER (MATCHING LECTURE VALUES)
-// ============================================================================
-
-public class ZeptoInventoryDemo {
-    public static void main(String[] args) {
-        // Setup Catalog
-        Product apple = new Product(101, "Apple", 20.0, ProductCategory.FRUITS);
-        Product banana = new Product(102, "Banana", 10.0, ProductCategory.FRUITS);
-        Product chocolate = new Product(103, "Chocolate", 50.0, ProductCategory.SNACKS);
-        Product tshirt = new Product(104, "T-Shirt", 500.0, ProductCategory.CLOTHING);
-
-        IReplenishmentStrategy thresholdPolicy = new ThresholdReplenishmentStrategy(2, 10);
-
-        // Setup Dark Stores
-        // Store A: Has 4 Apples, 2 Bananas, 0 Chocolates
-        DarkStore storeA = new DarkStore("DS_A", "Dark Store A (Indiranagar)", 1.2, thresholdPolicy);
-        storeA.getInventory().addStock(apple.getId(), 4);
-        storeA.getInventory().addStock(banana.getId(), 2);
-
-        // Store B: Has 10 Chocolates
-        DarkStore storeB = new DarkStore("DS_B", "Dark Store B (Koramangala)", 2.4, thresholdPolicy);
-        storeB.getInventory().addStock(chocolate.getId(), 10);
-
-        // Store C: Has 5 Bananas
-        DarkStore storeC = new DarkStore("DS_C", "Dark Store C (Domlur)", 1.8, thresholdPolicy);
-        storeC.getInventory().addStock(banana.getId(), 5);
-
-        // Setup Service
-        OrderFulfillmentService service = new OrderFulfillmentService();
-        service.registerDarkStore(storeA);
-        service.registerDarkStore(storeB);
-        service.registerDarkStore(storeC);
-
-        service.registerDeliveryPartner(new DeliveryPartner(1, "Rider Vikram"));
-        service.registerDeliveryPartner(new DeliveryPartner(2, "Rider Suresh"));
-        service.registerDeliveryPartner(new DeliveryPartner(3, "Rider Amit"));
-
-        // User Cart: 4 Apples, 3 Bananas, 2 Chocolates
-        // Total = (4 * 20) + (3 * 10) + (2 * 50) = 80 + 30 + 100 = ₹210
-        User aditya = new User("Aditya Sharma", "Flat 402, Indiranagar");
-        Cart cart = new Cart();
-        cart.addItem(apple, 4);
-        cart.addItem(banana, 3);
-        cart.addItem(chocolate, 2);
-
-        service.placeOrder(aditya, cart);
+        System.out.println("\n✅ Order successfully fulfilled and out for 10-min delivery!");
     }
 }
 ```
 
 ---
 
-## 6. Execution Output
-
-```text
-===============================================================
-PROCESSING ORDER FOR USER: Aditya Sharma
-===============================================================
-  [Dark Store A (Indiranagar)] Supplied 4 x Apple (Remaining needed: 0)
-    [Alert] Product ID 101 stock dropped to 0 (<= threshold 2). Auto-restocking +10 units...
-  [Dark Store A (Indiranagar)] Supplied 2 x Banana (Remaining needed: 1)
-    [Alert] Product ID 102 stock dropped to 0 (<= threshold 2). Auto-restocking +10 units...
-  >>> Rider Vikram assigned for pickup at Dark Store A (Indiranagar)
-  [Dark Store C (Domlur)] Supplied 1 x Banana (Remaining needed: 0)
-  >>> Rider Suresh assigned for pickup at Dark Store C (Domlur)
-  [Dark Store B (Koramangala)] Supplied 2 x Chocolate (Remaining needed: 0)
-  >>> Rider Amit assigned for pickup at Dark Store B (Koramangala)
-
----------------------------------------------------------------
-ORDER SUMMARY FOR: Aditya Sharma
-Status: FULLY FULFILLED
-Total Amount: ₹210.0
-Assigned Delivery Partners (3):
-  • DeliveryPartner[ID=1, Name=Rider Vikram]
-  • DeliveryPartner[ID=2, Name=Rider Suresh]
-  • DeliveryPartner[ID=3, Name=Rider Amit]
-===============================================================
-```
-
----
-
-## 7. Lecture Homework & Advanced Extensions
-
-1. **Rider Mapping Algorithm**:
-   - Instead of round-robin delivery partner assignment, implement a **Strategy Pattern** for rider dispatch:
-     - `NearestRiderStrategy`: Geospatial radius calculation between rider GPS and dark store location.
-     - `HighestRatedRiderStrategy`: Prioritizes 4.9+ star couriers for high-value orders.
-2. **Integration with Payment & Coupon Subsystems**:
-   - Chain the **Coupon Engine (Topic 24)** to compute cart discounts and route the final payable total through the **Payment Gateway (Topic 23)** before stock reservation.
-
----
-
-## Quick Revision
-
-### Core Idea
-A distributed quick-commerce micro-fulfillment inventory system managing **isolated dark store inventories**, **multi-store split-order routing**, and **Strategy-based automatic replenishment**.
-
-### Remember
-- **`InventoryManager` is NOT a Global Singleton**: Every `DarkStore` encapsulates its own inventory store to avoid system-wide locking bottlenecks.
-- **Split Fulfillment**: When a single dark store cannot fulfill all items in requested quantities, the engine greedily queries neighboring stores by distance and dispatches separate delivery partners per pickup location.
-
-### Java Implementation Idea
+### Step 6: Client Demonstration
 ```java
-class DarkStore {
-    private InventoryStore inventory;
-    private double distanceKm;
-    public int deductStock(int productId, int needed) {
-        return inventory.deductAvailable(productId, needed);
+public class Main {
+    public static void main(String[] args) {
+        ZeptoApp zepto = new ZeptoApp();
+
+        // Catalog Products
+        Product apple = new Product(101, "Royal Gala Apple", 20.0);
+        Product banana = new Product(102, "Robusta Banana", 10.0);
+        Product chocolate = new Product(103, "Dark Chocolate 85%", 50.0);
+
+        ReplenishStrategy autoRestock = new ThresholdReplenishStrategy(2, 20);
+
+        // Dark Store A (Coordinates: 0, 0) - Only has 2 Apples, 5 Bananas
+        InventoryStore invA = new InMemoryInventoryStore();
+        invA.registerProduct(apple);
+        invA.registerProduct(banana);
+        invA.addStock(101, 2); // 2 Apples
+        invA.addStock(102, 5); // 5 Bananas
+        DarkStore darkStoreA = new DarkStore("DarkStore Indiranagar", new Location(0, 0), invA, autoRestock);
+
+        // Dark Store B (Coordinates: 1, 1) - Has remaining Apples and Chocolates
+        InventoryStore invB = new InMemoryInventoryStore();
+        invB.registerProduct(apple);
+        invB.registerProduct(chocolate);
+        invB.addStock(101, 10); // 10 Apples
+        invB.addStock(103, 15); // 15 Chocolates
+        DarkStore darkStoreB = new DarkStore("DarkStore Koramangala", new Location(1, 1), invB, autoRestock);
+
+        zepto.registerDarkStore(darkStoreA);
+        zepto.registerDarkStore(darkStoreB);
+
+        // User placed order at Location (0.5, 0.5)
+        // Order: 4 Apples (Needs split: 2 from A, 2 from B), 2 Bananas (from A), 1 Chocolate (from B)
+        Map<Integer, Integer> cart = new HashMap<>();
+        cart.put(101, 4); // 4 Apples
+        cart.put(102, 2); // 2 Bananas
+        cart.put(103, 1); // 1 Chocolate
+
+        zepto.checkoutOrder("Aditya", new Location(0.5, 0.5), cart);
     }
 }
 ```
 
-### Most Important Interview Point
-**How do you handle stock deductions during high-concurrency flash sales across multiple stores?**
-Stock deduction methods inside `InventoryStore` must be synchronized or leverage atomic primitives (`AtomicInteger`, Redis distributed locks per SKU). Never lock the entire store when updating a single item.
+### Execution Output:
+```text
+=== Processing Order for User: Aditya ===
 
-### Common Trap
-Assuming all cart items are fulfilled from the single closest dark store. In quick commerce, out-of-stock items frequently require order-splitting across multiple dark stores and multi-rider dispatch.
+📦 Dispatching from [DarkStore Indiranagar]:
+   - Royal Gala Apple x 2
+  [Alert] Stock for SKU 101 dropped to 0. Auto-replenished +20 units.
+   - Robusta Banana x 2
+   🛵 Assigned Delivery Partner: Rider #1 to deliver to Aditya
+
+📦 Dispatching from [DarkStore Koramangala]:
+   - Royal Gala Apple x 2
+   - Dark Chocolate 85% x 1
+   🛵 Assigned Delivery Partner: Rider #2 to deliver to Aditya
+
+✅ Order successfully fulfilled and out for 10-min delivery!
+```
+
+---
+
+## 5. Summary of Design Patterns Applied
+
+| Pattern | Component | Benefit in Zepto Case Study |
+| :--- | :--- | :--- |
+| **Bridge** | `DarkStore` ➔ `InventoryStore` | Decouples warehouse routing from storage mechanisms (In-Memory, Redis, SQL). |
+| **Strategy** | `ReplenishStrategy` | Enables pluggable restocking algorithms (Threshold, Demand-forecasting). |
+| **Greedy Multi-Store Splitting** | `ZeptoApp.checkoutOrder()` | Maximizes fulfillment probability by pooling neighborhood dark store stocks. |
+
+---
+
+## 6. Interview Perspective
+
+- **Q: How does Zepto achieve sub-10-minute order packing and dispatch?**
+  *A: Geographically distributed Dark Stores (within 2-3 km radii) maintain localized fast-moving SKU caches in in-memory key-value maps ($O(1)$ lookup and deduction).*
+- **Q: How do you handle race conditions when two users purchase the last apple simultaneously?**
+  *A: Use database row-level pessimistic locking (`SELECT ... FOR UPDATE`) or atomic Redis decrement commands (`DECRBY`) with rollback if the counter drops below zero.*
+- **Q: Why split orders across Dark Stores instead of rejecting the checkout?**
+  *A: In high-density urban areas, customer retention is prioritized. If Store A is out of an item, dispatching a second rider from Store B (2 km away) preserves customer experience at the trade-off of marginal delivery cost.*

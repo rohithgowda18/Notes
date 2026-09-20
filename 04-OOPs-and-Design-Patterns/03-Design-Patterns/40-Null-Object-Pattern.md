@@ -1,6 +1,6 @@
 # 40. Null Object Pattern & LLD Anti-Patterns
 
-> 💡 **Quick Revision Anchor**: The **Null Object Pattern** is a **behavioral design pattern** that eliminates defensive `if (obj != null)` boilerplate by replacing `null` references with an object that implements the target interface with safe, default "do-nothing" behavior. It upholds the fundamental OOP principle: *"Replace conditionals with polymorphism"*.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Null Object Pattern and LLD Anti-Patterns faithfully derived from the complete concluding lecture transcript. Demonstrates how replacing fragile `null` references with polymorphic "do-nothing" no-op objects (`NullVehicle`, `NullLogger`) eliminates defensive `if (obj != null)` guard boilerplate and inoculates systems against Sir Tony Hoare's infamous "Billion-Dollar Mistake" (`NullPointerException`). Concludes with the instructor's crucial synthesis on avoiding classic architectural anti-patterns: Over-Engineering, God Objects, and Premature Optimization.
 
 ---
 

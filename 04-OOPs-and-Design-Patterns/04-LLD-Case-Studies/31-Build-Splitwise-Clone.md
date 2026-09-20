@@ -1,6 +1,6 @@
 # 31. Build Splitwise Clone LLD
 
-> 💡 **Quick Revision Anchor**: A comprehensive Low-Level Design of an expense sharing and debt settlement platform (Splitwise clone). It integrates the **Strategy Pattern** for splitting algorithms (Equal, Exact, Percentage), an **Observer Pattern** for notifying participants on expenses and settlements, a nested bilateral ledger map (`Map<String, Map<String, Double>>`), an **Invariant Guard** preventing users with non-zero balances from exiting groups, and a **Greedy Min-Cash-Flow Debt Simplification Algorithm** that minimizes the total number of inter-user settlement transactions.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused Low-Level Design of an expense sharing and debt settlement platform (Splitwise clone) faithfully derived from the complete lecture transcript. Integrates the **Strategy Pattern** for splitting algorithms (Equal, Exact, Percentage), an **Observer Pattern** for notifying participants on expenses and settlements, a nested bilateral ledger map (`Map<String, Map<String, Double>>`), an **Invariant Guard** preventing users with non-zero balances from exiting groups, and a **Greedy Min-Cash-Flow Debt Simplification Algorithm** minimizing inter-user cash transfers. Features the lecture's canonical group characters (Rohit, Manish, Saurav, Aditya).
 
 ---
 

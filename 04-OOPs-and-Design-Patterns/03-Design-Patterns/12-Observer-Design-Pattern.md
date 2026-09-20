@@ -1,5 +1,9 @@
 # 12. Observer Design Pattern
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Observer Design Pattern faithfully derived from the complete lecture transcript. Contrasts the wasteful **Polling Anti-Pattern** with event-driven **Push Architecture**. Analyzes the canonical **YouTube Channel ("Coder Army") and Subscribers (Varun, Tarun)** implementation, covering dynamic subscriptions, unsubscribing, and broadcast notifications. Details the mechanics of Push vs Pull models and delves into the classic architectural tension between the **Single Responsibility Principle (SRP)** and maintaining observable state within domain models.
+
+---
+
 ## 1. Overview
 
 The **Observer Design Pattern** is a behavioral design pattern that defines a **one-to-many dependency** between objects. When the core state of one object (termed the **Subject** or **Observable**) changes, all registered dependents (termed **Observers** or **Subscribers**) are automatically notified and updated.

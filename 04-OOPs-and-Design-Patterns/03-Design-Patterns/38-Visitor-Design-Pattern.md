@@ -1,6 +1,6 @@
 # 38. Visitor Design Pattern & Double Dispatch
 
-> 💡 **Quick Revision Anchor**: The **Visitor Pattern** is a **behavioral design pattern** that separates algorithms from the object structures on which they operate. By employing **Double Dispatch** (`element.accept(visitor)` $\rightarrow$ `visitor.visit(this)`), you can add new operations to an existing class hierarchy without modifying a single line of those classes.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Visitor Design Pattern faithfully derived from the complete lecture transcript. Decouples operations and algorithms from the heterogeneous object hierarchies on which they operate. Explores the mechanics of **Double Dispatch** (`element.accept(visitor)` $\to$ `visitor.visit(this)`), enabling engineers to add arbitrary new operations (PDF export, compression, word count, virus scanning) without modifying existing domain classes. Analyzes the architectural trade-offs between the Visitor Pattern and Strategy Pattern.
 
 ---
 

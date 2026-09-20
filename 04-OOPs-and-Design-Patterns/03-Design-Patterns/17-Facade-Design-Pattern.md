@@ -1,338 +1,327 @@
 # 17. Facade Design Pattern
 
-## 1. Overview
+> 💡 **Quick Revision Anchor**
+> - **Type:** Structural Design Pattern
+> - **Core Principle:** Provides a simplified, unified higher-level interface to a complex set of interfaces in a subsystem.
+> - **Key Idea:** Hides the internal complexity and orchestration of multiple collaborating classes; exposes only what the client actually needs.
+> - **Guiding Rule:** Directly implements the **Principle of Least Knowledge (Law of Demeter)** — *"Talk only to your immediate friends."*
 
-The **Facade Design Pattern** is a structural design pattern that provides a **simplified, unified high-level interface** to a complex subsystem of classes, libraries, or frameworks. A Facade shields client code from the intricate details and orchestration of multiple collaborating components, adhering to the **Law of Demeter (Principle of Least Knowledge)**.
+---
 
-```mermaid
-graph TD
-    Client[Client Code / Mobile App UI] --> Facade[Unified OrderProcessingFacade]
+## 1. Problem
 
-    subgraph "Complex Subsystems"
-        Facade --> S1[InventoryService]
-        Facade --> S2[PaymentService]
-        Facade --> S3[ShippingService]
-        Facade --> S4[NotificationService]
-    end
+Modern software subsystems frequently consist of numerous classes with intricate dependencies and interconnections:
 
-    style Facade fill:#dbeafe,stroke:#3b82f6,color:#1e40af
+```
+          [Subsystem]
+          ┌───────┐      ┌───────┐
+          │Class A│ <--> │Class B│
+          └───┬───┘      └───┬───┘
+              │       ▲      │
+              ▼       │      ▼
+          ┌───────┐   │  ┌───────┐
+          │Class C│ ──┘  │Class D│
+          └───┬───┘      └───────┘
+              │              ▲
+              ▼              │
+          ┌───────┐          │
+          │Class E│ ─────────┘
+          └───────┘
+```
+
+When an external **Client** needs to accomplish a high-level task that involves this subsystem, two bad design options emerge if no facade is present:
+
+1. **The Client orchestrates everything directly:**
+   - The client must instantiate and know about Class A, Class B, Class C, Class D, and Class E.
+   - The client must execute calls in an exact order (e.g., A must initialize before C, C must pass data to B, D must finalize E).
+2. **Consequences:**
+   - **Extreme Tight Coupling:** Any change in any internal subsystem class or workflow breaks the client.
+   - **Violates Principle of Least Knowledge (Law of Demeter):** The client has intimate knowledge of the entire internal anatomy of another subsystem.
+   - **High Cognitive Load:** Every client developer must master the entire internal subsystem just to perform one basic operation.
+
+---
+
+## 2. Core Pattern Idea: The Facade Solution
+
+The word **Facade** originates from architecture, referring to the front face of a building that presents an elegant exterior while concealing the complex plumbing, wiring, and structural beams inside.
+
+In software design, a **Facade class** sits between the client and the complex subsystem:
+- The Facade has direct references to the subsystem classes (`HAS-A`).
+- The Facade exposes simple, high-level methods (e.g., `startComputer()` or `getWorkDone()`).
+- The Client only interacts with the Facade. The Client is completely unaware of the individual subsystem classes behind it.
+
+```
++--------+            +----------------+            +-----------------------+
+| Client | ---------> | ComputerFacade | ---------> | CPU, Memory, BIOS,    |
++--------+  calls     +----------------+  delegates | HardDrive, PowerSupply|
+        startComputer()                  in sequence+-----------------------+
 ```
 
 ---
 
-## 2. What Problem Are We Solving?
+## 3. The Principle of Least Knowledge (Law of Demeter)
 
-Consider an e-commerce checkout workflow: To place an order, the system must coordinate:
-1. `InventoryService`: Verify stock and reserve units.
-2. `PaymentService`: Process customer credit card payment.
-3. `ShippingService`: Generate tracking label and assign logistics courier.
-4. `NotificationService`: Send email and SMS receipt.
-- **The High Coupling Anti-Pattern**: If the client (Web UI, Mobile App, Microservice API) orchestrates all 4 services directly, every client must copy-paste the exact same 15 lines of orchestration code.
-- If any subsystem method changes, every client application breaks.
+The instructor emphasizes that understanding the Facade pattern is impossible without understanding the **Principle of Least Knowledge**.
 
----
+### Core Motto:
+> *"Talk only to your immediate friends; do not talk to strangers."*
 
-## 3. Core Concepts
+If Class `A` is linked to Class `B`, and Class `B` is linked to Class `C` (`A HAS-B`, and `B HAS-C`):
+- `A` should invoke methods on `B`.
+- `A` should **NEVER** reach through `B` to invoke methods on `C` (e.g., `a.getB().getC().doAction()`).
+- If `A` needs something done by `C`, `A` should ask `B` to provide a method for it, and `B` coordinates with `C`.
 
-- **Facade**: A high-level class that knows which subsystem classes are responsible for a request and delegates work to them.
-- **Subsystem Classes**: The underlying classes that implement actual functionality, oblivious to the existence of the Facade.
-- **Law of Demeter**: A design principle stating that a module should only talk to its immediate collaborators, not to the internal sub-components of its collaborators.
+### The 4 Rules of Demeter:
+Within a method `M` of class `A`, code should only call methods that belong to:
+1. The class `A` itself (`this` / its own methods).
+2. Any object passed in as a **parameter** to method `M`.
+3. Any object that method `M` **creates or instantiates** internally.
+4. Any object held as an **instance field / direct component** of class `A` (`HAS-A` reference).
 
----
+```
+   ❌ Demeter Violation (Trains of calls):
+   client.getComputer().getMotherboard().getBios().boot();
 
-## 4. Important Terminology
-
-- **Structural Pattern**: Pattern organizing object and class composition.
-- **Subsystem Encapsulation**: Hiding orchestration complexity behind a single entry point.
-- **Non-Exclusivity**: A Facade does *not* seal off subsystems; power users can still access individual subsystem classes directly if they need fine-grained control.
-
----
-
-## 5. Real-World Analogy
-
-### 1. Computer Power Button
-- When you turn on your PC, you press a single **Power Button** (Facade).
-- Behind the scenes, the Power Supply stabilizes voltages, the Motherboard initiates BIOS POST checks, RAM runs integrity tests, the Hard Drive loads the OS kernel into memory, and the GPU initializes display drivers. You do not manually coordinate these hardware chips.
-
-### 2. Hotel Concierge
-- When staying at a luxury hotel, you call the Concierge (Facade) to book a dinner table, call a taxi, and schedule laundry. You do not contact the restaurant kitchen, taxi fleet dispatcher, and hotel laundry staff directly.
-
----
-
-## 6. Naive / Bad Design
-
-### Java Example (Client Directly Orchestrating Subsystems)
-```java
-// ❌ Naive Anti-Pattern: Client tightly coupled to 4 separate subsystems
-public class BadClient {
-    public void checkout() {
-        InventoryService inv = new InventoryService();
-        PaymentService pay = new PaymentService();
-        ShippingService ship = new ShippingService();
-        NotificationService notif = new NotificationService();
-
-        // 💥 Client forced to manage ordering, error checks, and vendor APIs
-        inv.checkStock("ITEM-1");
-        inv.reserveStock("ITEM-1", 1);
-        pay.processPayment("USER-1", 99.0);
-        String tracking = ship.createLabel("USER-1", "ITEM-1");
-        notif.sendEmail("USER-1", tracking);
-    }
-}
+   ✅ With Facade (Follows Least Knowledge):
+   facade.startComputer();
 ```
 
-### Problems
-- Duplicate code across Web, Android, iOS, and API clients.
-- Modifying `PaymentService` method parameters breaks all client controllers.
-
 ---
 
-## 7. Design Evolution
+## 4. Architecture & Class Diagram
 
-1. **Step 1**: Identify the common composite operation: `placeOrder()`.
-2. **Step 2**: Create `OrderProcessingFacade` that encapsulates references to all 4 subsystem classes.
-3. **Step 3**: Expose a single method `placeOrder(customerId, productId, quantity, amount)`.
-4. **Step 4**: Clients communicate exclusively with the Facade.
-
----
-
-## 8. Final Design
-
-### Architecture (Class Diagram)
 ```mermaid
 classDiagram
-    class OrderProcessingFacade {
-        -InventoryService inventoryService
-        -PaymentService paymentService
-        -ShippingService shippingService
-        -NotificationService notificationService
-        +placeOrder(customerId, productId, qty, amount) boolean
+    class Client {
     }
 
-    class InventoryService {
-        +checkStock(productId, qty) boolean
-        +reserveStock(productId, qty) void
+    class ComputerFacade {
+        -PowerSupply powerSupply
+        -CoolingSystem coolingSystem
+        -CPU cpu
+        -Memory memory
+        -HardDrive hardDrive
+        -BIOS bios
+        -OperatingSystem os
+        +startComputer() void
     }
 
-    class PaymentService {
-        +charge(customerId, amount) boolean
+    class PowerSupply {
+        +providePower() void
+    }
+    class CoolingSystem {
+        +startFan() void
+    }
+    class CPU {
+        +initialize() void
+    }
+    class Memory {
+        +selfTest() void
+    }
+    class HardDrive {
+        +spinUp() void
+    }
+    class BIOS {
+        +boot(CPU cpu, Memory memory) void
+    }
+    class OperatingSystem {
+        +load() void
     }
 
-    class ShippingService {
-        +createShippingLabel(customerId, productId) String
-    }
-
-    class NotificationService {
-        +sendConfirmation(customerId, tracking) void
-    }
-
-    OrderProcessingFacade --> InventoryService
-    OrderProcessingFacade --> PaymentService
-    OrderProcessingFacade --> ShippingService
-    OrderProcessingFacade --> NotificationService
-```
-
-### Mermaid Sequence Diagram
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as Web Client
-    participant Facade as OrderProcessingFacade
-    participant Inv as InventoryService
-    participant Pay as PaymentService
-    participant Ship as ShippingService
-    participant Notif as NotificationService
-
-    Client->>Facade: placeOrder("CUST-1", "PROD-9", 1, 99.00)
-    activate Facade
-    Facade->>Inv: checkStock("PROD-9", 1)
-    Inv-->>Facade: Stock Available
-    Facade->>Inv: reserveStock("PROD-9", 1)
-    Facade->>Pay: charge("CUST-1", 99.00)
-    Pay-->>Facade: Payment Approved
-    Facade->>Ship: createShippingLabel("CUST-1", "PROD-9")
-    Ship-->>Facade: "TRK-98234"
-    Facade->>Notif: sendConfirmation("CUST-1", "TRK-98234")
-    Facade-->>Client: Returns true (Order Fulfilled)
-    deactivate Facade
+    Client --> ComputerFacade : calls startComputer()
+    ComputerFacade --> PowerSupply
+    ComputerFacade --> CoolingSystem
+    ComputerFacade --> CPU
+    ComputerFacade --> Memory
+    ComputerFacade --> HardDrive
+    ComputerFacade --> BIOS
+    ComputerFacade --> OperatingSystem
 ```
 
 ---
 
-## 9. Java Implementation
+## 5. Java Implementation (Primary Lecture Example)
 
+### Step 1: Complex Subsystem Classes
 ```java
-import java.util.*;
-
-// ==========================================
-// 1. SUBSYSTEM CLASSES
-// ==========================================
-public class InventoryService {
-    public boolean checkStock(String productId, int quantity) {
-        System.out.println("📦 [Inventory] Stock verified for Product #" + productId);
-        return true;
-    }
-
-    public void reserveStock(String productId, int quantity) {
-        System.out.println("🔒 [Inventory] Reserved " + quantity + " units of Product #" + productId);
+// Subsystem Component 1: Power Supply
+class PowerSupply {
+    public void providePower() {
+        System.out.println("PowerSupply: Power supplied to motherboard and components.");
     }
 }
 
-public class PaymentService {
-    public boolean processPayment(String customerId, double amount) {
-        System.out.println("💳 [Payment] Charged $" + amount + " to customer: " + customerId);
-        return true;
+// Subsystem Component 2: Cooling System
+class CoolingSystem {
+    public void startFan() {
+        System.out.println("CoolingSystem: Fans spinning at operational speed.");
     }
 }
 
-public class ShippingService {
-    public String createShippingLabel(String customerId, String productId) {
-        String trackingNumber = "TRK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        System.out.println("🚚 [Shipping] Shipping label generated: " + trackingNumber);
-        return trackingNumber;
+// Subsystem Component 3: CPU
+class CPU {
+    public void initialize() {
+        System.out.println("CPU: Registers cleared and initialized.");
     }
 }
 
-public class NotificationService {
-    public void sendOrderConfirmation(String customerId, String trackingNumber) {
-        System.out.println("📧 [Notification] Confirmation dispatched with tracking: " + trackingNumber);
+// Subsystem Component 4: Memory (RAM)
+class Memory {
+    public void selfTest() {
+        System.out.println("Memory: Self-test passed. RAM ready.");
     }
 }
 
-// ==========================================
-// 2. THE UNIFIED FAÇADE
-// ==========================================
-public class OrderProcessingFacade {
-    private final InventoryService inventoryService;
-    private final PaymentService paymentService;
-    private final ShippingService shippingService;
-    private final NotificationService notificationService;
-
-    public OrderProcessingFacade(InventoryService inv, PaymentService pay,
-                                 ShippingService ship, NotificationService notif) {
-        this.inventoryService = Objects.requireNonNull(inv);
-        this.paymentService = Objects.requireNonNull(pay);
-        this.shippingService = Objects.requireNonNull(ship);
-        this.notificationService = Objects.requireNonNull(notif);
+// Subsystem Component 5: Hard Drive
+class HardDrive {
+    public void spinUp() {
+        System.out.println("HardDrive: Platters spinning, read/write heads positioned.");
     }
+}
 
-    // High-level one-click orchestration
-    public boolean placeOrder(String customerId, String productId, int qty, double amount) {
-        System.out.println("\n🛒 [Facade] Starting checkout workflow...");
+// Subsystem Component 6: BIOS
+class BIOS {
+    public void boot(CPU cpu, Memory memory) {
+        System.out.println("BIOS: Bootstrapping hardware...");
+        cpu.initialize();
+        memory.selfTest();
+        System.out.println("BIOS: Hardware self-check complete.");
+    }
+}
 
-        if (!inventoryService.checkStock(productId, qty)) {
-            System.out.println("❌ Order Failed: Out of stock!");
-            return false;
-        }
-
-        inventoryService.reserveStock(productId, qty);
-
-        if (!paymentService.processPayment(customerId, amount)) {
-            System.out.println("❌ Order Failed: Payment declined!");
-            return false;
-        }
-
-        String tracking = shippingService.createShippingLabel(customerId, productId);
-        notificationService.sendOrderConfirmation(customerId, tracking);
-
-        System.out.println("✅ [Facade] Order fulfilled successfully!\n");
-        return true;
+// Subsystem Component 7: Operating System
+class OperatingSystem {
+    public void load() {
+        System.out.println("OperatingSystem: Kernel loaded into memory. OS ready.");
     }
 }
 ```
 
----
+### Step 2: The Facade Class
+```java
+// Facade: encapsulates and coordinates the complex boot sequence
+public class ComputerFacade {
+    private final PowerSupply powerSupply;
+    private final CoolingSystem coolingSystem;
+    private final CPU cpu;
+    private final Memory memory;
+    private final HardDrive hardDrive;
+    private final BIOS bios;
+    private final OperatingSystem os;
 
-## 10. Code Walkthrough
+    public ComputerFacade() {
+        this.powerSupply = new PowerSupply();
+        this.coolingSystem = new CoolingSystem();
+        this.cpu = new CPU();
+        this.memory = new Memory();
+        this.hardDrive = new HardDrive();
+        this.bios = new BIOS();
+        this.os = new OperatingSystem();
+    }
 
-1. Four independent subsystems (`Inventory`, `Payment`, `Shipping`, `Notification`) handle domain specifics.
-2. `OrderProcessingFacade`: Injected with subsystem instances via constructor, encapsulating the ordering of operations.
-3. `placeOrder()`: Executes the validation, reservation, payment, shipping, and notification sequence in a single high-level call.
+    // Unified, simplified interface method for the client
+    public void startComputer() {
+        System.out.println("=== Booting Computer via Facade ===");
+        powerSupply.providePower();
+        coolingSystem.startFan();
+        bios.boot(cpu, memory);
+        hardDrive.spinUp();
+        os.load();
+        System.out.println("=== Computer Booted Successfully! ===");
+    }
+}
+```
 
----
+### Step 3: Client Application
+```java
+public class Main {
+    public static void main(String[] args) {
+        // Client interacts solely with the Facade
+        ComputerFacade computer = new ComputerFacade();
+        computer.startComputer();
+    }
+}
+```
 
-## 11. Important Design Decisions
-
-- **Non-Exclusive Access**: Clients needing custom workflows (e.g., custom warehouse fulfillment) can bypass the facade and call `ShippingService` directly.
-- **Preventing God Facades**: Facades should remain cohesive. Avoid creating a single `MegaSystemFacade` that handles billing, authentication, customer service, and analytics in one giant class.
-
----
-
-## 12. Edge Cases
-
-- **Partial Failure & Compensation**: If payment succeeds but shipping label generation fails, the facade can trigger compensating transactions (refunding payment and releasing inventory).
-- **Subsystem Exceptions**: Catch low-level subsystem exceptions inside the facade and convert them into clean high-level domain responses.
-
----
-
-## 13. Production Considerations
-
-- **Saga Pattern in Distributed Systems**: In microservices architectures, an API Gateway or Saga Orchestrator acts as a distributed Facade, managing distributed transactions with compensation steps across independent network services.
-
----
-
-## 14. Advantages
-
-- **Simplifies Client Code**: Replaces dozens of low-level calls with a single method.
-- **Decouples Subsystems**: Clients are insulated from subsystem refactoring.
-- **Enforces Clean Architectural Layering**: Creates a clear boundary between presentation controllers and internal domain subsystems.
-
----
-
-## 15. Disadvantages / Trade-offs
-
-- **Risk of God Object**: Facades can easily attract too many unrelated helper methods if not carefully bounded.
-- **Extra Indirection**: Adds another layer between callers and subsystems.
-
----
-
-## 16. Related Patterns / Alternatives
-
-- **Facade vs. Adapter**: Facade simplifies an entire subsystem; Adapter converts one specific incompatible interface.
-- **Facade vs. Mediator**: Facade provides a one-way simplified interface for clients; Mediator coordinates bidirectional communication between colleague objects.
-
----
-
-## 17. SOLID / OOP Connections
-
-- **Single Responsibility Principle (SRP)**: Subsystems focus on their domain; Facade focuses on orchestrating workflows.
-- **Law of Demeter**: Clients interact only with the Facade rather than querying deep internal subsystem object graphs.
-
----
-
-## 18. Common Mistakes
-
-- **Locking Down Subsystems**: Trying to make subsystem classes private or inaccessible. A Facade is an optional simplified layer, not an exclusive prison.
-- **Putting Heavy Business Logic in the Facade**: The Facade should only orchestrate; core business rules belong in the subsystem services.
+### Execution Output:
+```text
+=== Booting Computer via Facade ===
+PowerSupply: Power supplied to motherboard and components.
+CoolingSystem: Fans spinning at operational speed.
+BIOS: Bootstrapping hardware...
+CPU: Registers cleared and initialized.
+Memory: Self-test passed. RAM ready.
+BIOS: Hardware self-check complete.
+HardDrive: Platters spinning, read/write heads positioned.
+OperatingSystem: Kernel loaded into memory. OS ready.
+=== Computer Booted Successfully! ===
+```
 
 ---
 
-## 19. Interview Questions
+## 6. Real-World Use Cases Discussed in Lecture
 
-1. **What is the primary intent of the Facade Pattern?**
-   - *Answer*: To provide a simplified, unified high-level interface to a complex subsystem, making it easier to use and decoupling client code from internal subsystem classes.
-2. **What is the Law of Demeter and how does Facade support it?**
-   - *Answer*: The Law of Demeter (*Principle of Least Knowledge*) states that an object should only talk to immediate friends, not strangers (`a.getB().getC().doSomething()` is a violation). A Facade provides an immediate friend that encapsulates calls to subsystems.
-3. **Can you have multiple Facades for the same subsystem?**
-   - *Answer*: Yes. If a subsystem is large, you can create multiple specialized facades (e.g. `UserCheckoutFacade`, `AdminInventoryFacade`) to serve different client roles.
+1. **Video Game Engines (e.g., Unity / Unreal):**
+   - When a developer invokes `startGame()`, the engine's internal facade orchestrates asset loaders, sound synthesizers, the physics engine, memory allocators, and level geometry streamers.
+2. **E-Commerce Checkout & Payment Subsystems:**
+   - A single client call to `makePayment()` internally coordinates:
+     - Balance verification
+     - PIN / OTP / 3DSecure validation
+     - Fraud detection risk scoring
+     - Transaction ledger entry
+     - Notification dispatch (Email/SMS)
+3. **Home Theater System:**
+   - A single method `watchMovie()` dims smart lights, lowers the projection screen, turns on the AV receiver, switches inputs to Blu-ray/HDMI, and starts playback.
 
 ---
 
-## 20. Quick Revision
+## 7. Facade vs. Adapter (Critical Distinction)
 
-### Core Idea
-> Facade provides a simplified, unified entry point to a complex subsystem, hiding orchestration complexity and decoupling clients from internal services.
+Both patterns introduce an intermediate class between a client and other classes. However, their **intents** are completely different:
 
-### Remember
-- Enforces the Law of Demeter ("talk only to immediate friends").
-- Does not prevent advanced clients from accessing subsystems directly.
-- Avoid God Facades; keep facades cohesive and domain-bounded.
+| Comparison Point | Facade Design Pattern | Adapter Design Pattern |
+| :--- | :--- | :--- |
+| **Primary Intent** | **Simplifies** a complex subsystem; provides a unified higher-level interface. | **Converts** an incompatible interface to match the client's expected contract. |
+| **Number of Interfaces** | Usually aggregates and orchestrates **many** subsystem classes. | Typically adapts **one** incompatible adaptee to a target interface. |
+| **Interface Introduced** | Creates a brand-new, simplified interface tailored to client tasks. | Implements an already existing interface contract that the client expects. |
+| **Client Awareness** | Client seeks a simpler way to interact with a system. | Client has a fixed contract and cannot talk to the adaptee without conversion. |
 
-### Java Implementation Idea
-> Create `OrderProcessingFacade` containing references to `InventoryService`, `PaymentService`, and `ShippingService`, and expose a high-level `placeOrder()` method.
+```
+Facade:   Client ---> [Facade] ---> [Subsystem A, Subsystem B, Subsystem C]  (Simplification)
+Adapter:  Client ---> [Target Interface (Adapter)] ---> [Incompatible Adaptee] (Translation)
+```
 
-### Most Important Interview Point
-> Facade creates a *new, simpler interface* over multiple classes; Adapter converts an *existing incompatible interface* for a single class.
+---
 
-### Common Trap
-> Do not write business calculations inside the Facade; keep the Facade purely orchestrational.
+## 8. Advantages and Trade-offs
+
+### Advantages:
+- **Decoupling:** Isolates clients from subsystem components, allowing subsystem classes to evolve freely.
+- **Ease of Use:** Shields developers from learning complex multi-class setup rituals.
+- **Law of Demeter Compliance:** Drastically lowers coupling between distinct layers.
+
+### Trade-offs / Limitations:
+- **Risk of God Object:** If a Facade is overloaded with too many diverse responsibilities, it can become an unmaintainable monolithic class.
+- **Doesn't Enforce Encapsulation by Default:** Unless subsystem classes are made package-private, clients can still bypass the Facade and access subsystem classes directly if they need granular control.
+
+---
+
+## 9. Interview Perspective
+
+- **Q: Does Facade prevent clients from accessing subsystem classes directly?**
+  *A: Not strictly in GoF design. The Facade provides a convenient default high-level path. Power users who need fine-grained control can still access subsystem classes directly unless access modifiers (like Java package-private visibility) restrict them.*
+- **Q: How does Facade relate to the Law of Demeter?**
+  *A: It is the textbook design pattern embodying the Law of Demeter. The client only talks to its immediate friend (the Facade), rather than reaching across multiple subsystem layers.*
+- **Q: Can a subsystem have multiple Facades?**
+  *A: Yes. If a subsystem is huge and serves multiple distinct user personas (e.g., `AdminFacade` vs `UserFacade`), splitting into multiple focused facades prevents god classes.*
+
+---
+
+## 10. Quick Revision
+
+```text
+Problem: Complex subsystem of interdependent classes makes client code coupled and fragile.
+Solution: Introduce a Facade class that encapsulates the multi-step orchestration.
+Principle: Law of Demeter ("Talk only to your immediate friends").
+Contrast: Facade simplifies/unifies; Adapter converts/translates.
+```

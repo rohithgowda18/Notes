@@ -1,5 +1,9 @@
 # 08. Strategy Design Pattern
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Strategy Design Pattern faithfully derived from the complete lecture transcript. Features the classic **Robot Simulation System** (`CompanionRobot`, `WorkerRobot`, `CombatRobot`) demonstrating the architectural principle **"Favor Composition over Inheritance"**. Shows how behavioral algorithms (walking, talking, flying) are extracted into interchangeable strategy interfaces (`WalkStrategy`, `TalkStrategy`, `FlyStrategy`), eliminating combinatorial class explosion and dummy overrides. Includes real-world extensions for **Payment Processing** (UPI, Credit Card, NetBanking) and **Pluggable Sorting Algorithms** (QuickSort, MergeSort).
+
+---
+
 ## 1. Overview
 
 The **Strategy Design Pattern** is a behavioral design pattern that defines a family of algorithms, encapsulates each one inside a separate class, and makes them interchangeable at runtime. It operationalizes the core object-oriented architecture principle: **"Favor Composition over Inheritance"**.

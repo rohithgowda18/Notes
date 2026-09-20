@@ -1,6 +1,6 @@
 # 37. Build Chess Game LLD
 
-> 💡 **Quick Revision Anchor**: The quintessential Machine Coding Interview benchmark. Encapsulates an $8 \times 8$ grid using an object-oriented **Piece Polymorphic Hierarchy** (`King`, `Queen`, `Rook`, `Bishop`, `Knight`, `Pawn`), distinct move validation algorithms, turn management, and an integrated **Mediator Pattern** for in-game player communication.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused Low-Level Design of a standard two-player Chess game (Chess.com / Lichess clone) faithfully derived from the complete 110-minute lecture transcript. Features an object-oriented **Piece Polymorphism Hierarchy** (`King`, `Queen`, `Rook`, `Bishop`, `Knight`, `Pawn`) enforcing distinct geometric move validations and obstacle path clearances, an $8 \times 8$ `Board` coordinate grid, turn-based state validation (`WHITE` moves first), check/checkmate detection, move history audit trails, and an integrated **Mediator Pattern** for player matchmaking and in-game chat.
 
 ---
 

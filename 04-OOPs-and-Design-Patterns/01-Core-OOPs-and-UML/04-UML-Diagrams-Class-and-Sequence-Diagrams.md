@@ -1,6 +1,6 @@
 # 04. UML Diagrams: Class & Sequence Diagrams
 
-> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Unified Modeling Language (UML). Explains why out of 14 standard UML diagrams, only two dominate 99% of Low-Level Design interviews: **Class Diagrams** (structural blueprints detailing attributes, visibility, and relationship semantics—Inheritance, Realization, Association, Aggregation vs Composition, Dependency) and **Sequence Diagrams** (behavioral interaction timelines with lifelines, activation bars, sync/async calls, create/destroy lifecycle events, and `alt`/`opt`/`loop` fragments). Features the lecture's canonical **Car Hierarchy** and the complete **ATM Cash Withdrawal Sequence Flow**.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Unified Modeling Language (UML) derived faithfully from the complete lecture transcript. Explains why out of 14 standard UML diagrams, only two dominate 99% of Low-Level Design (LLD) interviews: **Class Diagrams** (structural blueprints detailing attributes, visibility modifiers `+`, `-`, `#`, `~`, and relationship semantics—Inheritance, Realization, Association, Aggregation vs Composition, Dependency) and **Sequence Diagrams** (behavioral interaction timelines with lifelines, activation bars, sync/async calls, create/destroy lifecycle events, and `alt`/`opt`/`loop` combined fragments). Features the lecture's canonical **Car & Component Hierarchy** and the complete **ATM Cash Withdrawal Sequence Flow**.
 
 ---
 

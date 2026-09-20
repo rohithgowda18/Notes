@@ -1,5 +1,9 @@
 # 07. Build Google Docs — Document Editor LLD
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused Low-Level Design (LLD) case study designing a rich Document Editor (Google Docs clone) faithfully derived from the complete lecture transcript. Features a **Bottom-Up Design approach**, decomposing heterogeneous document elements into a polymorphic `DocumentElement` hierarchy (`TextElement`, `ImageElement`, `NewLineElement`, `TabSpaceElement`), a clean `Document` aggregate holding element streams, an isolated `DocumentRenderer`, and an extensible `Persistence` subsystem (`FileStorage`, `DatabaseStorage`). Thoroughly analyzes the classic interview trade-off between **Single Responsibility Principle (SRP)** and the **Law of Demeter (Principle of Least Knowledge)** when decoupling document rendering and persistence.
+
+---
+
 ## 1. Problem Statement
 
 Design a scalable, production-grade Document Editor (akin to Google Docs or a rich text editor) supporting heterogeneous document content:

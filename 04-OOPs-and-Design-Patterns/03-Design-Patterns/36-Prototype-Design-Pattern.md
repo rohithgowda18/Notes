@@ -1,6 +1,6 @@
 # 36. Prototype Design Pattern
 
-> 💡 **Quick Revision Anchor**: The **Prototype Pattern** is a **creational design pattern** that creates new objects by **cloning an existing prototype instance** rather than constructing new ones from scratch with `new ClassName()`. It bypasses expensive initialization logic (network I/O, DB queries, heavy 3D rendering) and preserves encapsulation during copying.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Prototype Design Pattern faithfully derived from the complete lecture transcript. Explores why cloning existing instances via an in-memory prototype eliminates expensive constructor initialization (database roundtrips, disk I/O, heavy mesh rendering) and preserves encapsulation. Features the lecture's canonical **Game NPC (Non-Player Character) and Weapon System**, an architectural deep-dive into **Shallow Copy vs. Deep Copy** hazards, and a production-grade `PrototypeRegistry` catalog for rapid entity cloning.
 
 ---
 

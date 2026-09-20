@@ -1,43 +1,81 @@
 # 28. Builder Design Pattern
 
-> 💡 **Quick Revision Anchor**: The **Builder Pattern** is a **creational design pattern** that separates the construction of a complex object from its representation, allowing the same construction process to create diverse representations. It eliminates the **Telescoping Constructor Anti-Pattern** and the **JavaBean Setter Mutability Trap**, delivering clean, immutable objects with compile-time verification via **Step Builders** and reusable construction templates via the **Director**.
+> 💡 **Quick Revision Anchor**
+> - **Type:** Creational Design Pattern
+> - **Core Principle:** Separates the construction of a complex object from its representation, allowing the same construction process to create various representations.
+> - **Primary Problems Solved:**
+>   1. **Telescoping Constructor Anti-Pattern:** Massive constructors with confusing boolean/null arguments (`new Request("url", "GET", null, null, true, 5000)`).
+>   2. **JavaBeans / Setter Mutation Flaw:** Inconsistent state during construction and loss of object immutability.
+> - **Key Flavors:**
+>   - **Fluent Builder:** Uses method chaining (`return this;`) and an immutable target with a private constructor.
+>   - **Builder with Director:** Pre-packaged recipes/templates for common object configurations.
+>   - **Step Builder:** Uses sequential interfaces to enforce mandatory steps at **compile-time**.
 
 ---
 
-## 1. Executive Summary & The Two Anti-Patterns Solved
+## 1. Problem: Creating Complex Objects
 
-Creating complex objects with dozens of configuration attributes (e.g., an enterprise `HttpRequest` with URL, HTTP method, headers, query parameters, payload body, timeouts, redirect policies, and retry counts) leads to two classical anti-patterns:
+Consider building an **HTTP Request** object. An HTTP request consists of numerous fields:
+- **Mandatory:** URL, HTTP Method (GET, POST, etc.).
+- **Optional:** Headers (Map), Query Parameters (Map), Request Body (JSON/text), Timeout (ms), Retries, Cache-Control.
 
-### Anti-Pattern 1: Telescoping Constructors
-```java
-// PROBLEM: Monolithic constructor explosion
-public HttpRequest(String url) { ... }
-public HttpRequest(String url, String method) { ... }
-public HttpRequest(String url, String method, Map<String, String> headers) { ... }
-public HttpRequest(String url, String method, Map<String, String> headers, String body) { ... }
-public HttpRequest(String url, String method, Map<String, String> headers, String body, int timeout, int retries) { ... }
-
-// Client usage is illegible and hazardous:
-HttpRequest req = new HttpRequest("https://api.com", "POST", null, "{...}", 5000, 3);
 ```
-- **Danger**: Swapping adjacent parameters of identical types (e.g. `timeout` vs `retries`) causes catastrophic silent runtime bugs. Callers are forced to pass confusing `null` values for unused parameters.
+                           HTTPRequest
+  ┌────────────┬─────────────┬───────────┬─────────────┬───────────┐
+  │    URL     │   Method    │  Headers  │ RequestBody │  Timeout  │
+  │(Mandatory) │ (Mandatory) │(Optional) │ (Optional)  │(Optional) │
+  └────────────┴─────────────┴───────────┴─────────────┴───────────┘
+```
 
-### Anti-Pattern 2: JavaBeans Mutability Trap (Zero-Arg Constructor + Setters)
+### Approach 1: Telescoping Constructors (Anti-Pattern)
 ```java
-// PROBLEM: Half-baked objects & lost immutability
+// ❌ Telescoping Constructors
+public class HttpRequest {
+    public HttpRequest(String url, String method) { ... }
+    public HttpRequest(String url, String method, Map<String, String> headers) { ... }
+    public HttpRequest(String url, String method, Map<String, String> headers, String body) { ... }
+    public HttpRequest(String url, String method, Map<String, String> headers, String body, int timeout) { ... }
+}
+```
+**Why it fails:**
+- Calling code is unreadable: `new HttpRequest("https://api.com", "GET", null, null, 5000);`
+- Prone to silent parameter-swapping bugs (e.g., passing `timeout` into `retryCount`).
+- Creating $N$ constructors for every possible subset of optional fields causes constructor explosion.
+
+### Approach 2: JavaBeans Pattern (No-Arg Constructor + Setters)
+```java
+// ❌ JavaBeans Mutation
 HttpRequest req = new HttpRequest();
-req.setUrl("https://api.stripe.com/v1/charges");
-// Thread context switch occurs here -> Object is incomplete and invalid!
+req.setUrl("https://api.com");
+// What if a thread accesses 'req' right here before method is set? Inconsistent state!
 req.setMethod("POST");
 req.setTimeout(5000);
 ```
-- **Danger**: The object is in an **inconsistent, half-baked state** between setter calls. Fields cannot be marked `final`, destroying **immutability** and causing race conditions in multi-threaded environments.
+**Why it fails:**
+- The object is **mutable** and exists in a partially initialized, inconsistent state during construction.
+- Fails thread-safety; impossible to make `HttpRequest` an immutable Value Object.
 
 ---
 
-## 2. The Solution: Standard Builder Pattern (Fluent API)
+## 2. Core Solution: The Fluent Builder
 
-The Builder pattern introduces an auxiliary builder object that collects parameters step-by-step and constructs the target object only when `.build()` is called.
+The **Builder Pattern** extracts the construction logic into a dedicated companion class (`HttpRequestBuilder`):
+1. The target class (`HttpRequest`) has a `private` constructor and exposes only getters (immutable).
+2. The Builder maintains temporary copies of the fields.
+3. Every builder setter returns `this`, enabling fluent method chaining.
+4. The `.build()` method validates required fields and instantiates the immutable target.
+
+```
+Client ──▶ new Builder()
+              .withUrl("https://api.com")
+              .withMethod("POST")
+              .withBody("{\"data\": 1}")
+              .build() ─────────────────────▶ Immutable HttpRequest
+```
+
+---
+
+## 3. Architecture & Class Diagram
 
 ```mermaid
 classDiagram
@@ -46,10 +84,14 @@ classDiagram
         -String method
         -Map~String, String~ headers
         -String body
-        -int timeoutMs
-        -HttpRequest(Builder b)
+        -int timeout
+        -HttpRequest(Builder builder)
         +getUrl() String
         +getMethod() String
+        +getHeaders() Map
+        +getBody() String
+        +getTimeout() int
+        +execute() void
     }
 
     class Builder {
@@ -57,141 +99,76 @@ classDiagram
         -String method
         -Map~String, String~ headers
         -String body
-        -int timeoutMs
-        +Builder(String url, String method)
-        +withHeader(String k, String v) Builder
-        +withBody(String b) Builder
-        +withTimeout(int ms) Builder
+        -int timeout
+        +withUrl(String url) Builder
+        +withMethod(String method) Builder
+        +addHeader(String key, String value) Builder
+        +withBody(String body) Builder
+        +withTimeout(int timeout) Builder
         +build() HttpRequest
     }
 
-    HttpRequest +-- Builder : Static Nested Class
-    HttpRequest <-- Builder : Constructs Immutable Instance
-```
+    class HttpRequestDirector {
+        +createSimpleGet(Builder b, String url) HttpRequest
+        +createJsonPost(Builder b, String url, String json) HttpRequest
+    }
 
-### Core Architecture Rules:
-1. **Target Object is Immutable**: All fields in `HttpRequest` are `private final`. No public setters exist.
-2. **Private Constructor**: `HttpRequest` has a `private` constructor accepting only its `Builder`.
-3. **Fluent Chaining**: Every configuration method inside the `Builder` returns `this`.
-4. **Validation at Build Time**: Invariants are validated inside `.build()` before instantiating the object.
-
----
-
-## 3. Evolution 2: Builder with Director Pattern
-
-In classic Gang of Four architecture, a **Director** class encapsulates predefined, reusable assembly recipes for common object configurations:
-
-```mermaid
-flowchart LR
-    Client([Client]) --> Director["HttpRequestDirector"]
-    Director -->|Coordinates Steps| Builder["HttpRequest.Builder"]
-    Builder -->|Instantiates| Product["Immutable HttpRequest"]
-
-    style Client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style Director fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Builder fill:#e8f8f5,stroke:#26a69a,stroke-width:2px
-    style Product fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
-```
-
-The Director knows the exact sequence of builder method calls required to produce standard products (e.g., a standard `JSON POST` request or an authenticated `Bearer Token` request).
-
----
-
-## 4. Evolution 3: Step Builder Pattern (Compile-Time Validation)
-
-### The Problem with Standard Builders
-In a standard builder, if a developer forgets to call `.withUrl()`, the error is only caught at **runtime** when `.build()` is executed. 
-Can we force mandatory fields to be provided in a strict sequence at **compile-time**?
-
-### The Step Builder Solution
-By defining a chain of nested interfaces, each method return type forces the developer to call the next required method in the chain:
-$$\text{UrlStep} \longrightarrow \text{MethodStep} \longrightarrow \text{Optional/BuildStep}$$
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Dev as Developer Code
-    participant S1 as UrlStep Interface
-    participant S2 as MethodStep Interface
-    participant S3 as BuildStep Interface
-    participant Prod as Final HttpRequest
-
-    Dev->>S1: withUrl("https://api.com")
-    Note over S1: Returns MethodStep (Compiler blocks anything else!)
-    Dev->>S2: withMethod("POST")
-    Note over S2: Returns BuildStep
-    Dev->>S3: withHeader("Auth", "token")
-    Dev->>S3: build()
-    S3-->>Dev: returns fully validated HttpRequest!
+    HttpRequest +-- Builder : static inner class
+    HttpRequestDirector --> Builder : directs configuration
 ```
 
 ---
 
-## 5. Complete, Compilable Java Implementation
+## 4. Java Implementation: Classic Fluent Builder
 
-Below is the complete Java implementation featuring:
-1. The **Standard Immutable Builder**.
-2. The **Director** with standard pre-configured templates.
-3. The **Step Builder** enforcing compilation-stage ordering.
-
+### Step 1: Target Class with Static Inner Builder
 ```java
-package com.designpatterns.builder;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-// ============================================================================
-// PART 1: STANDARD IMMUTABLE BUILDER
-// ============================================================================
-
-class HttpRequest {
-    // Immutable fields
+public class HttpRequest {
     private final String url;
     private final String method;
     private final Map<String, String> headers;
     private final String body;
-    private final int timeoutMs;
+    private final int timeout;
 
+    // Private constructor: can ONLY be called by Builder
     private HttpRequest(Builder builder) {
         this.url = builder.url;
         this.method = builder.method;
         this.headers = Collections.unmodifiableMap(new HashMap<>(builder.headers));
         this.body = builder.body;
-        this.timeoutMs = builder.timeoutMs;
+        this.timeout = builder.timeout;
     }
 
-    public String getUrl() { return url; }
-    public String getMethod() { return method; }
-    public Map<String, String> getHeaders() { return headers; }
-    public String getBody() { return body; }
-    public int getTimeoutMs() { return timeoutMs; }
-
-    @Override
-    public String toString() {
-        return "HttpRequest[Method=" + method + ", URL=" + url + ", Timeout=" + timeoutMs 
-               + "ms, Headers=" + headers + ", Body=" + body + "]";
+    public void execute() {
+        System.out.println("Executing [" + method + "] to " + url);
+        System.out.println("  Headers: " + headers);
+        if (body != null) System.out.println("  Body: " + body);
+        System.out.println("  Timeout: " + timeout + " ms\n");
     }
 
-    // Static nested Builder
+    // Static Inner Builder
     public static class Builder {
         private String url;
-        private String method = "GET"; // Default
+        private String method = "GET"; // Default value
         private final Map<String, String> headers = new HashMap<>();
-        private String body = "";
-        private int timeoutMs = 3000;  // Default 3s
+        private String body;
+        private int timeout = 30000;   // Default 30s
 
         public Builder withUrl(String url) {
             this.url = url;
-            return this;
+            return this; // Enables chaining
         }
 
         public Builder withMethod(String method) {
-            this.method = method.toUpperCase();
+            this.method = method;
             return this;
         }
 
-        public Builder withHeader(String key, String value) {
+        public Builder addHeader(String key, String value) {
             this.headers.put(key, value);
             return this;
         }
@@ -201,216 +178,201 @@ class HttpRequest {
             return this;
         }
 
-        public Builder withTimeout(int timeoutMs) {
-            this.timeoutMs = timeoutMs;
+        public Builder withTimeout(int timeout) {
+            this.timeout = timeout;
             return this;
         }
 
         public HttpRequest build() {
-            // Invariant validations
+            // Validation at build time
             if (url == null || url.trim().isEmpty()) {
-                throw new IllegalStateException("Validation Failed: URL cannot be null or empty!");
+                throw new IllegalStateException("URL is mandatory for HttpRequest.");
             }
-            if (timeoutMs < 0) {
-                throw new IllegalStateException("Validation Failed: Timeout cannot be negative!");
+            if (method == null || method.trim().isEmpty()) {
+                throw new IllegalStateException("HTTP Method is mandatory.");
             }
             return new HttpRequest(this);
         }
     }
 }
+```
 
-// ============================================================================
-// PART 2: BUILDER WITH DIRECTOR PATTERN
-// ============================================================================
+---
 
-class HttpRequestDirector {
-    public static HttpRequest createStandardJsonPost(String url, String jsonPayload) {
+## 5. The Director Concept (GoF Classic)
+
+When application code frequently produces standardized object presets, a **Director** class encapsulates the assembly steps:
+
+```java
+public class HttpRequestDirector {
+    public HttpRequest createSimpleGet(String url) {
         return new HttpRequest.Builder()
                 .withUrl(url)
-                .withMethod("POST")
-                .withHeader("Content-Type", "application/json")
-                .withHeader("Accept", "application/json")
-                .withBody(jsonPayload)
+                .withMethod("GET")
+                .addHeader("Accept", "application/json")
                 .withTimeout(5000)
                 .build();
     }
 
-    public static HttpRequest createQuickGet(String url) {
+    public HttpRequest createJsonPost(String url, String jsonBody) {
         return new HttpRequest.Builder()
                 .withUrl(url)
-                .withMethod("GET")
-                .withTimeout(2000)
+                .withMethod("POST")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("Accept", "application/json")
+                .withBody(jsonBody)
+                .withTimeout(10000)
                 .build();
     }
 }
+```
 
-// ============================================================================
-// PART 3: STEP BUILDER PATTERN (COMPILE-TIME STEP ENFORCEMENT)
-// ============================================================================
+---
 
-class StepHttpRequest {
-    private String url;
-    private String method;
-    private Map<String, String> headers = new HashMap<>();
-    private String body = "";
+## 6. Advanced Variation: Step Builder (Compile-Time Safety)
 
-    private StepHttpRequest() {}
+In a standard builder, missing a mandatory parameter (`withUrl()`) is only detected at runtime inside `build()`.
+The **Step Builder Pattern** uses a chain of targeted interfaces so the compiler enforces mandatory parameters in an exact sequence:
 
-    public String getUrl() { return url; }
-    public String getMethod() { return method; }
+```
+new StepBuilder() ──▶ withUrl() ──▶ withMethod() ──▶ withHeader() / build()
+```
 
-    @Override
-    public String toString() {
-        return "StepHttpRequest[" + method + " " + url + ", Headers=" + headers + ", Body=" + body + "]";
-    }
-
-    // Step 1: Mandatory URL
+```java
+public class StepHttpRequest {
+    // 1. Mandatory Step 1
     public interface UrlStep {
         MethodStep withUrl(String url);
     }
 
-    // Step 2: Mandatory Method
+    // 2. Mandatory Step 2
     public interface MethodStep {
-        BuildStep withMethod(String method);
+        OptionalStep withMethod(String method);
     }
 
-    // Step 3: Optional configurations & terminal build()
-    public interface BuildStep {
-        BuildStep withHeader(String key, String value);
-        BuildStep withBody(String body);
+    // 3. Optional Step (where build() finally becomes accessible)
+    public interface OptionalStep {
+        OptionalStep withHeader(String key, String value);
+        OptionalStep withBody(String body);
         StepHttpRequest build();
     }
 
-    // Entry point initiating the step chain
-    public static UrlStep stepBuilder() {
-        return new StepBuilderImpl();
+    private String url;
+    private String method;
+
+    public static UrlStep getBuilder() {
+        return new InnerStepBuilder();
     }
 
-    private static class StepBuilderImpl implements UrlStep, MethodStep, BuildStep {
-        private final StepHttpRequest request = new StepHttpRequest();
+    private static class InnerStepBuilder implements UrlStep, MethodStep, OptionalStep {
+        private String url;
+        private String method;
 
         @Override
         public MethodStep withUrl(String url) {
-            request.url = url;
+            this.url = url;
             return this; // Transitions to MethodStep
         }
 
         @Override
-        public BuildStep withMethod(String method) {
-            request.method = method.toUpperCase();
-            return this; // Transitions to BuildStep
+        public OptionalStep withMethod(String method) {
+            this.method = method;
+            return this; // Transitions to OptionalStep
         }
 
         @Override
-        public BuildStep withHeader(String key, String value) {
-            request.headers.put(key, value);
-            return this;
-        }
+        public OptionalStep withHeader(String key, String value) { return this; }
 
         @Override
-        public BuildStep withBody(String body) {
-            request.body = body;
-            return this;
-        }
+        public OptionalStep withBody(String body) { return this; }
 
         @Override
         public StepHttpRequest build() {
-            return request;
+            StepHttpRequest req = new StepHttpRequest();
+            req.url = this.url;
+            req.method = this.method;
+            return req;
         }
     }
 }
+```
 
-// ============================================================================
-// MAIN DEMONSTRATION DRIVER
-// ============================================================================
+> 💡 **Step Builder Benefit:** The client compiler will literally refuse to compile `.build()` until `.withUrl(...)` and `.withMethod(...)` have been typed!
 
-public class BuilderPatternDemo {
+---
+
+## 7. Client Demonstration
+
+```java
+public class Main {
     public static void main(String[] args) {
-        System.out.println("=================================================");
-        System.out.println("1. STANDARD BUILDER PATTERN");
-        System.out.println("=================================================");
-        HttpRequest customReq = new HttpRequest.Builder()
-                .withUrl("https://api.stripe.com/v1/charges")
+        // 1. Fluent Builder Usage
+        HttpRequest customRequest = new HttpRequest.Builder()
+                .withUrl("https://api.github.com/users/octocat")
                 .withMethod("POST")
-                .withHeader("Authorization", "Bearer sk_test_secret123")
-                .withHeader("Content-Type", "application/json")
-                .withBody("{\"amount\": 5000}")
-                .withTimeout(8000)
+                .addHeader("Authorization", "Bearer token_xyz")
+                .addHeader("Content-Type", "application/json")
+                .withBody("{\"bio\": \"Updated via builder\"}")
+                .withTimeout(15000)
                 .build();
-        System.out.println(customReq);
 
-        System.out.println("\n=================================================");
-        System.out.println("2. DIRECTOR RECIPES");
-        System.out.println("=================================================");
-        HttpRequest quickGet = HttpRequestDirector.createQuickGet("https://api.github.com/users/octocat");
-        System.out.println("Quick GET: " + quickGet);
+        customRequest.execute();
 
-        HttpRequest jsonPost = HttpRequestDirector.createStandardJsonPost("https://api.server.com/orders", "{\"item\": \"Laptop\"}");
-        System.out.println("JSON POST: " + jsonPost);
+        // 2. Director Usage for Predefined Templates
+        HttpRequestDirector director = new HttpRequestDirector();
+        HttpRequest getRequest = director.createSimpleGet("https://api.stripe.com/v1/charges");
+        getRequest.execute();
 
-        System.out.println("\n=================================================");
-        System.out.println("3. COMPILE-TIME STEP BUILDER");
-        System.out.println("=================================================");
-        // Notice: You CANNOT call withMethod() before withUrl()! The compiler prevents it!
-        StepHttpRequest stepReq = StepHttpRequest.stepBuilder()
-                .withUrl("https://auth.mycompany.com/oauth/token") // Returns MethodStep
-                .withMethod("POST")                               // Returns BuildStep
-                .withHeader("Client-Id", "mobile-app")
-                .withBody("grant_type=client_credentials")
+        // 3. Step Builder Usage
+        StepHttpRequest stepReq = StepHttpRequest.getBuilder()
+                .withUrl("https://api.openai.com/v1/models") // Step 1: Mandatory
+                .withMethod("GET")                          // Step 2: Mandatory
+                .withHeader("Authorization", "Bearer sk_123") // Step 3: Optional
                 .build();
-        System.out.println(stepReq);
     }
 }
 ```
 
+### Execution Output:
+```text
+Executing [POST] to https://api.github.com/users/octocat
+  Headers: {Authorization=Bearer token_xyz, Content-Type=application/json}
+  Body: {"bio": "Updated via builder"}
+  Timeout: 15000 ms
+
+Executing [GET] to https://api.stripe.com/v1/charges
+  Headers: {Accept=application/json}
+  Timeout: 5000 ms
+```
+
 ---
 
-## 6. Execution Output
+## 8. Builder vs. Factory Pattern
+
+| Dimension | Builder Pattern | Factory Method / Abstract Factory |
+| :--- | :--- | :--- |
+| **Primary Intent** | Assembles a **single complex object** step-by-step with many optional properties. | Creates **families or polymorphic types** of related objects in a single shot. |
+| **Multi-Step Assembly** | Yes (`.withX().withY().build()`). | No (`factory.create(type)` in one step). |
+| **Output Representation** | Can construct diverse configurations of the same product class. | Yields different concrete subclass implementations of an interface. |
+
+---
+
+## 9. Interview Perspective
+
+- **Q: How does Builder ensure Immutability and Thread Safety?**
+  *A: The target object has only `final` fields, no setters, and a `private` constructor. The Builder collects parameters in a mutable workspace, then passes them atomically to create an immutable object on `.build()`.*
+- **Q: Where is Builder used in Java Standard Libraries & Popular Frameworks?**
+  *A: `java.lang.StringBuilder`, `java.net.http.HttpRequest.newBuilder()`, `Stream.builder()`, and Lombok's `@Builder` annotation.*
+- **Q: When should you avoid the Builder Pattern?**
+  *A: When the domain object has fewer than 3-4 fields that are all mandatory. Using a builder for tiny classes adds needless boilerplate without real benefit.*
+
+---
+
+## 10. Quick Revision
 
 ```text
-=================================================
-1. STANDARD BUILDER PATTERN
-=================================================
-HttpRequest[Method=POST, URL=https://api.stripe.com/v1/charges, Timeout=8000ms, Headers={Authorization=Bearer sk_test_secret123, Content-Type=application/json}, Body={"amount": 5000}]
-
-=================================================
-2. DIRECTOR RECIPES
-=================================================
-Quick GET: HttpRequest[Method=GET, URL=https://api.github.com/users/octocat, Timeout=2000ms, Headers={}, Body=]
-JSON POST: HttpRequest[Method=POST, URL=https://api.server.com/orders, Timeout=5000ms, Headers={Accept=application/json, Content-Type=application/json}, Body={"item": "Laptop"}]
-
-=================================================
-3. COMPILE-TIME STEP BUILDER
-=================================================
-StepHttpRequest[POST https://auth.mycompany.com/oauth/token, Headers={Client-Id=mobile-app}, Body=grant_type=client_credentials]
+Problem: Telescoping constructors (too many args) & JavaBean mutation (inconsistent state).
+Solution: Companion Builder with fluent method chaining (return this;), private target constructor.
+Director: Encapsulates standard configuration presets.
+Step Builder: Enforces mandatory fields in strict sequence at compile-time.
 ```
-
----
-
-## Quick Revision
-
-### Core Idea
-Separates the construction of a complex object from its representation, enabling step-by-step assembly of immutable objects while eliminating telescoping constructors and mutable JavaBean setters.
-
-### Remember
-- **Standard Builder**: Static nested `Builder` class with fluent method chaining returning `this`, and terminal `.build()` instantiating an immutable target.
-- **Director**: Coordinates reusable pre-assembled recipes for common object variations.
-- **Step Builder**: Chains sequential nested interfaces (`UrlStep` $\to$ `MethodStep` $\to$ `BuildStep`) to enforce mandatory construction steps at **compile time**.
-
-### Java Implementation Idea
-```java
-public static class Builder {
-    private String url;
-    public Builder withUrl(String u) { this.url = u; return this; }
-    public HttpRequest build() {
-        if (url == null) throw new IllegalStateException();
-        return new HttpRequest(this);
-    }
-}
-```
-
-### Most Important Interview Point
-**Builder vs Factory**: A **Factory** instantiates an entire family or polymorphic subtype in a single invocation (`createBurger()`), whereas a **Builder** constructs a single complex, highly configurable object through incremental, multi-step parameter assembly (`withBread().withCheese().build()`).
-
-### Common Trap
-Exposing public setters on the target object alongside a Builder. Setters break **immutability**, allowing external callers to corrupt the object's validated internal invariants after construction.

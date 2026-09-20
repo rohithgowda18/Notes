@@ -1,6 +1,6 @@
 # 32. State Design Pattern — Vending Machine
 
-> 💡 **Quick Revision Anchor**: The **State Pattern** is a **behavioral design pattern** that allows an object to alter its behavior when its internal state changes. The object appears to change its class dynamically. It eliminates complex `switch(state)` and nested `if-else` cascades by encapsulating state-specific behavior into dedicated polymorphic state classes.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the State Design Pattern faithfully derived from the complete lecture transcript. Connects object-oriented state management directly to **Theory of Computation (TOC)** and **Finite State Machine (FSM)** principles. Eliminates brittle nested `switch-case` statements by encapsulating lifecycle transitions into polymorphic state objects: `NoCoinState`, `HasCoinState`, `DispenseState`, and `SoldOutState`. Demonstrates bidirectional state transitions, safe coin insertion/refund, product selection, and out-of-stock restocking flows.
 
 ---
 

@@ -1,5 +1,9 @@
 # 15. Command Design Pattern
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Command Design Pattern faithfully derived from the complete lecture transcript. Explores how turning requests into first-class objects decouples the **Invoker** from the **Receiver**. Details the four essential participants: `Invoker`, `ICommand`, `ConcreteCommand`, and `Receiver`. Grounded in the lecture's canonical **Universal Smart Home Remote Control** (dynamic button slot binding and state toggling), with an in-depth implementation of a **Multi-Level Undo & Redo mechanism** using command history stacks.
+
+---
+
 ## 1. Introduction & Motivation
 
 In object-oriented software engineering, we frequently have an object (the **Source** or **Invoker**) that wants to trigger an action on another object (the **Receiver**). 

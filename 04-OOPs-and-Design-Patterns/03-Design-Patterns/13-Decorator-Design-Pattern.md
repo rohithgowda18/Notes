@@ -1,5 +1,9 @@
 # 13. Decorator Design Pattern
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Decorator Design Pattern faithfully derived from the complete lecture transcript. Explores the architectural hallmark of the Decorator: having **both an IS-A and HAS-A relationship** with the component interface. Resolves the catastrophic $2^N$ combinatorial class explosion of pure inheritance through runtime wrapping. Grounded in the instructor's **Super Mario Power-Up System** (`BasicMario` dynamically wrapped with `HeightUpDecorator`, `GunPowerDecorator`, and `StarPowerDecorator`), with production-grade enterprise extensions for **Rich Text Formatting** and **Web Request Security Middleware** (SQL injection and authentication filters).
+
+---
+
 ## 1. Overview
 
 The **Decorator Design Pattern** is a structural design pattern that allows attaching new responsibilities and behaviors to an object **dynamically at runtime** without altering its underlying class or resorting to inheritance. A Decorator simultaneously **"IS-A"** Component (so it can substitute for it) and **"HAS-A"** Component (so it wraps and delegates to it).

@@ -1,449 +1,595 @@
-# 18. Build Spotify / Music Player App LLD
+# 18. Build Spotify / Music Player App — LLD Case Study
 
-## 1. Problem Statement
-
-Design a robust, extensible, and modular Low-Level Object-Oriented system for a music streaming application (such as Spotify or Apple Music). The system must handle song libraries, playlists, audio playback controls, interchangeable playback modes (sequential, shuffle, repeat), multiple hardware audio output devices, and provide a unified client interface.
-
----
-
-## 2. Functional Requirements
-
-1. **Song & Playlist Management**: Create playlists, add/remove songs with metadata (title, artist, duration).
-2. **Playback Controls**: Play, pause, resume, stop, and skip to the next or previous track.
-3. **Playback Strategies**: Support sequential playback, random shuffle, and repeat playlist modes.
-4. **Audio Output Device Integration**: Route audio seamlessly through diverse hardware (Bluetooth speakers, wired headphones, TV cast) without coupling core logic to vendor drivers.
-5. **Unified Client Interface**: Expose a clean, cohesive façade for mobile and desktop applications.
+> 💡 **Quick Revision Anchor**
+> - **Domain:** Music Streaming & Player Application (Spotify / Apple Music LLD)
+> - **Key Architectural Patterns:**
+>   - **Facade Pattern:** `MusicPlayerFacade` acts as the single unified interface shielding clients from complex audio engine, device orchestration, and playlist state.
+>   - **Adapter Pattern:** Adapts various third-party audio hardware APIs (Bluetooth, Wired headphones) to a unified `IAudioOutputDevice` interface.
+>   - **Factory Pattern:** `DeviceFactory` encapsulates concrete device instantiation based on `DeviceType`.
+>   - **Strategy Pattern:** `IPlayStrategy` provides interchangeable playback algorithms (`SequentialPlayStrategy`, `RandomPlayStrategy`, `CustomQueuePlayStrategy`).
+>   - **Singleton Pattern:** Manages centralized registries via `DeviceManager` and `PlaylistManager`.
 
 ---
 
-## 3. Non-Functional Requirements
+## 1. Problem Statement & Requirements
 
-- **Single Audio Engine**: Ensure only one audio playback engine manages physical sound card hardware at any given moment (preventing audio overlap).
-- **Extensibility (OCP)**: Adding new playback modes or new audio output hardware requires zero changes to the core player engine.
-- **Low Latency**: Track switching and playback control operations must execute with minimal latency.
+We are designing the Low-Level Architecture for a Music Player Application (such as Spotify, Apple Music, or an integrated device audio player).
 
----
-
-## 4. Assumptions
-
-- Songs are represented as audio files with duration metadata.
-- Third-party hardware APIs for Bluetooth and wired drivers are simulated via adapter contracts.
-
----
-
-## 5. Core Entities
-
-- `Song`: Encapsulates song ID, title, artist, and duration.
-- `Playlist`: Encapsulates a named collection of songs.
-- `AudioEngine`: Singleton hardware buffer manager communicating with the physical sound card.
-- `PlaybackStrategy`: Strategy interface for playlist traversal.
-- `SequentialPlaybackStrategy`, `ShufflePlaybackStrategy`: Concrete playback strategies.
-- `AudioOutputDevice`: Adapter interface for physical audio hardware.
-- `BluetoothSpeakerAdapter`, `WiredHeadphoneAdapter`: Concrete hardware adapters.
-- `MusicPlayerFacade`: Unified façade orchestrating playback, playlists, and device management.
+### Functional Requirements:
+1. **Song Playback:** Play and pause individual songs.
+2. **Audio Hardware Support:** Support multiple audio output devices seamlessly (Internal Speaker, Bluetooth Speaker, Wired Headphones, etc.).
+3. **Playlists:**
+   - Create playlists and add songs to them.
+   - Load and switch active playlists.
+4. **Playback Modes (Strategies):**
+   - **Sequential Playback:** Play songs in standard playlist order (1st, 2nd, 3rd, ...), supporting Next and Previous.
+   - **Random / Shuffle Playback:** Randomly select unplayed tracks until the playlist is exhausted; support moving back through playback history.
+   - **Custom Queue Playback:** Allow the user to manually append tracks into a dynamic "play next" queue.
+5. **Single Entry Point (App Orchestrator):** A clean, intuitive client-facing application interface that prevents client code from wrestling with internal engines, audio drivers, and queues.
 
 ---
 
-## 6. Responsibilities
+## 2. Core Entities & Design Breakdown (Bottom-Up Approach)
 
-- `MusicPlayerFacade`: High-level entry point coordinating playlists, strategies, and output devices.
-- `AudioEngine`: Low-level singleton managing audio streaming buffers.
-- `PlaybackStrategy`: Determines the next song index based on the chosen algorithm.
-- `AudioOutputDevice`: Translates standard play requests into vendor-specific hardware drivers.
+We design the system using a **bottom-up approach**, starting with core domain entities and escalating to orchestration.
 
----
-
-## 7. Relationships
-
-- `Playlist` **HAS-A** collection of `Song` (Aggregation).
-- `MusicPlayerFacade` **HAS-A** `AudioEngine` (Singleton), `PlaybackStrategy` (Strategy), and `AudioOutputDevice` (Adapter).
-- `BluetoothSpeakerAdapter` **IMPLEMENTS** `AudioOutputDevice` and **WRAPS** `BluetoothHardwareAPI`.
-
----
-
-## 8. Interfaces
-
-```java
-public interface PlaybackStrategy {
-    Song getNextSong(List<Song> songs, int currentIndex);
-}
-
-public interface AudioOutputDevice {
-    void playAudio(Song song);
-}
+```
+       +--------------------------------------------------------+
+       |                     MusicPlayerApp                     | (Client Entry Point)
+       +--------------------------------------------------------+
+                                   |
+                                   ▼
+       +--------------------------------------------------------+
+       |                   MusicPlayerFacade                    | (Unified Facade)
+       +--------------------------------------------------------+
+           /                    |                    \
+          ▼                     ▼                     ▼
++-------------------+ +-------------------+ +-------------------+
+|   DeviceManager   | |   PlaylistManager | |    AudioEngine    |
+|    (Singleton)    | |    (Singleton)    | | (Core Controller) |
++-------------------+ +-------------------+ +-------------------+
+          |                     |                     |
+          ▼                     ▼                     ▼
+    DeviceFactory           Playlist           IAudioOutputDevice
+          |                     |              (Bluetooth/Wired)
+  IAudioOutputDevice      IPlayStrategy
+  (Adapters)             (Seq/Random/Q)
 ```
 
 ---
 
-## 9. Important Enums
-
-```java
-public enum PlaybackState {
-    PLAYING,
-    PAUSED,
-    STOPPED
-}
-
-public enum DeviceType {
-    BLUETOOTH,
-    WIRED,
-    AIRPLAY
-}
-```
-
----
-
-## 10. Design Patterns
-
-1. **Singleton Pattern**: Ensures a single `AudioEngine` manages hardware sound buffers.
-2. **Strategy Pattern**: Encapsulates interchangeable playback modes (`Sequential`, `Shuffle`).
-3. **Adapter Pattern**: Bridges third-party hardware APIs (`BluetoothAPI`, `WiredDriver`) to the standard `AudioOutputDevice` interface.
-4. **Factory Pattern**: Centralizes creation of audio output device adapters.
-5. **Facade Pattern**: `MusicPlayerFacade` exposes an intuitive, unified client API.
-
----
-
-## 11. Class Diagram
+## 3. Architecture & Class Diagram
 
 ```mermaid
 classDiagram
-    class MusicPlayerFacade {
-        -Playlist currentPlaylist
-        -PlaybackStrategy playbackStrategy
-        -AudioOutputDevice outputDevice
-        -AudioEngine audioEngine
-        -int currentSongIndex
-        -PlaybackState state
-        +play() void
-        +pause() void
-        +next() void
-        +setPlaybackStrategy(PlaybackStrategy s) void
-        +setOutputDevice(AudioOutputDevice d) void
+    class Song {
+        -String title
+        -String artist
+        -String path
+        +getTitle() String
+        +getArtist() String
     }
 
-    class AudioEngine {
-        -AudioEngine instance$
-        -AudioEngine()
-        +getInstance()$ AudioEngine
-        +loadBuffer(Song s) void
-        +releaseBuffer() void
-    }
-
-    class PlaybackStrategy {
-        <<interface>>
-        +getNextSong(List~Song~ songs, int curIdx) Song
-    }
-
-    class SequentialPlaybackStrategy {
-        +getNextSong(List~Song~ songs, int curIdx) Song
-    }
-
-    class ShufflePlaybackStrategy {
-        +getNextSong(List~Song~ songs, int curIdx) Song
-    }
-
-    class AudioOutputDevice {
+    class IAudioOutputDevice {
         <<interface>>
         +playAudio(Song song) void
     }
 
     class BluetoothSpeakerAdapter {
-        -BluetoothHardwareAPI btApi
+        -BluetoothAPI api
         +playAudio(Song song) void
     }
 
-    class WiredHeadphoneAdapter {
-        -WiredHardwareDriver wiredDriver
+    class WiredSpeakerAdapter {
+        -WiredAudioAPI api
         +playAudio(Song song) void
     }
 
-    MusicPlayerFacade --> AudioEngine : Uses Singleton
-    MusicPlayerFacade --> PlaybackStrategy : Strategy
-    MusicPlayerFacade --> AudioOutputDevice : Adapter
-    PlaybackStrategy <|.. SequentialPlaybackStrategy
-    PlaybackStrategy <|.. ShufflePlaybackStrategy
-    AudioOutputDevice <|.. BluetoothSpeakerAdapter
-    AudioOutputDevice <|.. WiredHeadphoneAdapter
+    class AudioEngine {
+        -Song currentSong
+        -boolean isPlaying
+        +play(Song song, IAudioOutputDevice device) void
+        +pause() void
+    }
+
+    class IPlayStrategy {
+        <<interface>>
+        +setPlaylist(Playlist playlist) void
+        +next() Song
+        +previous() Song
+        +hasNext() boolean
+    }
+
+    class SequentialPlayStrategy {
+        -int currentIndex
+    }
+
+    class RandomPlayStrategy {
+        -List~Song~ remainingSongs
+        -Stack~Song~ history
+    }
+
+    class CustomQueuePlayStrategy {
+        -Queue~Song~ nextQueue
+        -Stack~Song~ previousStack
+        +addToQueue(Song song) void
+    }
+
+    class Playlist {
+        -String name
+        -List~Song~ songs
+        +addSong(Song song) void
+        +getSongs() List~Song~
+    }
+
+    class DeviceManager {
+        <<Singleton>>
+        -IAudioOutputDevice currentDevice
+        +connect(DeviceType type) void
+        +getCurrentDevice() IAudioOutputDevice
+    }
+
+    class PlaylistManager {
+        <<Singleton>>
+        -Map~String, Playlist~ playlists
+        +createPlaylist(String name) Playlist
+        +getPlaylist(String name) Playlist
+    }
+
+    class MusicPlayerFacade {
+        -AudioEngine audioEngine
+        -DeviceManager deviceManager
+        -PlaylistManager playlistManager
+        -IPlayStrategy currentStrategy
+        -Playlist currentPlaylist
+        +connectDevice(DeviceType type) void
+        +loadPlaylist(String name) void
+        +setStrategy(IPlayStrategy strategy) void
+        +playNext() void
+        +playPrevious() void
+        +pause() void
+    }
+
+    IAudioOutputDevice <|.. BluetoothSpeakerAdapter
+    IAudioOutputDevice <|.. WiredSpeakerAdapter
+    IPlayStrategy <|.. SequentialPlayStrategy
+    IPlayStrategy <|.. RandomPlayStrategy
+    IPlayStrategy <|.. CustomQueuePlayStrategy
+    MusicPlayerFacade --> AudioEngine
+    MusicPlayerFacade --> DeviceManager
+    MusicPlayerFacade --> PlaylistManager
+    MusicPlayerFacade --> IPlayStrategy
+    AudioEngine --> IAudioOutputDevice
 ```
 
 ---
 
-## 12. Important Runtime Flows
+## 4. Java Implementation
 
-1. **Track Playback**: User triggers `play()` $\rightarrow$ Façade checks state $\rightarrow$ `AudioEngine` loads audio buffer $\rightarrow$ `AudioOutputDevice` outputs audio.
-2. **Skip to Next Track**: User calls `next()` $\rightarrow$ Façade queries `PlaybackStrategy.getNextSong()` $\rightarrow$ Updates current index $\rightarrow$ Routes new song to output device.
-3. **Switch Audio Output**: User connects Bluetooth $\rightarrow$ Façade switches active `AudioOutputDevice` to `BluetoothSpeakerAdapter` without interrupting playlist state.
-
----
-
-## 13. Sequence Diagram
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Mobile App UI
-    participant Facade as MusicPlayerFacade
-    participant Strat as ShufflePlaybackStrategy
-    participant Engine as AudioEngine (Singleton)
-    participant Dev as BluetoothSpeakerAdapter
-    participant HW as BluetoothHardwareAPI
-
-    User->>Facade: next()
-    activate Facade
-    Facade->>Strat: getNextSong(songs, currentIdx)
-    Strat-->>Facade: Returns next random Song ("Bohemian Rhapsody")
-    Facade->>Engine: loadBuffer(song)
-    Engine-->>Facade: Buffer Loaded
-    Facade->>Dev: playAudio(song)
-    activate Dev
-    Dev->>HW: sendAudioBytes(song.getTitle())
-    HW-->>Dev: Hardware streaming active
-    deactivate Dev
-    Facade-->>User: Playing "Bohemian Rhapsody" via Bluetooth
-    deactivate Facade
-```
-
----
-
-## 14. Java Implementation
-
+### Step 1: Core Domain Entities & Device Enums
 ```java
-import java.util.*;
-
-// ==========================================
-// 1. DOMAIN MODELS & ENUMS
-// ==========================================
-public enum PlaybackState { PLAYING, PAUSED, STOPPED }
-
 public class Song {
-    private final String id;
     private final String title;
     private final String artist;
-    private final int durationSeconds;
+    private final String path;
 
-    public Song(String id, String title, String artist, int durationSeconds) {
-        this.id = Objects.requireNonNull(id);
-        this.title = Objects.requireNonNull(title);
-        this.artist = Objects.requireNonNull(artist);
-        this.durationSeconds = durationSeconds;
+    public Song(String title, String artist, String path) {
+        this.title = title;
+        this.artist = artist;
+        this.path = path;
     }
 
     public String getTitle() { return title; }
     public String getArtist() { return artist; }
-    public int getDurationSeconds() { return durationSeconds; }
+
+    @Override
+    public String toString() {
+        return "'" + title + "' by " + artist;
+    }
 }
+
+public enum DeviceType {
+    BLUETOOTH, WIRED, HEADPHONES
+}
+```
+
+---
+
+### Step 2: Output Hardware Abstraction (Adapter Pattern)
+```java
+// Target interface for all audio output devices
+public interface IAudioOutputDevice {
+    void playAudio(Song song);
+}
+
+// Simulated 3rd-party Bluetooth driver API
+class BluetoothAPI {
+    public void streamBluetoothSound(String trackPath) {
+        System.out.println("[Bluetooth Stream] Transmitting audio packets from: " + trackPath);
+    }
+}
+
+// Adapter for Bluetooth hardware
+public class BluetoothSpeakerAdapter implements IAudioOutputDevice {
+    private final BluetoothAPI api = new BluetoothAPI();
+
+    @Override
+    public void playAudio(Song song) {
+        System.out.println("Output -> Bluetooth Speaker: Playing " + song);
+        api.streamBluetoothSound(song.getTitle());
+    }
+}
+
+// Adapter for Wired connection
+public class WiredSpeakerAdapter implements IAudioOutputDevice {
+    @Override
+    public void playAudio(Song song) {
+        System.out.println("Output -> 3.5mm Aux / Wired Headphones: Playing " + song);
+    }
+}
+```
+
+---
+
+### Step 3: Hardware Factory & Device Manager (Factory + Singleton)
+```java
+public class DeviceFactory {
+    public static IAudioOutputDevice createDevice(DeviceType type) {
+        return switch (type) {
+            case BLUETOOTH -> new BluetoothSpeakerAdapter();
+            case WIRED, HEADPHONES -> new WiredSpeakerAdapter();
+        };
+    }
+}
+
+// Singleton Device Manager
+public class DeviceManager {
+    private static DeviceManager instance;
+    private IAudioOutputDevice currentDevice;
+
+    private DeviceManager() {}
+
+    public static synchronized DeviceManager getInstance() {
+        if (instance == null) {
+            instance = new DeviceManager();
+        }
+        return instance;
+    }
+
+    public void connect(DeviceType type) {
+        this.currentDevice = DeviceFactory.createDevice(type);
+        System.out.println("Device connected: " + type);
+    }
+
+    public IAudioOutputDevice getCurrentDevice() {
+        if (currentDevice == null) {
+            // Default fallback
+            currentDevice = new WiredSpeakerAdapter();
+        }
+        return currentDevice;
+    }
+}
+```
+
+---
+
+### Step 4: Core Audio Engine
+```java
+public class AudioEngine {
+    private Song currentSong;
+    private boolean isPlaying = false;
+
+    public void play(Song song, IAudioOutputDevice device) {
+        this.currentSong = song;
+        this.isPlaying = true;
+        device.playAudio(song);
+    }
+
+    public void pause() {
+        if (isPlaying && currentSong != null) {
+            System.out.println("AudioEngine: Paused " + currentSong);
+            isPlaying = false;
+        } else {
+            System.out.println("AudioEngine: No active song to pause.");
+        }
+    }
+
+    public Song getCurrentSong() { return currentSong; }
+    public boolean isPlaying() { return isPlaying; }
+}
+```
+
+---
+
+### Step 5: Playlist & Playback Strategies (Strategy Pattern)
+```java
+import java.util.*;
 
 public class Playlist {
     private final String name;
     private final List<Song> songs = new ArrayList<>();
 
     public Playlist(String name) { this.name = name; }
-    public void addSong(Song song) { if (song != null) songs.add(song); }
-    public List<Song> getSongs() { return Collections.unmodifiableList(songs); }
+
+    public void addSong(Song song) { songs.add(song); }
     public String getName() { return name; }
+    public List<Song> getSongs() { return songs; }
 }
 
-// ==========================================
-// 2. SINGLETON AUDIO ENGINE (Hardware Buffer)
-// ==========================================
-public class AudioEngine {
-    private static volatile AudioEngine instance;
-    private AudioEngine() {}
-
-    public static AudioEngine getInstance() {
-        if (instance == null) {
-            synchronized (AudioEngine.class) {
-                if (instance == null) {
-                    instance = new AudioEngine();
-                }
-            }
-        }
-        return instance;
-    }
-
-    public void loadBuffer(Song song) {
-        System.out.println("🎛️ [AudioEngine] Loaded sound buffer for: " + song.getTitle());
-    }
-
-    public void releaseBuffer() {
-        System.out.println("🎛️ [AudioEngine] Sound buffer released.");
-    }
+// Strategy Interface
+public interface IPlayStrategy {
+    void setPlaylist(Playlist playlist);
+    Song next();
+    Song previous();
+    boolean hasNext();
 }
 
-// ==========================================
-// 3. STRATEGY PATTERN (Playback Algorithms)
-// ==========================================
-public interface PlaybackStrategy {
-    Song getNextSong(List<Song> songs, int currentIndex);
-}
+// 1. Sequential Playback Strategy
+public class SequentialPlayStrategy implements IPlayStrategy {
+    private Playlist playlist;
+    private int currentIndex = -1;
 
-public class SequentialPlaybackStrategy implements PlaybackStrategy {
     @Override
-    public Song getNextSong(List<Song> songs, int currentIndex) {
-        if (songs.isEmpty()) return null;
-        int nextIndex = (currentIndex + 1) % songs.size();
-        return songs.get(nextIndex);
+    public void setPlaylist(Playlist playlist) {
+        this.playlist = playlist;
+        this.currentIndex = -1;
+    }
+
+    @Override
+    public Song next() {
+        if (!hasNext()) return null;
+        currentIndex++;
+        return playlist.getSongs().get(currentIndex);
+    }
+
+    @Override
+    public Song previous() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            return playlist.getSongs().get(currentIndex);
+        }
+        return null;
+    }
+
+    @Override
+    public boolean hasNext() {
+        return playlist != null && currentIndex + 1 < playlist.getSongs().size();
     }
 }
 
-public class ShufflePlaybackStrategy implements PlaybackStrategy {
+// 2. Random / Shuffle Strategy with History Stack
+public class RandomPlayStrategy implements IPlayStrategy {
+    private final List<Song> remainingSongs = new ArrayList<>();
+    private final Stack<Song> history = new Stack<>();
     private final Random random = new Random();
 
     @Override
-    public Song getNextSong(List<Song> songs, int currentIndex) {
-        if (songs.isEmpty()) return null;
-        int randomIndex = random.nextInt(songs.size());
-        return songs.get(randomIndex);
-    }
-}
-
-// ==========================================
-// 4. ADAPTER PATTERN (Hardware Audio Output)
-// ==========================================
-public interface AudioOutputDevice {
-    void playAudio(Song song);
-}
-
-// Simulated incompatible 3rd-party vendor SDKs
-class BluetoothHardwareAPI {
-    public void streamToSpeaker(String trackName) {
-        System.out.println("📶 [Bluetooth API] Streaming audio packets to wireless speaker: " + trackName);
-    }
-}
-
-class WiredHardwareDriver {
-    public void sendPcmAudio(String trackName) {
-        System.out.println("🎧 [Wired Driver] Outputting analog 3.5mm jack signal: " + trackName);
-    }
-}
-
-// Adapters
-public class BluetoothSpeakerAdapter implements AudioOutputDevice {
-    private final BluetoothHardwareAPI btApi = new BluetoothHardwareAPI();
-
-    @Override
-    public void playAudio(Song song) {
-        btApi.streamToSpeaker(song.getTitle() + " by " + song.getArtist());
-    }
-}
-
-public class WiredHeadphoneAdapter implements AudioOutputDevice {
-    private final WiredHardwareDriver driver = new WiredHardwareDriver();
-
-    @Override
-    public void playAudio(Song song) {
-        driver.sendPcmAudio(song.getTitle() + " by " + song.getArtist());
-    }
-}
-
-// ==========================================
-// 5. UNIFIED CLIENT FAÇADE
-// ==========================================
-public class MusicPlayerFacade {
-    private final AudioEngine audioEngine;
-    private Playlist playlist;
-    private PlaybackStrategy playbackStrategy;
-    private AudioOutputDevice outputDevice;
-    private int currentSongIndex = -1;
-    private PlaybackState state = PlaybackState.STOPPED;
-
-    public MusicPlayerFacade(Playlist playlist, PlaybackStrategy strategy, AudioOutputDevice device) {
-        this.audioEngine = AudioEngine.getInstance();
-        this.playlist = Objects.requireNonNull(playlist);
-        this.playbackStrategy = Objects.requireNonNull(strategy);
-        this.outputDevice = Objects.requireNonNull(device);
-    }
-
-    public void play() {
-        if (playlist.getSongs().isEmpty()) return;
-        if (currentSongIndex == -1) currentSongIndex = 0;
-
-        Song currentSong = playlist.getSongs().get(currentSongIndex);
-        audioEngine.loadBuffer(currentSong);
-        outputDevice.playAudio(currentSong);
-        state = PlaybackState.PLAYING;
-    }
-
-    public void next() {
-        Song nextSong = playbackStrategy.getNextSong(playlist.getSongs(), currentSongIndex);
-        if (nextSong != null) {
-            currentSongIndex = playlist.getSongs().indexOf(nextSong);
-            audioEngine.loadBuffer(nextSong);
-            outputDevice.playAudio(nextSong);
-            state = PlaybackState.PLAYING;
+    public void setPlaylist(Playlist playlist) {
+        remainingSongs.clear();
+        history.clear();
+        if (playlist != null) {
+            remainingSongs.addAll(playlist.getSongs());
         }
     }
 
-    public void pause() {
-        state = PlaybackState.PAUSED;
-        System.out.println("⏸️ [Playback] Paused.");
+    @Override
+    public Song next() {
+        if (remainingSongs.isEmpty()) return null;
+        int randomIndex = random.nextInt(remainingSongs.size());
+        Song chosen = remainingSongs.remove(randomIndex);
+        history.push(chosen);
+        return chosen;
     }
 
-    public void setPlaybackStrategy(PlaybackStrategy strategy) {
-        this.playbackStrategy = Objects.requireNonNull(strategy);
-        System.out.println("🔀 Playback mode changed.");
+    @Override
+    public Song previous() {
+        if (history.size() > 1) {
+            remainingSongs.add(history.pop()); // Return current to pool
+            return history.peek();             // Return previous
+        }
+        return null;
     }
 
-    public void setOutputDevice(AudioOutputDevice device) {
-        this.outputDevice = Objects.requireNonNull(device);
-        System.out.println("🔊 Audio output device switched.");
+    @Override
+    public boolean hasNext() {
+        return !remainingSongs.isEmpty();
+    }
+}
+
+// 3. Custom Queue Strategy
+public class CustomQueuePlayStrategy implements IPlayStrategy {
+    private final Queue<Song> nextQueue = new LinkedList<>();
+    private final Stack<Song> history = new Stack<>();
+
+    @Override
+    public void setPlaylist(Playlist playlist) {
+        nextQueue.clear();
+        history.clear();
+        if (playlist != null) {
+            nextQueue.addAll(playlist.getSongs());
+        }
+    }
+
+    public void addToNext(Song song) {
+        nextQueue.add(song);
+        System.out.println("Added to queue: " + song.getTitle());
+    }
+
+    @Override
+    public Song next() {
+        if (nextQueue.isEmpty()) return null;
+        Song next = nextQueue.poll();
+        history.push(next);
+        return next;
+    }
+
+    @Override
+    public Song previous() {
+        if (history.size() > 1) {
+            return history.pop();
+        }
+        return null;
+    }
+
+    @Override
+    public boolean hasNext() {
+        return !nextQueue.isEmpty();
     }
 }
 ```
 
 ---
 
-## 15. Edge Cases
+### Step 6: Playlist Manager (Singleton Pattern)
+```java
+public class PlaylistManager {
+    private static PlaylistManager instance;
+    private final Map<String, Playlist> playlists = new HashMap<>();
 
-- **Empty Playlist**: Calling `play()` or `next()` on an empty playlist returns gracefully without throwing `IndexOutOfBoundsException`.
-- **Single-Song Playlist with Shuffle**: In a 1-song playlist, `ShufflePlaybackStrategy` safely repeats the same song.
+    private PlaylistManager() {}
 
----
+    public static synchronized PlaylistManager getInstance() {
+        if (instance == null) instance = new PlaylistManager();
+        return instance;
+    }
 
-## 16. Concurrency Considerations
+    public Playlist createPlaylist(String name) {
+        Playlist pl = new Playlist(name);
+        playlists.put(name, pl);
+        return pl;
+    }
 
-- Playback state transitions (`play()`, `pause()`, `next()`) must be thread-safe if triggered concurrently by UI threads, Bluetooth headphone hardware buttons, and lock-screen media controls.
-
----
-
-## 17. Extensibility
-
-- **New Audio Output**: Adding support for **Sonos Wi-Fi Casting** requires creating `SonosCastAdapter implements AudioOutputDevice` without editing `MusicPlayerFacade`.
-
----
-
-## 18. Trade-offs
-
-- **Memory Buffering vs Streaming**: Loading whole song buffers into heap memory crashes mobile devices; production implementations stream chunks via ring buffers.
-
----
-
-## 19. Interview Questions
-
-1. **How do 5 design patterns coordinate in Spotify LLD?**
-   - *Answer*: Singleton manages the single physical `AudioEngine`; Strategy manages interchangeable playback modes (Shuffle vs Sequential); Adapter bridges third-party audio drivers (Bluetooth, Wired); Factory instantiates device adapters; Facade unifies operations into a simple client API.
-2. **Why is the AudioEngine implemented as a Singleton?**
-   - *Answer*: To prevent multiple audio hardware controllers from operating simultaneously, which would cause overlapping, cacophonous audio streams.
-3. **How does the Adapter pattern protect the application from third-party driver changes?**
-   - *Answer*: By wrapping vendor SDKs inside adapters, any breaking vendor changes are contained strictly within the adapter class, leaving playback and playlist services untouched.
+    public Playlist getPlaylist(String name) {
+        return playlists.get(name);
+    }
+}
+```
 
 ---
 
-## 20. Quick Revision
+### Step 7: The Unified Facade (`MusicPlayerFacade`)
+```java
+public class MusicPlayerFacade {
+    private final AudioEngine audioEngine;
+    private final DeviceManager deviceManager;
+    private final PlaylistManager playlistManager;
+    private IPlayStrategy playStrategy;
+    private Playlist currentPlaylist;
 
-### Core Idea
-> Spotify LLD orchestrates 5 design patterns: Singleton (Audio Engine), Strategy (Playback Modes), Adapter (Output Devices), Factory (Device Creation), and Facade (Client API).
+    public MusicPlayerFacade() {
+        this.audioEngine = new AudioEngine();
+        this.deviceManager = DeviceManager.getInstance();
+        this.playlistManager = PlaylistManager.getInstance();
+        this.playStrategy = new SequentialPlayStrategy(); // Default strategy
+    }
 
-### Remember
-- AudioEngine is a Singleton to prevent overlapping sound card access.
-- Strategy allows dynamic switching between Sequential and Shuffle modes.
-- Adapter isolates third-party Bluetooth and wired hardware SDKs.
+    public void connectAudioDevice(DeviceType type) {
+        deviceManager.connect(type);
+    }
 
-### Java Implementation Idea
-> Implement `AudioEngine.getInstance()`, `PlaybackStrategy` (Sequential/Shuffle), `AudioOutputDevice` adapters, and coordinate them inside `MusicPlayerFacade`.
+    public void createPlaylist(String name) {
+        playlistManager.createPlaylist(name);
+    }
 
-### Most Important Interview Point
-> Articulate how all 5 patterns interact harmoniously to provide a clean, extensible media player architecture.
+    public void addSongToPlaylist(String playlistName, Song song) {
+        Playlist pl = playlistManager.getPlaylist(playlistName);
+        if (pl != null) pl.addSong(song);
+    }
 
-### Common Trap
-> Do not couple playback algorithms directly inside the `Playlist` class; extract them into independent strategies.
+    public void loadPlaylist(String name) {
+        this.currentPlaylist = playlistManager.getPlaylist(name);
+        playStrategy.setPlaylist(currentPlaylist);
+        System.out.println("Loaded playlist: " + name);
+    }
+
+    public void setPlayStrategy(IPlayStrategy strategy) {
+        this.playStrategy = strategy;
+        this.playStrategy.setPlaylist(currentPlaylist);
+        System.out.println("Playback strategy switched to: " + strategy.getClass().getSimpleName());
+    }
+
+    public void playNext() {
+        if (playStrategy == null || !playStrategy.hasNext()) {
+            System.out.println("Playlist finished / No next track.");
+            return;
+        }
+        Song song = playStrategy.next();
+        audioEngine.play(song, deviceManager.getCurrentDevice());
+    }
+
+    public void playPrevious() {
+        if (playStrategy == null) return;
+        Song prev = playStrategy.previous();
+        if (prev != null) {
+            audioEngine.play(prev, deviceManager.getCurrentDevice());
+        } else {
+            System.out.println("No previous track available.");
+        }
+    }
+
+    public void pause() {
+        audioEngine.pause();
+    }
+}
+```
+
+---
+
+### Step 8: Client Application Orchestration
+```java
+public class MusicPlayerApp {
+    public static void main(String[] args) {
+        MusicPlayerFacade app = new MusicPlayerFacade();
+
+        // 1. Connect output device
+        app.connectAudioDevice(DeviceType.BLUETOOTH);
+
+        // 2. Build songs and playlist
+        app.createPlaylist("Bollywood Hits");
+        app.addSongToPlaylist("Bollywood Hits", new Song("Chaiyya Chaiyya", "Sukhwinder Singh", "/music/chaiyya.mp3"));
+        app.addSongToPlaylist("Bollywood Hits", new Song("Tum Hi Ho", "Arijit Singh", "/music/tum_hi_ho.mp3"));
+        app.addSongToPlaylist("Bollywood Hits", new Song("Jai Ho", "A.R. Rahman", "/music/jai_ho.mp3"));
+
+        // 3. Load playlist and play sequentially
+        app.loadPlaylist("Bollywood Hits");
+        System.out.println("\n--- Playing Sequential Tracks ---");
+        app.playNext(); // Chaiyya Chaiyya
+        app.playNext(); // Tum Hi Ho
+
+        // 4. Pause playback
+        app.pause();
+
+        // 5. Switch to Shuffle / Random Strategy
+        System.out.println("\n--- Switching to Shuffle Strategy ---");
+        app.setPlayStrategy(new RandomPlayStrategy());
+        app.playNext();
+
+        // 6. Navigate back
+        System.out.println("\n--- Play Previous Track ---");
+        app.playPrevious();
+    }
+}
+```
+
+---
+
+## 5. Summary of Design Patterns Applied
+
+| Pattern | Where Used in Spotify Case Study | Purpose |
+| :--- | :--- | :--- |
+| **Facade Pattern** | `MusicPlayerFacade` | Simplifies the entire subsystem (AudioEngine, DeviceManager, PlaylistManager, Strategies) behind unified methods (`playNext()`, `loadPlaylist()`). |
+| **Adapter Pattern** | `BluetoothSpeakerAdapter`, `WiredSpeakerAdapter` | Converts proprietary third-party audio hardware APIs to `IAudioOutputDevice`. |
+| **Factory Pattern** | `DeviceFactory` | Centralizes creation of audio output adapters by `DeviceType`. |
+| **Strategy Pattern** | `SequentialPlayStrategy`, `RandomPlayStrategy`, `CustomQueuePlayStrategy` | Encapsulates distinct playback ordering algorithms, swappable at runtime. |
+| **Singleton Pattern** | `DeviceManager`, `PlaylistManager` | Centralizes hardware connection state and playlist storage across the app. |
+
+---
+
+## 6. Interview Perspective & Follow-Up Questions
+
+- **Q: How would you support physical media buttons (Play, Pause, Skip) on a dedicated hardware player?**
+  *A: Introduce the **Command Pattern**. Create `PlayCommand`, `PauseCommand`, and `SkipCommand` objects that encapsulate calls to `MusicPlayerFacade`. Physical button presses trigger the command.*
+- **Q: How would you update a UI / Lock Screen notification when the track changes?**
+  *A: Apply the **Observer Pattern**. `AudioEngine` acts as Subject and emits `trackChanged(Song song)` events to UI observers (`LockScreenWidget`, `NowPlayingScreen`).*
+- **Q: How to handle infinite repeating playlists?**
+  *A: Implement a `RepeatAllStrategy` or `RepeatOneStrategy` extending `IPlayStrategy` where `hasNext()` always returns `true` and resets index to 0 upon reaching the end.*

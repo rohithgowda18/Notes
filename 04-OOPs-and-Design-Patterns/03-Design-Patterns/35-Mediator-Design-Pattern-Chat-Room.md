@@ -1,6 +1,6 @@
 # 35. Mediator Design Pattern — Chat Room
 
-> 💡 **Quick Revision Anchor**: The **Mediator Pattern** is a **behavioral design pattern** that reduces chaotic point-to-point dependencies between objects by forcing them to communicate exclusively through a central mediator object. It replaces a high-complexity $O(N^2)$ **mesh topology** with a clean $O(N)$ **hub-and-spoke star topology**.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Mediator Design Pattern faithfully derived from the complete lecture transcript. Explores how the Mediator resolves chaotic $O(N^2)$ direct **mesh coupling** among peer objects (colleagues) by establishing an $O(N)$ centralized **star hub-and-spoke topology**. Grounded in the lecture's canonical **Chat Room System** supporting broadcast group messaging, targeted direct messages, and dynamic peer **muting/blocking controls**, along with the classic **Air Traffic Control (ATC)** aviation analogy. Highlights the core architectural contrast between **Mediator** (many-to-many communication) and **Observer** (one-to-many event broadcast).
 
 ---
 

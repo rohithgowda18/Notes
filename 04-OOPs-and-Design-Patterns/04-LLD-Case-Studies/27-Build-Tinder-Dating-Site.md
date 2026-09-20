@@ -1,554 +1,478 @@
-# 27. Build Tinder — Dating Site LLD
+# 27. Build Tinder — Dating Site — LLD Case Study
 
-> 💡 **Quick Revision Anchor**: A comprehensive machine-coding architecture for a modern dating platform (Tinder/Bumble) coordinating three GoF design patterns: **Observer Pattern** (event-driven dispatch for *Mutual Match* alerts and *New Message* notifications), **Strategy Pattern** (pluggable *Match Scoring & Recommendation* algorithms combining geo-proximity, age filters, and shared interests), and **Mediator Pattern** (`ChatRoom` orchestrating private 1-to-1 conversations strictly unlocked after mutual right-swipes).
-
----
-
-## 1. Problem Statement & Functional Requirements
-
-The objective is to design the core Low-Level Architecture for a location-aware dating application where users create profiles, discover nearby compatible candidates, perform swipe actions (`LEFT` / `RIGHT`), detect mutual matches in real time, receive push notifications, and communicate via private chat sessions.
-
-### Functional Requirements (Taught in Lecture):
-1. **User Profile & Discovery Preferences**:
-   - `UserProfile`: Intrinsic personal identity (Name, Age, Gender, Bio, Photo URLs, Interest Tags, GPS Coordinates).
-   - `UserPreferences`: Partner discovery criteria (Age Range `[minAge, maxAge]`, Preferred Gender, Maximum Search Distance).
-2. **Swipe Engine & Mutual Match Detection**:
-   - Record `LEFT_SWIPE` (pass) and `RIGHT_SWIPE` (like).
-   - When User A swipes right on User B, check if User B previously swiped right on User A.
-   - If mutual right-swipes exist $\implies$ Trigger a **Match Event**.
-3. **Pluggable Matching & Scoring Engine (Strategy Pattern)**:
-   - Rank and recommend potential candidates using composite compatibility scores:
-     - Distance proximity score.
-     - Age preference alignment score.
-     - Shared interest overlap score (e.g., Coding, Painting, Hiking).
-4. **Real-Time Notification Engine (Observer Pattern)**:
-   - Immediately notify both users when a mutual match occurs.
-   - Notify the recipient when a new chat message arrives.
-5. **Private Chat System (Mediator Pattern)**:
-   - Once matched, initialize a private `ChatRoom` allowing timestamped message exchanges between the two matched users.
+> 💡 **Quick Revision Anchor**
+> - **Domain:** Online Dating & Social Discovery Platform (Tinder / Bumble / Hinge LLD)
+> - **Key Architectural Patterns:**
+>   - **Observer Pattern:** `NotificationService` alerts users immediately when a mutual match occurs or a new message arrives.
+>   - **Strategy Pattern:** `MatchingStrategy` encapsulates recommendation algorithms (filtering by distance, age range, gender preference, and shared interests).
+>   - **Mutual Match State Machine:** Swiping right registers intent; a bilateral like triggers state transition to "Match" and unlocks a dedicated `ChatRoom`.
+>   - **Facade Pattern:** `DatingApp` serves as the client-facing orchestrator for onboarding, swiping, recommendation feeds, and messaging.
 
 ---
 
-## 2. Architecture & Design Patterns Map
+## 1. Problem Statement & Requirements
 
-```mermaid
-flowchart TD
-    Client([User: Rohan / Neha]) --> Engine["TinderEngine (Facade)"]
-    
-    subgraph "Domain Layer"
-        Engine --> User["User Entity"]
-        User *-- Profile["UserProfile (Who I Am)"]
-        User *-- Pref["UserPreferences (What I Want)"]
-    end
+We are designing the Low-Level Architecture for a location-based dating platform like **Tinder**.
 
-    subgraph "Matching & Ranking (Strategy Pattern)"
-        Engine --> Matcher["MatchingStrategy"]
-        Matcher --> CompositeScore["CompositeScorer (Distance + Age + Interests)"]
-    end
+### Functional Requirements:
+1. **User Profile Management:**
+   - Create profile with ID, Name, Age, Gender, Location (`x, y`), and a set of Interests.
+   - Configure partner preferences (target gender, age range, max distance).
+2. **Recommendation Feed (Candidate Discovery):**
+   - Provide a feed of potential matches filtered by user preferences and proximity.
+3. **Swipe Engine:**
+   - Support `SWIPE_RIGHT` (Like) and `SWIPE_LEFT` (Pass).
+   - Track like history per user.
+4. **Mutual Matching:**
+   - When User A likes User B, check if User B has already liked User A.
+   - If bilateral like exists:
+     - Flag as **"It's a Match!"**.
+     - Notify both users via real-time notification alerts.
+     - Automatically create and unlock a private `ChatRoom`.
+5. **Gated Chat & Messaging:**
+   - Users can **only** exchange messages if they have mutually matched.
 
-    subgraph "Swiping & Matching Engine"
-        Engine --> SwipeService["SwipeService"]
-        SwipeService --> LikeStore[("Likes Registry: Map<User, Set<User>>")]
-    end
+---
 
-    subgraph "Event Dispatch (Observer Pattern)"
-        SwipeService -->|On Mutual Match| NotifService["NotificationService (Observable)"]
-        NotifService --> UserNotif["User Push Notifications (Observer)"]
-    end
+## 2. Core Entities & Architectural Flow
 
-    subgraph "Messaging (Mediator Pattern)"
-        Engine --> ChatService["ChatService"]
-        ChatService --> Room["ChatRoom (Mediator)"]
-        Room --> Msg["Message Queue (Timestamped)"]
-    end
+```
+                      [DatingApp (Facade)]
+                               │
+       ┌───────────────────────┼───────────────────────┐
+       ▼                       ▼                       ▼
+┌──────────────┐       ┌──────────────┐       ┌─────────────────┐
+│ User Service │       │ Match Engine │       │ Chat & Messages │
+│ & Profiles   │       │(Swipe Track) │       │ (Mutual Gated)  │
+└──────────────┘       └───────┬──────┘       └─────────────────┘
+                               │
+             ┌─────────────────┴─────────────────┐
+             ▼                                   ▼
+   MatchingStrategy                     NotificationService
+(Distance, Age, Interests)              (Observer Pattern)
+```
 
-    style Client fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style Engine fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style SwipeService fill:#e8f8f5,stroke:#26a69a,stroke-width:2px
-    style Room fill:#f3e5f5,stroke:#8e24aa,stroke-width:2px
+### The Mutual Match Lifecycle:
+```
+User A swipes RIGHT on User B
+            │
+            ▼
+Record in userLikesMap: A ➔ {B}
+            │
+            ▼
+Does User B already like User A? (B ➔ {A}?)
+         /     \
+       NO       YES (Mutual Match!)
+       │         │
+    Wait for     ├──▶ Notify User A ("It's a Match with User B!")
+    User B swipe ├──▶ Notify User B ("It's a Match with User A!")
+                 └──▶ Create private ChatRoom (id: "A_B")
 ```
 
 ---
 
-## 3. Top-Down vs. Bottom-Up Architectural Approach
-
-In the lecture, the instructor explains an important machine-coding design distinction:
-- **Bottom-Up Design**: Suitable for simple problems with 2–3 classes where you design primitive entities first and assemble them upward.
-- **Top-Down Design**: Crucial for complex systems with 10+ interrelated entities (Users, Profiles, Preferences, Swipes, Matches, ChatRooms, Messages, Observers).
-  - First, define the overarching user lifecycle (**Profile Creation $\to$ Candidate Discovery $\to$ Swipe Interaction $\to$ Mutual Match $\to$ Chatroom Engagement**).
-  - Then, drill down into granular domain contracts and design patterns.
-
----
-
-## 4. Class Diagram & System Architecture
+## 3. Architecture & Class Diagram
 
 ```mermaid
 classDiagram
-    class UserProfile {
+    class User {
+        -String id
         -String name
         -int age
         -String gender
-        -String bio
-        -List~String~ photos
+        -Location location
         -Set~String~ interests
-        -double latitude
-        -double longitude
-        +getName() String
-        +getInterests() Set~String~
+        -UserPreference preference
+        +update(String message) void
     }
 
-    class UserPreferences {
-        -int minAge
-        -int maxAge
-        -String preferredGender
-        -double maxDistanceKm
-        +matches(UserProfile p, double dist) boolean
+    class Location {
+        -double x
+        -double y
+        +distanceTo(Location other) double
     }
 
-    class User {
-        -int id
-        -UserProfile profile
-        -UserPreferences preferences
-        +getId() int
-        +getProfile() UserProfile
-        +onNotification(String msg)
-    }
-
-    class SwipeType {
-        <<enumeration>>
-        LEFT_SWIPE
-        RIGHT_SWIPE
-    }
-
-    class IMatchingStrategy {
+    class MatchingStrategy {
         <<interface>>
-        +calculateScore(UserProfile u1, UserProfile u2) double
+        +findPotentialMatches(User current, List~User~ allUsers) List~User~
     }
 
-    class CompositeMatchingStrategy {
-        +calculateScore(UserProfile u1, UserProfile u2) double
+    class DefaultMatchingStrategy {
+        +findPotentialMatches(User current, List~User~ allUsers) List~User~
     }
 
-    class SwipeService {
-        -Map~Integer, Set~Integer~~ rightSwipes
-        -NotificationService notifService
-        +swipe(int fromUserId, int toUserId, SwipeType type) boolean
+    class NotificationService {
+        <<Singleton>>
+        -Map~String, User~ registeredUsers
+        +notifyUser(String userId, String message) void
     }
 
     class ChatRoom {
-        -int user1Id
-        -int user2Id
-        -List~Message~ messages
-        +sendMessage(int senderId, String text)
-        +displayChat()
+        -String roomId
+        -List~String~ messages
+        +addMessage(String sender, String text) void
+        +getMessages() List~String~
     }
 
-    class Message {
-        -int senderId
-        -String text
-        -String timestamp
+    class DatingApp {
+        -Map~String, User~ users
+        -Map~String, Set~String~~ userLikes
+        -Map~String, ChatRoom~ chatRooms
+        -MatchingStrategy matchingStrategy
+        -NotificationService notificationService
+        +registerUser(User user) void
+        +swipe(String fromUserId, String toUserId, boolean isLike) boolean
+        +sendMessage(String fromUserId, String toUserId, String text) void
     }
 
-    IMatchingStrategy <|.. CompositeMatchingStrategy : Implements
-    User *-- UserProfile
-    User *-- UserPreferences
-    ChatRoom *-- Message : Contains
-    SwipeService o--> User : Evaluates
+    MatchingStrategy <|.. DefaultMatchingStrategy
+    DatingApp --> MatchingStrategy
+    DatingApp --> NotificationService
+    DatingApp o--> User
+    DatingApp o--> ChatRoom
 ```
 
 ---
 
-## 5. Complete, Compilable Java Implementation
+## 4. Java Implementation
 
-Below is the complete, self-contained Java implementation featuring the exact lecture walkthrough with **Rohan** (Software Developer, Bangalore) and **Neha** (Teacher, Bangalore).
-
+### Step 1: User, Location & Preference Models
 ```java
-package com.designpatterns.casestudy.tinder;
-
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-// ============================================================================
-// 1. DOMAIN MODELS: USER PROFILE & PREFERENCES
-// ============================================================================
+public class Location {
+    private final double x;
+    private final double y;
 
-class UserProfile {
-    private final String name;
-    private final int age;
-    private final String gender;
-    private final String bio;
-    private final List<String> photos;
-    private final Set<String> interests;
-    private final double latitude;
-    private final double longitude;
-
-    public UserProfile(String name, int age, String gender, String bio, 
-                       List<String> photos, Set<String> interests, double lat, double lon) {
-        this.name = name;
-        this.age = age;
-        this.gender = gender;
-        this.bio = bio;
-        this.photos = photos;
-        this.interests = interests;
-        this.latitude = lat;
-        this.longitude = lon;
+    public Location(double x, double y) {
+        this.x = x;
+        this.y = y;
     }
 
-    public String getName() { return name; }
-    public int getAge() { return age; }
-    public String getGender() { return gender; }
-    public String getBio() { return bio; }
-    public Set<String> getInterests() { return interests; }
-    public double getLatitude() { return latitude; }
-    public double getLongitude() { return longitude; }
-
-    public double distanceTo(UserProfile other) {
-        // Approximate Euclidean distance converted to kilometers for simulation
-        double dLat = this.latitude - other.latitude;
-        double dLon = this.longitude - other.longitude;
-        return Math.sqrt(dLat * dLat + dLon * dLon) * 111.0; // ~111 km per degree
-    }
-
-    @Override
-    public String toString() {
-        return "Profile[" + name + ", " + age + " y/o, " + gender + ", Bio: '" + bio 
-               + "', Interests: " + interests + "]";
+    public double distanceTo(Location other) {
+        return Math.sqrt(Math.pow(this.x - other.x, 2) + Math.pow(this.y - other.y, 2));
     }
 }
 
-class UserPreferences {
+public class UserPreference {
+    private final String preferredGender;
     private final int minAge;
     private final int maxAge;
-    private final String preferredGender;
     private final double maxDistanceKm;
 
-    public UserPreferences(int minAge, int maxAge, String preferredGender, double maxDistanceKm) {
+    public UserPreference(String preferredGender, int minAge, int maxAge, double maxDistanceKm) {
+        this.preferredGender = preferredGender;
         this.minAge = minAge;
         this.maxAge = maxAge;
-        this.preferredGender = preferredGender;
         this.maxDistanceKm = maxDistanceKm;
     }
 
-    public boolean isEligible(UserProfile candidate, double distanceKm) {
-        return candidate.getAge() >= minAge && candidate.getAge() <= maxAge
-               && candidate.getGender().equalsIgnoreCase(preferredGender)
-               && distanceKm <= maxDistanceKm;
-    }
+    public String getPreferredGender() { return preferredGender; }
+    public int getMinAge() { return minAge; }
+    public int getMaxAge() { return maxAge; }
+    public double getMaxDistanceKm() { return maxDistanceKm; }
 }
 
-class User {
-    private final int id;
-    private final UserProfile profile;
-    private final UserPreferences preferences;
+// User class acts as an Observer for notifications
+public class User {
+    private final String id;
+    private final String name;
+    private final int age;
+    private final String gender;
+    private final Location location;
+    private final Set<String> interests;
+    private final UserPreference preference;
 
-    public User(int id, UserProfile profile, UserPreferences preferences) {
+    public User(String id, String name, int age, String gender, Location location, 
+                Set<String> interests, UserPreference preference) {
         this.id = id;
-        this.profile = profile;
-        this.preferences = preferences;
+        this.name = name;
+        this.age = age;
+        this.gender = gender;
+        this.location = location;
+        this.interests = interests;
+        this.preference = preference;
     }
 
-    public int getId() { return id; }
-    public UserProfile getProfile() { return profile; }
-    public UserPreferences getPreferences() { return preferences; }
+    // Observer callback
+    public void onNotification(String alertMessage) {
+        System.out.println("🔔 [Push Notification to " + name + "]: " + alertMessage);
+    }
 
-    public void receiveNotification(String message) {
-        System.out.println("  🔔 [NOTIFICATION to " + profile.getName() + "]: " + message);
+    public String getId() { return id; }
+    public String getName() { return name; }
+    public int getAge() { return age; }
+    public String getGender() { return gender; }
+    public Location getLocation() { return location; }
+    public Set<String> getInterests() { return interests; }
+    public UserPreference getPreference() { return preference; }
+}
+```
+
+---
+
+### Step 2: Observer Notification Engine
+```java
+public class NotificationService {
+    private static NotificationService instance;
+    private final Map<String, User> userRegistry = new HashMap<>();
+
+    private NotificationService() {}
+
+    public static synchronized NotificationService getInstance() {
+        if (instance == null) instance = new NotificationService();
+        return instance;
+    }
+
+    public void registerUser(User user) {
+        userRegistry.put(user.getId(), user);
+    }
+
+    public void notifyUser(String userId, String message) {
+        User user = userRegistry.get(userId);
+        if (user != null) {
+            user.onNotification(message);
+        }
     }
 }
+```
 
-// ============================================================================
-// 2. STRATEGY PATTERN: MATCH SCORING & RANKING
-// ============================================================================
+---
 
-interface IMatchingStrategy {
-    double calculateScore(UserProfile u1, UserProfile u2);
+### Step 3: Recommendation Feed (Strategy Pattern)
+```java
+public interface MatchingStrategy {
+    List<User> getCandidateFeed(User current, List<User> allUsers, Set<String> alreadySwiped);
 }
 
-class CompositeMatchingStrategy implements IMatchingStrategy {
+public class DefaultMatchingStrategy implements MatchingStrategy {
     @Override
-    public double calculateScore(UserProfile u1, UserProfile u2) {
-        double dist = u1.distanceTo(u2);
-        
-        // 1. Shared interests score
-        Set<String> commonInterests = new HashSet<>(u1.getInterests());
-        commonInterests.retainAll(u2.getInterests());
-        double interestScore = commonInterests.size() * 25.0; // 25 points per mutual tag
+    public List<User> getCandidateFeed(User current, List<User> allUsers, Set<String> alreadySwiped) {
+        List<User> candidates = new ArrayList<>();
+        UserPreference pref = current.getPreference();
 
-        // 2. Proximity score (Max 50 points, decreasing by 5 points per km)
-        double proximityScore = Math.max(0, 50.0 - (dist * 5.0));
+        for (User u : allUsers) {
+            if (u.getId().equals(current.getId())) continue; // Skip self
+            if (alreadySwiped.contains(u.getId())) continue; // Skip already swiped
 
-        // 3. Age closeness score (Max 25 points)
-        int ageDiff = Math.abs(u1.getAge() - u2.getAge());
-        double ageScore = Math.max(0, 25.0 - (ageDiff * 3.0));
+            // 1. Gender preference
+            if (!pref.getPreferredGender().equalsIgnoreCase("ANY") &&
+                !u.getGender().equalsIgnoreCase(pref.getPreferredGender())) {
+                continue;
+            }
 
-        return interestScore + proximityScore + ageScore;
+            // 2. Age filter
+            if (u.getAge() < pref.getMinAge() || u.getAge() > pref.getMaxAge()) {
+                continue;
+            }
+
+            // 3. Proximity / Distance filter
+            if (current.getLocation().distanceTo(u.getLocation()) > pref.getMaxDistanceKm()) {
+                continue;
+            }
+
+            candidates.add(u);
+        }
+
+        // Sort candidates by number of shared interests (Higher overlap first)
+        candidates.sort((u1, u2) -> {
+            long overlap1 = u1.getInterests().stream().filter(current.getInterests()::contains).count();
+            long overlap2 = u2.getInterests().stream().filter(current.getInterests()::contains).count();
+            return Long.compare(overlap2, overlap1); // Descending
+        });
+
+        return candidates;
     }
 }
+```
 
-// ============================================================================
-// 3. OBSERVER & SWIPE SERVICE: MUTUAL MATCH ENGINE
-// ============================================================================
+---
 
-enum SwipeType {
-    LEFT,
-    RIGHT
-}
+### Step 4: Gated Chat Room
+```java
+public class ChatRoom {
+    private final String roomId;
+    private final List<String> chatHistory = new ArrayList<>();
 
-class SwipeService {
-    // Stores: FromUserId -> Set of UserIds they liked (swiped RIGHT)
-    private final Map<Integer, Set<Integer>> likesMap = new HashMap<>();
-    private final Map<Integer, User> userRegistry;
-    private final ChatService chatService;
-
-    public SwipeService(Map<Integer, User> userRegistry, ChatService chatService) {
-        this.userRegistry = userRegistry;
-        this.chatService = chatService;
+    public ChatRoom(String userAId, String userBId) {
+        // Canonical deterministic room ID (sorted IDs)
+        this.roomId = (userAId.compareTo(userBId) < 0) 
+            ? userAId + "_" + userBId 
+            : userBId + "_" + userAId;
     }
 
-    public boolean swipe(int fromUserId, int toUserId, SwipeType type) {
-        User fromUser = userRegistry.get(fromUserId);
-        User toUser = userRegistry.get(toUserId);
+    public void addMessage(String senderName, String text) {
+        String msg = senderName + ": " + text;
+        chatHistory.add(msg);
+        System.out.println("💬 [" + roomId + "] " + msg);
+    }
 
-        System.out.println("👉 [Swipe Action] " + fromUser.getProfile().getName() 
-                           + " swiped " + type + " on " + toUser.getProfile().getName());
+    public String getRoomId() { return roomId; }
+    public List<String> getChatHistory() { return chatHistory; }
+}
+```
 
-        if (type == SwipeType.LEFT) {
+---
+
+### Step 5: Tinder App Orchestrator (Facade)
+```java
+public class DatingApp {
+    private final Map<String, User> users = new HashMap<>();
+    private final Map<String, Set<String>> userLikes = new HashMap<>();     // User A -> set of liked user IDs
+    private final Map<String, Set<String>> allSwiped = new HashMap<>();      // User A -> all swiped IDs (left or right)
+    private final Map<String, ChatRoom> chatRooms = new HashMap<>();         // "id1_id2" -> ChatRoom
+    private final MatchingStrategy matchingStrategy = new DefaultMatchingStrategy();
+    private final NotificationService notificationService = NotificationService.getInstance();
+
+    public void registerUser(User user) {
+        users.put(user.getId(), user);
+        userLikes.put(user.getId(), new HashSet<>());
+        allSwiped.put(user.getId(), new HashSet<>());
+        notificationService.registerUser(user);
+    }
+
+    public List<User> getDiscoveryFeed(String userId) {
+        User user = users.get(userId);
+        if (user == null) return Collections.emptyList();
+        return matchingStrategy.getCandidateFeed(user, new ArrayList<>(users.values()), allSwiped.get(userId));
+    }
+
+    public boolean swipe(String fromUserId, String toUserId, boolean isLike) {
+        allSwiped.get(fromUserId).add(toUserId);
+        User fromUser = users.get(fromUserId);
+        User toUser = users.get(toUserId);
+
+        if (!isLike) {
+            System.out.println(fromUser.getName() + " passed on " + toUser.getName());
             return false;
         }
 
-        // Record the right swipe
-        likesMap.computeIfAbsent(fromUserId, k -> new HashSet<>()).add(toUserId);
+        System.out.println("❤️ " + fromUser.getName() + " swiped RIGHT on " + toUser.getName());
+        userLikes.get(fromUserId).add(toUserId);
 
-        // Check if reciprocal like exists
-        Set<Integer> targetLikes = likesMap.getOrDefault(toUserId, Collections.emptySet());
-        if (targetLikes.contains(fromUserId)) {
-            // IT'S A MATCH!
-            System.out.println("\n🎉 🔥 IT'S A MUTUAL MATCH between " 
-                               + fromUser.getProfile().getName() + " and " + toUser.getProfile().getName() + "! 🔥");
-            
-            // Dispatch Observer Notifications to both parties
-            fromUser.receiveNotification("You have a new match with " + toUser.getProfile().getName() + "!");
-            toUser.receiveNotification("You have a new match with " + fromUser.getProfile().getName() + "!");
+        // Check for mutual match
+        if (userLikes.get(toUserId).contains(fromUserId)) {
+            System.out.println("\n🎉 === IT'S A MATCH! " + fromUser.getName() + " & " + toUser.getName() + " === 🎉");
 
-            // Initialize private ChatRoom Mediator
-            chatService.createChatRoom(fromUserId, toUserId);
+            // 1. Create and unlock ChatRoom
+            ChatRoom room = new ChatRoom(fromUserId, toUserId);
+            chatRooms.put(room.getRoomId(), room);
+
+            // 2. Trigger real-time notifications via Observer Pattern
+            notificationService.notifyUser(fromUserId, "You matched with " + toUser.getName() + "! Start chatting.");
+            notificationService.notifyUser(toUserId, "You matched with " + fromUser.getName() + "! Start chatting.");
             return true;
         }
 
         return false;
     }
-}
 
-// ============================================================================
-// 4. MEDIATOR PATTERN: PRIVATE CHATROOM ENGINE
-// ============================================================================
+    public void sendMessage(String fromUserId, String toUserId, String text) {
+        String roomId = (fromUserId.compareTo(toUserId) < 0) ? fromUserId + "_" + toUserId : toUserId + "_" + fromUserId;
+        ChatRoom room = chatRooms.get(roomId);
 
-class Message {
-    private final int senderId;
-    private final String text;
-    private final String timestamp;
-
-    public Message(int senderId, String text) {
-        this.senderId = senderId;
-        this.text = text;
-        this.timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
-    }
-
-    public int getSenderId() { return senderId; }
-    public String getText() { return text; }
-    public String getTimestamp() { return timestamp; }
-}
-
-class ChatRoom {
-    private final int user1Id;
-    private final int user2Id;
-    private final List<Message> messages = new ArrayList<>();
-    private final Map<Integer, User> userRegistry;
-
-    public ChatRoom(int user1Id, int user2Id, Map<Integer, User> registry) {
-        this.user1Id = user1Id;
-        this.user2Id = user2Id;
-        this.userRegistry = registry;
-    }
-
-    public void sendMessage(int senderId, String text) {
-        if (senderId != user1Id && senderId != user2Id) {
-            throw new SecurityException("User not authorized in this private chat room!");
-        }
-
-        messages.add(new Message(senderId, text));
-        int recipientId = (senderId == user1Id) ? user2Id : user1Id;
-        User recipient = userRegistry.get(recipientId);
-        User sender = userRegistry.get(senderId);
-
-        recipient.receiveNotification("New message from " + sender.getProfile().getName());
-    }
-
-    public void displayChatHistory() {
-        System.out.println("\n--- Private Chat Transcript ---");
-        for (Message m : messages) {
-            String senderName = userRegistry.get(m.getSenderId()).getProfile().getName();
-            System.out.println("[" + m.getTimestamp() + "] " + senderName + ": " + m.getText());
-        }
-        System.out.println("--------------------------------\n");
-    }
-}
-
-class ChatService {
-    private final Map<String, ChatRoom> activeRooms = new HashMap<>();
-    private final Map<Integer, User> userRegistry;
-
-    public ChatService(Map<Integer, User> userRegistry) {
-        this.userRegistry = userRegistry;
-    }
-
-    private String getRoomKey(int u1, int u2) {
-        return Math.min(u1, u2) + "_" + Math.max(u1, u2);
-    }
-
-    public void createChatRoom(int u1, int u2) {
-        activeRooms.put(getRoomKey(u1, u2), new ChatRoom(u1, u2, userRegistry));
-        System.out.println("💬 Private ChatRoom created between User " + u1 + " and User " + u2);
-    }
-
-    public void sendMessage(int senderId, int recipientId, String text) {
-        ChatRoom room = activeRooms.get(getRoomKey(senderId, recipientId));
         if (room == null) {
-            System.err.println("Cannot send message: Users must mutually match before unlocking chat!");
+            System.out.println("❌ Cannot send message: You can only chat with mutual matches!");
             return;
         }
-        room.sendMessage(senderId, text);
-    }
 
-    public void printChat(int u1, int u2) {
-        ChatRoom room = activeRooms.get(getRoomKey(u1, u2));
-        if (room != null) room.displayChatHistory();
-    }
-}
-
-// ============================================================================
-// 5. MAIN DEMONSTRATION DRIVER (MATCHING LECTURE SCRIPT)
-// ============================================================================
-
-public class TinderAppDemo {
-    public static void main(String[] args) {
-        Map<Integer, User> registry = new HashMap<>();
-        ChatService chatService = new ChatService(registry);
-        SwipeService swipeService = new SwipeService(registry, chatService);
-
-        // 1. Setup Rohan (User 1)
-        UserProfile rohanProfile = new UserProfile(
-            "Rohan", 26, "MALE", "I am a software developer",
-            List.of("rohan_photo1.jpg"), Set.of("Coding", "Gaming", "Music"),
-            12.9716, 77.5946
-        );
-        UserPreferences rohanPref = new UserPreferences(23, 30, "FEMALE", 15.0);
-        User rohan = new User(1, rohanProfile, rohanPref);
-        registry.put(1, rohan);
-
-        // 2. Setup Neha (User 2)
-        UserProfile nehaProfile = new UserProfile(
-            "Neha", 27, "FEMALE", "Art Teacher & Painter",
-            List.of("neha_photo1.jpg"), Set.of("Painting", "Coding", "Music"),
-            12.9780, 77.5990
-        );
-        UserPreferences nehaPref = new UserPreferences(25, 32, "MALE", 20.0);
-        User neha = new User(2, nehaProfile, nehaPref);
-        registry.put(2, neha);
-
-        System.out.println("===============================================================");
-        System.out.println("1. REGISTERED PROFILES");
-        System.out.println("===============================================================");
-        System.out.println(rohan.getProfile());
-        System.out.println(neha.getProfile());
-
-        // 3. Evaluate Compatibility Score
-        IMatchingStrategy matchStrategy = new CompositeMatchingStrategy();
-        double score = matchStrategy.calculateScore(rohan.getProfile(), neha.getProfile());
-        System.out.printf("\n🎯 Compatibility Score between Rohan & Neha: %.1f points\n\n", score);
-
-        // 4. Swipe Interactions
-        System.out.println("===============================================================");
-        System.out.println("2. SWIPE WORKFLOW");
-        System.out.println("===============================================================");
-        // Rohan swipes RIGHT on Neha
-        swipeService.swipe(rohan.getId(), neha.getId(), SwipeType.RIGHT);
-
-        System.out.println();
-        // Neha swipes RIGHT on Rohan -> Mutual match triggered!
-        swipeService.swipe(neha.getId(), rohan.getId(), SwipeType.RIGHT);
-
-        // 5. Chat Interaction
-        System.out.println("===============================================================");
-        System.out.println("3. UNLOCKED CHAT MESSAGING");
-        System.out.println("===============================================================");
-        chatService.sendMessage(rohan.getId(), neha.getId(), "Hi Neha, how are you?");
-        chatService.sendMessage(neha.getId(), rohan.getId(), "Hi Rohan, I am good! What about you?");
-
-        chatService.printChat(rohan.getId(), neha.getId());
+        User sender = users.get(fromUserId);
+        room.addMessage(sender.getName(), text);
+        notificationService.notifyUser(toUserId, "New message from " + sender.getName() + ": " + text);
     }
 }
 ```
 
 ---
 
-## 6. Execution Output
-
-```text
-===============================================================
-1. REGISTERED PROFILES
-===============================================================
-Profile[Rohan, 26 y/o, MALE, Bio: 'I am a software developer', Interests: [Coding, Gaming, Music]]
-Profile[Neha, 27 y/o, FEMALE, Bio: 'Art Teacher & Painter', Interests: [Painting, Coding, Music]]
-
-🎯 Compatibility Score between Rohan & Neha: 119.5 points
-
-===============================================================
-2. SWIPE WORKFLOW
-===============================================================
-👉 [Swipe Action] Rohan swiped RIGHT on Neha
-
-👉 [Swipe Action] Neha swiped RIGHT on Rohan
-
-🎉 🔥 IT'S A MUTUAL MATCH between Neha and Rohan! 🔥
-  🔔 [NOTIFICATION to Neha]: You have a new match with Rohan!
-  🔔 [NOTIFICATION to Rohan]: You have a new match with Neha!
-💬 Private ChatRoom created between User 2 and User 1
-===============================================================
-3. UNLOCKED CHAT MESSAGING
-===============================================================
-  🔔 [NOTIFICATION to Neha]: New message from Rohan
-  🔔 [NOTIFICATION to Rohan]: New message from Neha
-
---- Private Chat Transcript ---
-[15:45:20] Rohan: Hi Neha, how are you?
-[15:45:20] Neha: Hi Rohan, I am good! What about you?
---------------------------------
-```
-
----
-
-## Quick Revision
-
-### Core Idea
-A location-aware dating platform orchestrating **Observer** (mutual match and message notifications), **Strategy** (pluggable multi-factor compatibility scoring), and **Mediator** (`ChatRoom` messaging unlocked strictly upon reciprocal likes).
-
-### Remember
-- **Profile vs Preferences**: `UserProfile` encapsulates who the user is (intrinsic state); `UserPreferences` encapsulates what candidates the user is looking for (discovery filters).
-- **Mutual Match**: Swiping right registers intent in a `Map<UserId, Set<UserId>>`. Only when User B reciprocates with a right swipe on User A is a `MatchEvent` published.
-
-### Java Implementation Idea
+### Step 6: Client Demonstration
 ```java
-if (likesMap.getOrDefault(toUserId, emptySet).contains(fromUserId)) {
-    notifyObservers(new MatchEvent(fromUser, toUser));
-    chatService.createChatRoom(fromUserId, toUserId);
+public class Main {
+    public static void main(String[] args) {
+        DatingApp app = new DatingApp();
+
+        // 1. Onboard Rohan
+        User rohan = new User("u1", "Rohan", 25, "Male", new Location(0, 0),
+                Set.of("Hiking", "Music", "Startups"),
+                new UserPreference("Female", 22, 28, 15.0));
+
+        // 2. Onboard Neha
+        User neha = new User("u2", "Neha", 24, "Female", new Location(2, 3),
+                Set.of("Music", "Startups", "Photography"),
+                new UserPreference("Male", 23, 29, 20.0));
+
+        app.registerUser(rohan);
+        app.registerUser(neha);
+
+        // 3. Rohan discovers feed and likes Neha
+        System.out.println("=== Rohan discovers candidates ===");
+        List<User> rohanFeed = app.getDiscoveryFeed("u1");
+        for (User u : rohanFeed) {
+            System.out.println("Found in feed: " + u.getName() + " (" + u.getAge() + ", " + u.getGender() + ")");
+        }
+
+        System.out.println("\n--- Rohan Swipes ---");
+        app.swipe("u1", "u2", true); // Rohan likes Neha (No match yet)
+
+        // 4. Rohan attempts to message before mutual match
+        System.out.println("\n--- Rohan attempts to message Neha prematurely ---");
+        app.sendMessage("u1", "u2", "Hey Neha!");
+
+        // 5. Neha swiped right on Rohan -> Triggers Mutual Match!
+        System.out.println("\n--- Neha Swipes ---");
+        app.swipe("u2", "u1", true); // Mutual Match!
+
+        // 6. Now they can chat
+        System.out.println("\n--- Mutual Chat Unlocked ---");
+        app.sendMessage("u1", "u2", "Hey Neha! Great to connect!");
+        app.sendMessage("u2", "u1", "Hey Rohan! Loved your startup interest!");
+    }
 }
 ```
 
-### Most Important Interview Point
-**How do you prevent unauthorized users from messaging without a match?**
-By using the **Mediator Pattern** (`ChatRoom`). The `ChatService` verifies whether a mutual match exists before instantiating or routing messages into a `ChatRoom`. Direct communication between unmatched users is blocked at the mediator boundary.
+### Execution Output:
+```text
+=== Rohan discovers candidates ===
+Found in feed: Neha (24, Female)
 
-### Common Trap
-Mixing candidate discovery queries with swipe persistence in a single God object. Keep discovery/filtering, swipe recording, and chat messaging in three distinct, loosely coupled services.
+--- Rohan Swipes ---
+❤️ Rohan swiped RIGHT on Neha
+
+--- Rohan attempts to message Neha prematurely ---
+❌ Cannot send message: You can only chat with mutual matches!
+
+--- Neha Swipes ---
+❤️ Neha swiped RIGHT on Rohan
+
+🎉 === IT'S A MATCH! Neha & Rohan === 🎉
+🔔 [Push Notification to Rohan]: You matched with Neha! Start chatting.
+🔔 [Push Notification to Neha]: You matched with Rohan! Start chatting.
+
+--- Mutual Chat Unlocked ---
+💬 [u1_u2] Rohan: Hey Neha! Great to connect!
+🔔 [Push Notification to Neha]: New message from Rohan: Hey Neha! Great to connect!
+💬 [u1_u2] Neha: Hey Rohan! Loved your startup interest!
+🔔 [Push Notification to Rohan]: New message from Neha: Hey Rohan! Loved your startup interest!
+```
+
+---
+
+## 5. Summary of Design Patterns Applied
+
+| Pattern | Component | Purpose in Tinder Case Study |
+| :--- | :--- | :--- |
+| **Observer Pattern** | `NotificationService` | Broadcasts real-time push alerts on matches and chat messages. |
+| **Strategy Pattern** | `MatchingStrategy` | Swappable discovery algorithms (Geo-distance, Elo rating, interest overlap). |
+| **State / Gated Access** | `DatingApp.swipe()` | Controls transition from single like to mutual match and unlocks `ChatRoom`. |
+| **Facade Pattern** | `DatingApp` | Unified facade for onboarding, feeds, swiping, and messaging. |
+
+---
+
+## 6. Interview Perspective
+
+- **Q: How to handle 10,000 swipes per second at scale?**
+  *A: In production, swipes are written asynchronously into Redis Sets (`SADD user:u1:likes u2`). Checking mutual match is an instant $O(1)$ set membership check (`SISMEMBER user:u2:likes u1`). Match events are published to a Kafka topic for notification and chat creation workers.*
+- **Q: How to avoid showing already swiped profiles?**
+  *A: Maintain a Bloom filter or Redis Set per user tracking `seen_user_ids`. Filter candidates at query time.*
+- **Q: How would you implement Super Likes?**
+  *A: A Super Like flags the recommendation feed of the receiver immediately to surface the sender with a distinct border before they even swipe.*

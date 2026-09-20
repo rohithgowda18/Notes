@@ -1,238 +1,164 @@
-# 24. Build Discount Coupon Engine LLD
+# 24. Build Discount Coupon Engine — LLD Case Study
 
-> 💡 **Quick Revision Anchor**: A comprehensive e-commerce promotional pricing engine combining three GoF design patterns: **Strategy Pattern** (interchangeable discount calculation algorithms: *Flat*, *Percentage*, *Percentage with Cap*), **Chain of Responsibility Pattern** (sequential chaining and stacking of multiple coupons: *Seasonal*, *Loyalty*, *Bulk Purchase*, *Banking Card*), and **Singleton Pattern** (`CouponManager` as the central thread-safe registry and evaluation orchestrator).
+> 💡 **Quick Revision Anchor**
+> - **Domain:** E-Commerce / Quick-Commerce Discount & Promotion Engine (Zepto / Blinkit / Amazon LLD)
+> - **Key Architectural Patterns:**
+>   - **Strategy Pattern:** Decouples pure mathematical discount computation (`FlatDiscount`, `PercentageDiscount`, `PercentageWithCapDiscount`) from coupon business logic.
+>   - **Chain of Responsibility Pattern:** Connects multiple eligible coupons into a linked chain (`Coupon` ➔ `nextCoupon`) to handle stacking and sequential deduction.
+>   - **Singleton Pattern:** `CouponManager` serves as the centralized registry for configuring and executing the active coupon chain.
 
 ---
 
-## 1. Problem Statement & Business Requirements
+## 1. Problem Statement & Requirements
 
-Modern e-commerce and quick-commerce platforms (e.g., Zepto, Blinkit, Swiggy, Zomato, Amazon) allow customers to apply promotional discount codes during checkout. Building an enterprise-grade coupon engine requires solving several complex architectural challenges:
+In modern e-commerce systems (like Amazon, Zepto, or Blinkit), calculating the final payable cart amount involves complex, multi-layered promotional rules:
 
 ### Functional Requirements:
-1. **Multi-level Discount Scope**:
-   - **Cart-Level Discounts**: Applied across the entire aggregate cart order (e.g., Flat ₹100 off on orders $> ₹1,000$).
-   - **Product / Category-Level Discounts**: Applied only to eligible item categories (e.g., 10% off on Clothing items).
-2. **Pluggable Discount Computation Strategies (Strategy Pattern)**:
-   - **Flat Discount**: Deducts a fixed currency amount (e.g., ₹100 off).
-   - **Percentage Discount**: Deducts a percentage of eligible value (e.g., 10% off).
-   - **Percentage with Maximum Cap**: Deducts a percentage up to a maximum monetary threshold (e.g., 15% off up to ₹500 max discount).
-3. **Coupon Stacking & Applicability (Chain of Responsibility Pattern)**:
-   - Customers may be entitled to multiple simultaneous offers (e.g., a *Seasonal Category Offer* + a *Customer Loyalty Offer* + a *Bulk Purchase Offer* + an *ABC Bank Card Offer*).
-   - The engine must sequentially evaluate applicability criteria (minimum cart value, eligible bank, active loyalty tier) and chain the discounts cleanly.
-4. **Centralized Promotion Management (Singleton Pattern)**:
-   - A single `CouponManager` registers promotions, filters applicable coupons for a given cart, and executes the discount application pipeline.
+1. **Diverse Discount Math:**
+   - **Flat Off:** Deducts a fixed currency amount (e.g., flat ₹100 off).
+   - **Percentage Off:** Deducts a percentage of the total (e.g., 10% off).
+   - **Percentage Off with Cap:** Deducts a percentage up to a maximum threshold (e.g., 50% off up to ₹150).
+2. **Conditional Applicability Rules:**
+   - **Category-specific discounts:** Only applies to items in specific categories (e.g., "Clothing").
+   - **Bank / Payment method offers:** Requires a minimum spend and specific bank card (e.g., "10% off with HDFC Card on orders above ₹1500").
+   - **Customer Loyalty discounts:** Available only to premium / loyalty club members.
+   - **Bulk purchase thresholds:** Applies only when cart total exceeds a certain value.
+3. **Coupon Stacking (Sequential Application):**
+   - Multiple eligible coupons can be applied one after another in a well-defined pipeline.
+4. **Extensibility (OCP):**
+   - Marketing teams launch new coupon rules daily. Adding a new coupon must require zero changes to the core cart calculation engine.
 
 ---
 
-## 2. Core Architectural Design Patterns
+## 2. Design Evolution: Combining Strategy & Chain of Responsibility
 
-```mermaid
-flowchart TD
-    Client([Checkout Service]) --> Manager["CouponManager (Singleton)"]
-    Manager --> Registry[("Coupon Registry")]
-    
-    subgraph "Chain of Responsibility (Coupon Pipeline)"
-        C1["SeasonalCoupon (10% Clothing)"] --> C2["LoyaltyCoupon (5% Order)"]
-        C2 --> C3["BulkPurchaseCoupon (₹100 Flat)"]
-        C3 --> C4["BankingCoupon (15% ABC Bank Cap ₹500)"]
-    end
-    
-    subgraph "Strategy Pattern (Calculation Algorithms)"
-        Strat[DiscountStrategy]
-        Strat --> Flat["FlatDiscountStrategy"]
-        Strat --> Perc["PercentageDiscountStrategy"]
-        Strat --> Cap["PercentageWithCapDiscountStrategy"]
-    end
+A naive implementation mixes business conditions, mathematics, and cart manipulation inside nested `if-else` blocks in the `Cart` class.
 
-    Manager -->|Evaluates & Chains| C1
-    C1 -.->|Uses Strategy| Perc
-    C2 -.->|Uses Strategy| Perc
-    C3 -.->|Uses Strategy| Flat
-    C4 -.->|Uses Strategy| Cap
+### The Decoupled Architecture:
+We separate two distinct concerns:
+1. **How is the discount calculated?** ➔ **Strategy Pattern** (`DiscountStrategy`). Pure math, unaware of banks or cart items.
+2. **When and how is a coupon applied and stacked?** ➔ **Chain of Responsibility Pattern** (`Coupon` base handler). Checks `isApplicable(Cart)`, computes discount via strategy, deducts from cart, and passes to `nextCoupon`.
 
-    style Manager fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style C1 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style C2 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style C3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style C4 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Strat fill:#e8f8f5,stroke:#26a69a,stroke-width:2px
+```
+[Cart Total: ₹25,000]
+         │
+         ▼
+┌─────────────────────────┐  Category Discount (10% on Clothing)
+│     CategoryCoupon      │  ➔ Deducts ₹200
+└────────────┬────────────┘
+             │ Remaining: ₹24,800
+             ▼
+┌─────────────────────────┐  Loyalty Coupon (Flat ₹500 for Members)
+│      LoyaltyCoupon      │  ➔ Deducts ₹500
+└────────────┬────────────┘
+             │ Remaining: ₹24,300
+             ▼
+┌─────────────────────────┐  Bank Coupon (10% up to ₹1000 on HDFC)
+│     BankDiscountCoupon  │  ➔ Deducts ₹1000
+└─────────────────────────┘
+             │
+             ▼
+[Final Payable: ₹23,300]
 ```
 
 ---
 
-## 3. Mathematical Evaluation Model
-
-Let the shopping cart contain $N$ items. The original cart value is:
-$$\text{Original Total} = \sum_{i=1}^{N} (\text{item}_i.\text{price} \times \text{item}_i.\text{quantity})$$
-
-When coupons $C_1, C_2, \dots, C_k$ are chained:
-1. **Eligible Base Amount**: Each coupon inspects whether it applies to specific categories (e.g. `CLOTHING`) or the running total.
-2. **Discount Computation**:
-   $$\text{Discount}_{\text{Flat}} = D$$
-   $$\text{Discount}_{\text{Percentage}} = \text{Base} \times \left(\frac{P}{100}\right)$$
-   $$\text{Discount}_{\text{Capped}} = \min\left(\text{Base} \times \left(\frac{P}{100}\right), \text{MaxCap}\right)$$
-3. **Sequential Settling**:
-   $$\text{Final Cart Total} = \max\left(0, \text{Original Total} - \sum_{j=1}^{k} \text{Discount}(C_j)\right)$$
-
----
-
-## 4. Class Diagram & System Architecture
+## 3. Architecture & Class Diagram
 
 ```mermaid
 classDiagram
-    class ProductCategory {
-        <<enumeration>>
-        ELECTRONICS
-        CLOTHING
-        GROCERY
-    }
-
-    class Product {
-        -String id
-        -String name
-        -double price
-        -ProductCategory category
-        +getPrice() double
-        +getCategory() ProductCategory
-    }
-
-    class CartItem {
-        -Product product
-        -int quantity
-        +getTotalPrice() double
-    }
-
-    class Cart {
-        -List~CartItem~ items
-        -String bankName
-        -boolean isLoyalCustomer
-        -double originalTotal
-        -double discountedTotal
-        +getOriginalTotal() double
-        +getDiscountedTotal() double
-        +setDiscountedTotal(double val)
-    }
-
     class DiscountStrategy {
         <<interface>>
-        +calculateDiscount(double baseAmount) double
+        +calculateDiscount(double amount) double
     }
-
     class FlatDiscountStrategy {
-        -double amount
-        +calculateDiscount(double baseAmount) double
+        -double flatAmount
+        +calculateDiscount(double amount) double
     }
-
     class PercentageDiscountStrategy {
         -double percentage
-        +calculateDiscount(double baseAmount) double
+        +calculateDiscount(double amount) double
     }
-
     class PercentageWithCapDiscountStrategy {
         -double percentage
-        -double maxCap
-        +calculateDiscount(double baseAmount) double
+        -double cap
+        +calculateDiscount(double amount) double
     }
 
     class Coupon {
         <<abstract>>
-        #String code
-        #DiscountStrategy strategy
         #Coupon nextCoupon
-        +setNextCoupon(Coupon next) Coupon
-        +isApplicable(Cart cart)* boolean
-        +apply(Cart cart)* double
+        #DiscountStrategy strategy
+        +setNextCoupon(Coupon next) void
+        +apply(Cart cart) void
+        #isApplicable(Cart cart)* boolean
+        #getApplicableAmount(Cart cart)* double
     }
 
-    class SeasonalCoupon {
-        -ProductCategory category
-        +isApplicable(Cart cart) boolean
-        +apply(Cart cart) double
+    class CategoryCoupon {
+        -String category
+        #isApplicable(Cart cart) boolean
+        #getApplicableAmount(Cart cart) double
+    }
+
+    class BankDiscountCoupon {
+        -String bankName
+        -double minSpend
+        #isApplicable(Cart cart) boolean
+        #getApplicableAmount(Cart cart) double
     }
 
     class LoyaltyCoupon {
-        +isApplicable(Cart cart) boolean
-        +apply(Cart cart) double
+        #isApplicable(Cart cart) boolean
+        #getApplicableAmount(Cart cart) double
     }
 
-    class BulkPurchaseCoupon {
-        -double minThreshold
-        +isApplicable(Cart cart) boolean
-        +apply(Cart cart) double
+    class Cart {
+        -List~CartItem~ items
+        -String paymentBank
+        -boolean isLoyaltyMember
+        -double currentTotal
+        +getTotal() double
+        +deductDiscount(double amount) void
     }
 
-    class BankingCoupon {
-        -String eligibleBank
-        -double minCartValue
-        +isApplicable(Cart cart) boolean
-        +apply(Cart cart) double
-    }
-
-    class CouponManager {
-        -static CouponManager instance
-        -List~Coupon~ registeredCoupons
-        +static getInstance() CouponManager
-        +registerCoupon(Coupon c)
-        +applyAll(Cart cart) double
-    }
-
-    DiscountStrategy <|.. FlatDiscountStrategy : Implements
-    DiscountStrategy <|.. PercentageDiscountStrategy : Implements
-    DiscountStrategy <|.. PercentageWithCapDiscountStrategy : Implements
-
-    Coupon <|-- SeasonalCoupon : Extends
-    Coupon <|-- LoyaltyCoupon : Extends
-    Coupon <|-- BulkPurchaseCoupon : Extends
-    Coupon <|-- BankingCoupon : Extends
-    Coupon o--> DiscountStrategy : Has-A Strategy
-    Coupon o--> Coupon : Has-A nextCoupon (CoR)
-
-    CartItem *-- Product : Contains
-    Cart *-- CartItem : Aggregates
-    CouponManager o--> Coupon : Manages
+    DiscountStrategy <|.. FlatDiscountStrategy
+    DiscountStrategy <|.. PercentageDiscountStrategy
+    DiscountStrategy <|.. PercentageWithCapDiscountStrategy
+    Coupon --> DiscountStrategy : delegates math to
+    Coupon --> Coupon : nextCoupon (Linked List)
+    Coupon <|-- CategoryCoupon
+    Coupon <|-- BankDiscountCoupon
+    Coupon <|-- LoyaltyCoupon
+    Coupon --> Cart : inspects and deducts from
 ```
 
 ---
 
-## 5. Complete, Compilable Java Implementation
+## 4. Java Implementation
 
-Below is the complete, production-grade Java code directly matching the lecture's implementation and execution flow.
-
+### Step 1: Cart & Domain Models
 ```java
-package com.designpatterns.casestudy.coupon;
-
 import java.util.ArrayList;
 import java.util.List;
 
-// ============================================================================
-// 1. DOMAIN MODELS: PRODUCT, CATEGORY, CART
-// ============================================================================
-
-enum ProductCategory {
-    ELECTRONICS,
-    CLOTHING,
-    GROCERY
-}
-
-class Product {
-    private final String id;
+public class Product {
     private final String name;
+    private final String category;
     private final double price;
-    private final ProductCategory category;
 
-    public Product(String id, String name, double price, ProductCategory category) {
-        this.id = id;
+    public Product(String name, String category, double price) {
         this.name = name;
-        this.price = price;
         this.category = category;
+        this.price = price;
     }
 
     public String getName() { return name; }
+    public String getCategory() { return category; }
     public double getPrice() { return price; }
-    public ProductCategory getCategory() { return category; }
 }
 
-class CartItem {
+public class CartItem {
     private final Product product;
     private final int quantity;
 
@@ -243,49 +169,55 @@ class CartItem {
 
     public Product getProduct() { return product; }
     public int getQuantity() { return quantity; }
-    public double getTotalPrice() { return product.getPrice() * quantity; }
+    public double getSubtotal() { return product.getPrice() * quantity; }
 }
 
-class Cart {
+public class Cart {
     private final List<CartItem> items = new ArrayList<>();
-    private String bankName;
-    private boolean isLoyalCustomer;
-    private double originalTotal;
-    private double discountedTotal;
+    private String paymentBank;
+    private boolean isLoyaltyMember;
+    private double currentTotal;
 
     public void addItem(Product product, int quantity) {
-        items.add(new CartItem(product, quantity));
-        recalculateTotals();
+        CartItem item = new CartItem(product, quantity);
+        items.add(item);
+        currentTotal += item.getSubtotal();
     }
 
-    private void recalculateTotals() {
-        double sum = 0.0;
+    public double getCategoryTotal(String category) {
+        double total = 0;
         for (CartItem item : items) {
-            sum += item.getTotalPrice();
+            if (item.getProduct().getCategory().equalsIgnoreCase(category)) {
+                total += item.getSubtotal();
+            }
         }
-        this.originalTotal = sum;
-        this.discountedTotal = sum;
+        return total;
+    }
+
+    public void deductDiscount(double amount) {
+        this.currentTotal = Math.max(0, this.currentTotal - amount);
     }
 
     public List<CartItem> getItems() { return items; }
-    public String getBankName() { return bankName; }
-    public void setBankName(String bankName) { this.bankName = bankName; }
-    public boolean isLoyalCustomer() { return isLoyalCustomer; }
-    public void setLoyalCustomer(boolean loyal) { this.isLoyalCustomer = loyal; }
-    public double getOriginalTotal() { return originalTotal; }
-    public double getDiscountedTotal() { return discountedTotal; }
-    public void setDiscountedTotal(double val) { this.discountedTotal = val; }
+    public double getCurrentTotal() { return currentTotal; }
+    public String getPaymentBank() { return paymentBank; }
+    public void setPaymentBank(String bank) { this.paymentBank = bank; }
+    public boolean isLoyaltyMember() { return isLoyaltyMember; }
+    public void setLoyaltyMember(boolean loyaltyMember) { this.isLoyaltyMember = loyaltyMember; }
+}
+```
+
+---
+
+### Step 2: Discount Math Algorithms (Strategy Pattern)
+```java
+// Strategy Interface
+public interface DiscountStrategy {
+    double calculateDiscount(double amount);
 }
 
-// ============================================================================
-// 2. STRATEGY PATTERN: DISCOUNT CALCULATION ALGORITHMS
-// ============================================================================
-
-interface DiscountStrategy {
-    double calculateDiscount(double baseAmount);
-}
-
-class FlatDiscountStrategy implements DiscountStrategy {
+// 1. Flat Discount: e.g. Flat ₹100 Off
+public class FlatDiscountStrategy implements DiscountStrategy {
     private final double flatAmount;
 
     public FlatDiscountStrategy(double flatAmount) {
@@ -293,12 +225,13 @@ class FlatDiscountStrategy implements DiscountStrategy {
     }
 
     @Override
-    public double calculateDiscount(double baseAmount) {
-        return Math.min(flatAmount, baseAmount);
+    public double calculateDiscount(double amount) {
+        return Math.min(amount, flatAmount);
     }
 }
 
-class PercentageDiscountStrategy implements DiscountStrategy {
+// 2. Percentage Discount: e.g. 10% Off
+public class PercentageDiscountStrategy implements DiscountStrategy {
     private final double percentage;
 
     public PercentageDiscountStrategy(double percentage) {
@@ -306,333 +239,260 @@ class PercentageDiscountStrategy implements DiscountStrategy {
     }
 
     @Override
-    public double calculateDiscount(double baseAmount) {
-        return baseAmount * (percentage / 100.0);
+    public double calculateDiscount(double amount) {
+        return (amount * percentage) / 100.0;
     }
 }
 
-class PercentageWithCapDiscountStrategy implements DiscountStrategy {
+// 3. Percentage Discount with Cap: e.g. 50% Off up to ₹150
+public class PercentageWithCapDiscountStrategy implements DiscountStrategy {
     private final double percentage;
-    private final double maxCap;
+    private final double cap;
 
-    public PercentageWithCapDiscountStrategy(double percentage, double maxCap) {
+    public PercentageWithCapDiscountStrategy(double percentage, double cap) {
         this.percentage = percentage;
-        this.maxCap = maxCap;
+        this.cap = cap;
     }
 
     @Override
-    public double calculateDiscount(double baseAmount) {
-        double rawDiscount = baseAmount * (percentage / 100.0);
-        return Math.min(rawDiscount, maxCap);
+    public double calculateDiscount(double amount) {
+        double rawDiscount = (amount * percentage) / 100.0;
+        return Math.min(rawDiscount, cap);
     }
 }
+```
 
-// ============================================================================
-// 3. CHAIN OF RESPONSIBILITY PATTERN: COUPON HIERARCHY
-// ============================================================================
+---
 
-abstract class Coupon {
-    protected final String code;
-    protected final String description;
-    protected final DiscountStrategy strategy;
+### Step 3: Base Coupon Handler (Chain of Responsibility Pattern)
+```java
+public abstract class Coupon {
     protected Coupon nextCoupon;
+    protected final DiscountStrategy strategy;
+    protected final String couponName;
 
-    public Coupon(String code, String description, DiscountStrategy strategy) {
-        this.code = code;
-        this.description = description;
+    public Coupon(String couponName, DiscountStrategy strategy) {
+        this.couponName = couponName;
         this.strategy = strategy;
     }
 
-    public Coupon setNextCoupon(Coupon nextCoupon) {
+    public void setNextCoupon(Coupon nextCoupon) {
         this.nextCoupon = nextCoupon;
-        return nextCoupon;
     }
 
-    public String getCode() { return code; }
-    public String getDescription() { return description; }
-
-    public abstract boolean isApplicable(Cart cart);
-    public abstract double calculateCouponDiscount(Cart cart);
-
-    /**
-     * Chained application method: Applies current coupon discount (if valid)
-     * and forwards remaining cart balance down the chain.
-     */
-    public void applyChain(Cart cart) {
+    // Template method for chain execution
+    public void apply(Cart cart) {
         if (isApplicable(cart)) {
-            double discount = calculateCouponDiscount(cart);
-            double newTotal = Math.max(0, cart.getDiscountedTotal() - discount);
-            cart.setDiscountedTotal(newTotal);
-            System.out.printf("  [Applied: %s] %s -> Discount: ₹%.2f | Running Cart: ₹%.2f\n", 
-                              code, description, discount, newTotal);
+            double baseAmount = getApplicableAmount(cart);
+            double discount = strategy.calculateDiscount(baseAmount);
+            cart.deductDiscount(discount);
+            System.out.println("  [Applied] " + couponName + ": -₹" + discount + " | New Total: ₹" + cart.getCurrentTotal());
         } else {
-            System.out.println("  [Skipped: " + code + "] Criteria not met for current cart.");
+            System.out.println("  [Skipped] " + couponName + ": Conditions not met.");
         }
 
+        // Pass to next coupon in the chain
         if (nextCoupon != null) {
-            nextCoupon.applyChain(cart);
+            nextCoupon.apply(cart);
         }
+    }
+
+    protected abstract boolean isApplicable(Cart cart);
+    protected abstract double getApplicableAmount(Cart cart);
+}
+```
+
+---
+
+### Step 4: Concrete Coupon Handlers
+```java
+// 1. Category Coupon: Applies discount only on specified item category
+public class CategoryCoupon extends Coupon {
+    private final String category;
+
+    public CategoryCoupon(String couponName, String category, DiscountStrategy strategy) {
+        super(couponName, strategy);
+        this.category = category;
+    }
+
+    @Override
+    protected boolean isApplicable(Cart cart) {
+        return cart.getCategoryTotal(category) > 0;
+    }
+
+    @Override
+    protected double getApplicableAmount(Cart cart) {
+        return cart.getCategoryTotal(category);
     }
 }
 
-// Concrete Coupon 1: Seasonal category-specific offer
-class SeasonalCoupon extends Coupon {
-    private final ProductCategory targetCategory;
+// 2. Bank Offer Coupon: Minimum spend + matching bank card
+public class BankDiscountCoupon extends Coupon {
+    private final String bankName;
+    private final double minSpend;
 
-    public SeasonalCoupon(String code, String desc, double percentage, ProductCategory category) {
-        super(code, desc, new PercentageDiscountStrategy(percentage));
-        this.targetCategory = category;
+    public BankDiscountCoupon(String couponName, String bankName, double minSpend, DiscountStrategy strategy) {
+        super(couponName, strategy);
+        this.bankName = bankName;
+        this.minSpend = minSpend;
     }
 
     @Override
-    public boolean isApplicable(Cart cart) {
-        for (CartItem item : cart.getItems()) {
-            if (item.getProduct().getCategory() == targetCategory) return true;
-        }
-        return false;
+    protected boolean isApplicable(Cart cart) {
+        return bankName.equalsIgnoreCase(cart.getPaymentBank()) && cart.getCurrentTotal() >= minSpend;
     }
 
     @Override
-    public double calculateCouponDiscount(Cart cart) {
-        double categoryTotal = 0.0;
-        for (CartItem item : cart.getItems()) {
-            if (item.getProduct().getCategory() == targetCategory) {
-                categoryTotal += item.getTotalPrice();
-            }
-        }
-        return strategy.calculateDiscount(categoryTotal);
+    protected double getApplicableAmount(Cart cart) {
+        return cart.getCurrentTotal();
     }
 }
 
-// Concrete Coupon 2: Loyalty offer for premium members
-class LoyaltyCoupon extends Coupon {
-    public LoyaltyCoupon(String code, String desc, double percentage) {
-        super(code, desc, new PercentageDiscountStrategy(percentage));
-    }
-
-    @Override
-    public boolean isApplicable(Cart cart) {
-        return cart.isLoyalCustomer();
-    }
-
-    @Override
-    public double calculateCouponDiscount(Cart cart) {
-        return strategy.calculateDiscount(cart.getDiscountedTotal());
-    }
-}
-
-// Concrete Coupon 3: Bulk purchase order threshold
-class BulkPurchaseCoupon extends Coupon {
+// 3. Loyalty Member Coupon: Available exclusively to loyalty subscribers
+public class LoyaltyCoupon extends Coupon {
     private final double minOrderValue;
 
-    public BulkPurchaseCoupon(String code, String desc, double flatOff, double minOrderValue) {
-        super(code, desc, new FlatDiscountStrategy(flatOff));
+    public LoyaltyCoupon(String couponName, double minOrderValue, DiscountStrategy strategy) {
+        super(couponName, strategy);
         this.minOrderValue = minOrderValue;
     }
 
     @Override
-    public boolean isApplicable(Cart cart) {
-        return cart.getOriginalTotal() >= minOrderValue;
+    protected boolean isApplicable(Cart cart) {
+        return cart.isLoyaltyMember() && cart.getCurrentTotal() >= minOrderValue;
     }
 
     @Override
-    public double calculateCouponDiscount(Cart cart) {
-        return strategy.calculateDiscount(cart.getDiscountedTotal());
+    protected double getApplicableAmount(Cart cart) {
+        return cart.getCurrentTotal();
     }
 }
+```
 
-// Concrete Coupon 4: Bank partnership coupon with capped percentage
-class BankingCoupon extends Coupon {
-    private final String eligibleBank;
-    private final double minOrderValue;
+---
 
-    public BankingCoupon(String code, String desc, String bank, double percentage, double maxCap, double minOrder) {
-        super(code, desc, new PercentageWithCapDiscountStrategy(percentage, maxCap));
-        this.eligibleBank = bank;
-        this.minOrderValue = minOrder;
-    }
-
-    @Override
-    public boolean isApplicable(Cart cart) {
-        return eligibleBank.equalsIgnoreCase(cart.getBankName()) 
-               && cart.getOriginalTotal() >= minOrderValue;
-    }
-
-    @Override
-    public double calculateCouponDiscount(Cart cart) {
-        return strategy.calculateDiscount(cart.getDiscountedTotal());
-    }
-}
-
-// ============================================================================
-// 4. SINGLETON PATTERN: COUPON MANAGER & EVALUATOR
-// ============================================================================
-
-class CouponManager {
-    private static volatile CouponManager instance;
-    private final List<Coupon> registeredCoupons = new ArrayList<>();
+### Step 5: Centralized Coupon Manager (Singleton Pattern)
+```java
+public class CouponManager {
+    private static CouponManager instance;
+    private Coupon head;
 
     private CouponManager() {}
 
-    public static CouponManager getInstance() {
-        if (instance == null) {
-            synchronized (CouponManager.class) {
-                if (instance == null) {
-                    instance = new CouponManager();
-                }
-            }
-        }
+    public static synchronized CouponManager getInstance() {
+        if (instance == null) instance = new CouponManager();
         return instance;
     }
 
     public void registerCoupon(Coupon coupon) {
-        registeredCoupons.add(coupon);
-    }
-
-    public List<Coupon> getApplicableCoupons(Cart cart) {
-        List<Coupon> applicable = new ArrayList<>();
-        for (Coupon c : registeredCoupons) {
-            if (c.isApplicable(cart)) {
-                applicable.add(c);
+        if (head == null) {
+            head = coupon;
+        } else {
+            Coupon current = head;
+            while (current.nextCoupon != null) {
+                current = current.nextCoupon;
             }
+            current.setNextCoupon(coupon);
         }
-        return applicable;
     }
 
-    /**
-     * Chains all applicable coupons and applies them sequentially.
-     */
-    public void applyAll(Cart cart) {
-        List<Coupon> applicable = getApplicableCoupons(cart);
-        if (applicable.isEmpty()) {
-            System.out.println("No applicable coupons found for this cart.");
-            return;
+    public void applyAllCoupons(Cart cart) {
+        if (head != null) {
+            head.apply(cart);
         }
-
-        // Dynamically wire the Chain of Responsibility
-        Coupon head = applicable.get(0);
-        Coupon current = head;
-        for (int i = 1; i < applicable.size(); i++) {
-            current = current.setNextCoupon(applicable.get(i));
-        }
-
-        // Execute the entire chain
-        head.applyChain(cart);
     }
-}
 
-// ============================================================================
-// 5. MAIN DEMONSTRATION DRIVER (MATCHING LECTURE VALUES)
-// ============================================================================
-
-public class CouponEngineDemo {
-    public static void main(String[] args) {
-        // Setup Catalog Products
-        Product jacket = new Product("P1", "Designer Winter Jacket", 3000.0, ProductCategory.CLOTHING);
-        Product laptop = new Product("P2", "Gaming Laptop", 20000.0, ProductCategory.ELECTRONICS);
-        Product oliveOil = new Product("P3", "Extra Virgin Olive Oil", 2000.0, ProductCategory.GROCERY);
-
-        // Build Shopping Cart: Total = 3000 + 20000 + 2000 = ₹25,000
-        Cart cart = new Cart();
-        cart.addItem(jacket, 1);
-        cart.addItem(laptop, 1);
-        cart.addItem(oliveOil, 1);
-        cart.setBankName("ABC_BANK");
-        cart.setLoyalCustomer(true);
-
-        System.out.println("===============================================================");
-        System.out.println("ORIGINAL CART VALUE: ₹" + cart.getOriginalTotal());
-        System.out.println("===============================================================");
-
-        // Setup Promotions inside CouponManager Singleton
-        CouponManager manager = CouponManager.getInstance();
-
-        Coupon seasonal = new SeasonalCoupon("SEASON10", "10% Off on Clothing Items", 10.0, ProductCategory.CLOTHING);
-        Coupon loyalty = new LoyaltyCoupon("LOYAL5", "5% Off for Loyal Gold Members", 5.0);
-        Coupon bulk = new BulkPurchaseCoupon("BULK100", "Flat ₹100 Off on Orders >= ₹1,000", 100.0, 1000.0);
-        Coupon bank = new BankingCoupon("ABCBANK15", "15% Off with ABC Bank (Max ₹500, Min ₹2,000)", 
-                                        "ABC_BANK", 15.0, 500.0, 2000.0);
-
-        manager.registerCoupon(seasonal);
-        manager.registerCoupon(loyalty);
-        manager.registerCoupon(bulk);
-        manager.registerCoupon(bank);
-
-        System.out.println("\n--- Applicable Coupons Identified for Cart ---");
-        List<Coupon> eligible = manager.getApplicableCoupons(cart);
-        for (Coupon c : eligible) {
-            System.out.println(" • " + c.getCode() + ": " + c.getDescription());
-        }
-
-        System.out.println("\n--- Executing Coupon Stacking Pipeline ---");
-        manager.applyAll(cart);
-
-        System.out.println("\n===============================================================");
-        System.out.printf("FINAL SETTLED CART TOTAL: ₹%.2f (Total Saved: ₹%.2f)\n", 
-                          cart.getDiscountedTotal(), 
-                          (cart.getOriginalTotal() - cart.getDiscountedTotal()));
-        System.out.println("===============================================================");
+    public void clearCoupons() {
+        head = null;
     }
 }
 ```
 
 ---
 
-## 6. Execution Output
+### Step 6: Client Application & Demonstration
+```java
+public class Main {
+    public static void main(String[] args) {
+        // 1. Build Cart
+        Cart cart = new Cart();
+        Product shirt = new Product("Linen Shirt", "Clothing", 1000.0);
+        Product jeans = new Product("Denim Jeans", "Clothing", 2000.0);
+        Product headphones = new Product("Sony Headphones", "Electronics", 20000.0);
+
+        cart.addItem(shirt, 1);       // 1000
+        cart.addItem(jeans, 1);       // 2000
+        cart.addItem(headphones, 1);  // 20000 -> Total = 23,000
+
+        cart.setPaymentBank("HDFC");
+        cart.setLoyaltyMember(true);
+
+        System.out.println("Original Cart Total: ₹" + cart.getCurrentTotal());
+
+        // 2. Configure Coupons via CouponManager
+        CouponManager manager = CouponManager.getInstance();
+        manager.clearCoupons();
+
+        // Coupon 1: 10% off on Clothing
+        manager.registerCoupon(new CategoryCoupon("CLOTHING10", "Clothing", new PercentageDiscountStrategy(10.0)));
+
+        // Coupon 2: Flat ₹500 off for Loyalty Members on orders above ₹5000
+        manager.registerCoupon(new LoyaltyCoupon("LOYALTY500", 5000.0, new FlatDiscountStrategy(500.0)));
+
+        // Coupon 3: HDFC Bank 10% off with max cap of ₹1000 on min spend ₹10000
+        manager.registerCoupon(new BankDiscountCoupon("HDFC10", "HDFC", 10000.0, 
+                new PercentageWithCapDiscountStrategy(10.0, 1000.0)));
+
+        // 3. Execute Coupon Chain
+        System.out.println("\n=== Applying Stacking Coupons ===");
+        manager.applyAllCoupons(cart);
+
+        System.out.println("\nFinal Payable Amount: ₹" + cart.getCurrentTotal());
+    }
+}
+```
+
+### Execution Output:
+```text
+Original Cart Total: ₹23000.0
+
+=== Applying Stacking Coupons ===
+  [Applied] CLOTHING10: -₹300.0 | New Total: ₹22700.0
+  [Applied] LOYALTY500: -₹500.0 | New Total: ₹22200.0
+  [Applied] HDFC10: -₹1000.0 | New Total: ₹21200.0
+
+Final Payable Amount: ₹21200.0
+```
+
+---
+
+## 5. Architectural Discussion: Chain of Responsibility vs. Decorator
+
+In the lecture, the instructor notes that both **Chain of Responsibility** and **Decorator** can process stacked calculations. Why choose Chain of Responsibility here?
+- **Decorator** is optimal when modifying an object's behavior transparently through recursive wrapping (e.g. `cart = new CouponDecorator(cart)`).
+- **Chain of Responsibility** is superior here because:
+  1. Each coupon evaluates distinct external eligibility predicates (`isApplicable`).
+  2. A coupon can silently bypass itself and immediately forward to `next` if criteria aren't met.
+  3. Marketing pipelines frequently require dynamic re-ordering of priority (e.g., Bank offers before Store credits).
+
+---
+
+## 6. Interview Perspective
+
+- **Q: How does combining Strategy with Chain of Responsibility uphold OCP?**
+  *A: Strategy allows adding new mathematical formulas (e.g., "Buy 2 Get 1 Free") without touching coupon classes. Chain of Responsibility allows adding new coupon qualification rules (e.g., "First-Time User Coupon") without modifying the cart or manager.*
+- **Q: How would you prevent a coupon from reducing the cart below zero?**
+  *A: In `Cart.deductDiscount()`, clamp the calculation via `Math.max(0, currentTotal - amount)`.*
+- **Q: How to handle mutually exclusive coupons (non-stackable)?**
+  *A: Add a flag `canStack()` on `Coupon`. In the handler loop, if a non-stackable coupon is applied, terminate the chain or reset previously deducted discounts based on business rules.*
+
+---
+
+## 7. Quick Revision
 
 ```text
-===============================================================
-ORIGINAL CART VALUE: ₹25000.0
-===============================================================
-
---- Applicable Coupons Identified for Cart ---
- • SEASON10: 10% Off on Clothing Items
- • LOYAL5: 5% Off for Loyal Gold Members
- • BULK100: Flat ₹100 Off on Orders >= ₹1,000
- • ABCBANK15: 15% Off with ABC Bank (Max ₹500, Min ₹2,000)
-
---- Executing Coupon Stacking Pipeline ---
-  [Applied: SEASON10] 10% Off on Clothing Items -> Discount: ₹300.00 | Running Cart: ₹24700.00
-  [Applied: LOYAL5] 5% Off for Loyal Gold Members -> Discount: ₹1235.00 | Running Cart: ₹23465.00
-  [Applied: BULK100] Flat ₹100 Off on Orders >= ₹1,000 -> Discount: ₹100.00 | Running Cart: ₹23365.00
-  [Applied: ABCBANK15] 15% Off with ABC Bank (Max ₹500, Min ₹2,000) -> Discount: ₹500.00 | Running Cart: ₹22865.00
-
-===============================================================
-FINAL SETTLED CART TOTAL: ₹22865.00 (Total Saved: ₹2135.00)
-===============================================================
+Problem: Multi-rule discounts with distinct math and conditional applicability.
+Solution: Strategy Pattern encapsulates math formulas (Flat, %, % with cap).
+Chain of Responsibility links coupon rules into a pipeline (Category, Bank, Loyalty).
+Benefit: Highly modular, zero if-else clutter, OCP-compliant.
 ```
-
----
-
-## Quick Revision
-
-### Core Idea
-A modular promotional discount engine coordinating **Strategy Pattern** (interchangeable calculation formulas: Flat, %, Capped), **Chain of Responsibility** (sequential coupon stacking pipeline), and **Singleton** (`CouponManager` central registry).
-
-### Remember
-- **Category vs Cart Scope**: Coupons like `SeasonalCoupon` apply solely to targeted items (`ProductCategory.CLOTHING`), while `LoyaltyCoupon` and `BankingCoupon` evaluate against the running order balance.
-- **Dynamic Chain Wiring**: `CouponManager` queries applicable coupons first, links them dynamically via `setNextCoupon()`, and triggers `head.applyChain(cart)`.
-
-### Java Implementation Idea
-```java
-abstract class Coupon {
-    protected DiscountStrategy strategy;
-    protected Coupon nextCoupon;
-    public abstract boolean isApplicable(Cart cart);
-    public abstract double calculateCouponDiscount(Cart cart);
-    public void applyChain(Cart cart) {
-        if (isApplicable(cart)) {
-            cart.setDiscountedTotal(cart.getDiscountedTotal() - calculateCouponDiscount(cart));
-        }
-        if (nextCoupon != null) nextCoupon.applyChain(cart);
-    }
-}
-```
-
-### Most Important Interview Point
-**Why combine Strategy and Chain of Responsibility?**
-- **Strategy** cleanly isolates the mathematical formula (`Flat`, `Percentage`, `Capped`) so adding a new formula doesn't touch coupon business rules.
-- **Chain of Responsibility** allows composing and stacking any arbitrary permutation of active coupons at runtime without rigid inheritance hierarchies.
-
-### Common Trap
-Applying percentage discounts to the original price repeatedly during cascading coupon applications without updating the running discounted base. In enterprise checkout systems, discounts can compound or apply on net running totals depending on commercial terms.

@@ -1,5 +1,9 @@
 # 14. Build Your Own Notification Engine LLD
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused Low-Level Design (LLD) case study building an enterprise-grade Notification Engine faithfully derived from the complete lecture transcript. Demonstrates how to elegantly harmonize four core GoF design patterns in a single production system: **Decorator Pattern** for dynamic message enrichment (`TimestampDecorator`, `SignatureDecorator`), **Strategy Pattern** for multi-channel dispatch (`EmailStrategy`, `SmsStrategy`, `PopupStrategy`), **Observer Pattern** for decoupled event broadcasting to listeners and audit loggers, and **Singleton Pattern** for centralizing the `NotificationService` orchestrator and notification history.
+
+---
+
 ## 1. Problem Statement & Requirements
 
 In modern software systems, a **Notification Engine** is a critical subsystem responsible for alerting users and client systems about domain events (e.g., OTPs, transactional updates, marketing promos, order status). Often, developers treat notification services as a generic black box or third-party call without understanding their internal architecture.

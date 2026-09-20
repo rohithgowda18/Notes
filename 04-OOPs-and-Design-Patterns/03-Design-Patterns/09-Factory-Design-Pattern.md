@@ -1,5 +1,9 @@
 # 09. Factory Design Pattern
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Creational Factory patterns faithfully derived from the complete lecture transcript. Systematically clarifies the 3 variants: **Simple Factory** (a single creation utility isolating `if-else` instantiation), **Factory Method** (GoF pattern using polymorphic inheritance where creator subclasses decide product instantiation, e.g. `SingBurgerStore` vs `KingBurgerStore`), and **Abstract Factory** (GoF pattern producing cohesive families of related products, e.g. Burger + Garlic Bread). Explains why Factory is the essential companion to the Strategy Pattern, separating business execution from dependency creation.
+
+---
+
 ## 1. Overview
 
 The **Factory Design Pattern** is a creational design pattern dedicated to **separating object creation logic from core business logic**. Rather than scattering the `new` operator directly across client classes, object instantiation is encapsulated inside dedicated factories.

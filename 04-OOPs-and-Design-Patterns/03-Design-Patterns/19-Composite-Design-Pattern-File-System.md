@@ -1,331 +1,357 @@
 # 19. Composite Design Pattern — File System
 
-## 1. Overview
+> 💡 **Quick Revision Anchor**
+> - **Type:** Structural Design Pattern
+> - **Core Principle:** Composes objects into tree structures to represent part-whole hierarchies. Enables clients to treat individual objects (**Leaves**) and compositions of objects (**Composites**) uniformly.
+> - **Key Idea:** Both single items (`File`) and container items (`Folder`) implement the exact same component interface (`FileSystemItem`).
+> - **Rule of Thumb:** *"Use the Composite Pattern whenever your domain forms a tree-like hierarchy (Part-Whole) and you want to avoid `if (isLeaf) ... else if (isComposite) ...` type checks."*
 
-The **Composite Design Pattern** is a structural design pattern that composes objects into **tree structures** to represent **part-whole hierarchies**. Composite lets client code treat individual leaf objects and composite collections of objects **identically and uniformly**.
+---
 
-```mermaid
-graph TD
-    Root["📁 root (Directory / Composite)"] --> F1["📄 config.sys (File / Leaf)"]
-    Root --> D1["📁 Documents (Directory / Composite)"]
-    Root --> D2["📁 Music (Directory / Composite)"]
-    D1 --> F2["📄 resume.pdf (File / Leaf)"]
-    D2 --> F3["📄 song.mp3 (File / Leaf)"]
+## 1. Problem & Motivation
+
+Consider designing an operating system's **File System**:
+- A **File** has a name, a size, and content. A file is an atomic leaf element (it cannot contain other files or folders).
+- A **Folder (Directory)** has a name, but it can contain multiple files **and** multiple sub-folders.
+
+```
+                  Root [Folder]
+                 /     |       \
+          file1.txt   file2.txt  Docs [Folder]
+                                 /          \
+                         resume.pdf       notes.txt
 ```
 
----
-
-## 2. What Problem Are We Solving?
-
-Consider modeling an Operating System File System:
-- A `File` has a name and size.
-- A `Directory` has a name, but can contain both files and other subdirectories (nested to arbitrary depth).
-- **The Dual-List Anti-Pattern**: If a `Directory` class maintains two separate lists (`List<File>` and `List<Directory>`), every single operation (`ls()`, `calculateSize()`, `search()`, `delete()`) requires writing separate loops, instanceof checks, and duplicated recursion logic.
-- Clients cannot treat files and folders uniformly when calling common operations.
-
----
-
-## 3. Core Concepts
-
-- **Component (`FileSystemNode`)**: Common interface declaring operations shared by both simple and complex objects (`getName()`, `getSize()`, `ls()`).
-- **Leaf (`File`)**: Represents end-node objects that have no children. A leaf performs the actual primitive computation (e.g. returning its file size).
-- **Composite (`Directory`)**: Stores a polymorphic collection of `FileSystemNode` children (which can contain both Files and other Directories). It implements operations by delegating recursively to its children.
-
----
-
-## 4. Important Terminology
-
-- **Part-Whole Hierarchy**: A tree structure where a complex whole is made of parts, and parts can themselves be composed of smaller parts.
-- **Uniformity vs. Type Safety**: Composite prioritizes uniformity (client treats all nodes the same) over type safety (child management methods like `add()` may be exposed on leaf nodes, throwing exceptions if not guarded).
-- **Recursive Composition**: An object graph where composites contain components that are themselves composites.
-
----
-
-## 5. Real-World Analogy
-
-### 1. Delivery Packages & Gift Boxes
-- You buy a gift. It can be a single item (Leaf: a watch).
-- Or it can be a large gift box (Composite) containing a book (Leaf) and a smaller box (Composite) containing earrings (Leaf).
-- When the postal courier weighs the delivery, they put the outermost package on the scale (`calculateWeight()`), which automatically weighs all nested items and sub-boxes recursively.
-
-### 2. Company Organizational Hierarchy
-- An `Employee` (Leaf) has a salary. A `Department` (Composite) contains employees and sub-departments. Calculating the total departmental budget recursively sums individual salaries and child departmental expenses.
-
----
-
-## 6. Naive / Bad Design
-
-### Java Example (The Dual-List Anti-Pattern)
+### The Naive Approach: Treating Files and Folders Distinctly
+Without a unifying abstraction, a `Folder` class might be forced to maintain two separate collections:
 ```java
-// ❌ Naive Anti-Pattern: Separate lists for files and folders
-public class BadDirectory {
-    private String name;
-    private List<File> files = new ArrayList<>();
-    private List<BadDirectory> subDirectories = new ArrayList<>();
-
-    // 💥 Every operation requires dual loops and separate logic!
-    public int calculateTotalSize() {
-        int total = 0;
-        for (File f : files) total += f.getSize();
-        for (BadDirectory d : subDirectories) total += d.calculateTotalSize();
-        return total;
+// ❌ Naive design
+class Folder {
+    private List<File> files;
+    private List<Folder> subFolders;
+    
+    public void printAll() {
+        for (File f : files) { f.print(); }
+        for (Folder folder : subFolders) { folder.printAll(); }
     }
 }
 ```
 
-### Problems
-- Adding a new file system node (e.g. `Symlink` or `ZipArchive`) requires modifying every method in `BadDirectory` with a third list and loop.
-- Client code cannot treat files and directories polymorphically.
+### Why the Naive Approach Fails:
+1. **Lost Insertion Order:** In real file systems, files and sub-folders sit side-by-side in arbitrary order. Maintaining two separate lists loses chronological/alphabetical ordering across items.
+2. **Type Checking & Polymorphism Breakdown:** If we store them in a single generic `List<Object>`, every traversal requires ugly type checks (`instanceof`) and casting:
+   ```java
+   for (Object item : items) {
+       if (item instanceof File) {
+           ((File) item).print();
+       } else if (item instanceof Folder) {
+           ((Folder) item).printAll();
+       }
+   }
+   ```
+3. **Breaks Open-Closed Principle (OCP):** If we introduce a new file-system entity (e.g., `SymbolicLink`, `CompressedArchive`), we must modify every traversal loop across the entire codebase.
 
 ---
 
-## 7. Design Evolution
+## 2. The Core Solution: Composite Design Pattern
 
-1. **Step 1**: Identify the shared abstraction: `FileSystemNode` declaring `int getSize()` and `void ls(int indentLevel)`.
-2. **Step 2**: Make `File` implement `FileSystemNode` as a leaf node.
-3. **Step 3**: Make `Directory` implement `FileSystemNode` as a composite node, holding a single polymorphic collection: `List<FileSystemNode> children`.
-4. **Step 4**: Operations like `getSize()` become recursive one-liners: iterating over children and summing their sizes polymorphically.
+The **Composite Pattern** solves this by defining a single **Component interface** that both leaf nodes (`File`) and composite containers (`Folder`) implement.
+
+```
+                    +--------------------+
+                    |   FileSystemItem   | (Component Interface)
+                    |--------------------|
+                    | +ls()              |
+                    | +getSize()         |
+                    | +openAll()         |
+                    +--------------------+
+                              ▲
+                 ┌────────────┴────────────┐
+                 │                         │
+      +--------------------+     +--------------------+
+      |        File        |     |       Folder       |
+      |       (Leaf)       |     |    (Composite)     |
+      |--------------------|     |--------------------|
+      | -size              |     | -children: List    |
+      | +getSize(): int    |     | +add(item)         |
+      +--------------------+     | +getSize(): int    |
+                                 +--------------------+
+                                           │
+                                           └─── Has-Many children ───┘
+```
+
+Because `Folder` holds a list of `FileSystemItem` (which can be either `File` or another `Folder`), operations like `getSize()` or `openAll()` naturally recurse down the tree without the client caring about node types!
 
 ---
 
-## 8. Final Design
+## 3. Structural Participants
 
-### Architecture (Class Diagram)
+1. **Component (`FileSystemItem`):** Declares common operations for all items in the hierarchy (`ls()`, `getSize()`, `openAll()`).
+2. **Leaf (`File`):** Represents leaf objects with no children. Implements operations directly.
+3. **Composite (`Folder`):** Contains child components (`List<FileSystemItem>`). Implements operations by delegating them recursively across its children.
+4. **Client:** Interacts uniformly with components through the `FileSystemItem` interface.
+
+---
+
+## 4. Architecture & Class Diagram
+
 ```mermaid
 classDiagram
-    class FileSystemNode {
+    class FileSystemItem {
         <<interface>>
-        +getName() String
-        +getSize() int
-        +ls(int indentLevel) void
+        +String getName()
+        +int getSize()
+        +void ls()
+        +void openAll(String indent)
+        +FileSystemItem cd(String name)
     }
 
     class File {
         -String name
-        -int sizeInBytes
-        +getName() String
-        +getSize() int
-        +ls(int indentLevel) void
+        -int size
+        +File(String name, int size)
+        +String getName()
+        +int getSize()
+        +void ls()
+        +void openAll(String indent)
+        +FileSystemItem cd(String name)
     }
 
-    class Directory {
+    class Folder {
         -String name
-        -List~FileSystemNode~ children
-        +addComponent(FileSystemNode node) void
-        +removeComponent(FileSystemNode node) void
-        +getName() String
-        +getSize() int
-        +ls(int indentLevel) void
+        -List~FileSystemItem~ children
+        +Folder(String name)
+        +void add(FileSystemItem item)
+        +String getName()
+        +int getSize()
+        +void ls()
+        +void openAll(String indent)
+        +FileSystemItem cd(String name)
     }
 
-    FileSystemNode <|.. File : Leaf
-    FileSystemNode <|.. Directory : Composite
-    Directory o-- FileSystemNode : Recursive Children
-```
-
-### Mermaid Sequence Diagram (Recursive Directory Sizing)
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Client as OS Kernel / Client
-    participant Root as root (Directory)
-    participant Docs as Documents (Directory)
-    participant F1 as notes.txt (File)
-    participant F2 as resume.pdf (File)
-
-    Client->>Root: getSize()
-    activate Root
-    Root->>F1: getSize()
-    F1-->>Root: 4 KB
-    Root->>Docs: getSize()
-    activate Docs
-    Docs->>F2: getSize()
-    F2-->>Docs: 120 KB
-    Docs-->>Root: 120 KB
-    deactivate Docs
-    Root-->>Client: Returns (4 + 120) = 124 KB
-    deactivate Root
+    FileSystemItem <|.. File : implements (Leaf)
+    FileSystemItem <|.. Folder : implements (Composite)
+    Folder "1" o--> "*" FileSystemItem : contains children
 ```
 
 ---
 
-## 9. Java Implementation
+## 5. Java Implementation (Primary Lecture Example)
 
+### Step 1: Component Interface
 ```java
-import java.util.*;
-
-// 1. Component Interface
-public interface FileSystemNode {
+// Component Interface representing both Files and Folders
+public interface FileSystemItem {
     String getName();
-    int getSize(); // Returns size in KB
-    void ls(int indentLevel);
+    int getSize();                         // File returns its size; Folder returns sum of children
+    void ls();                             // List immediate contents
+    void openAll(String indent);           // Recursively print tree with indentation
+    FileSystemItem cd(String targetName);  // Change directory navigation
 }
+```
 
-// 2. Leaf Class: File (Primitive entity)
-public class File implements FileSystemNode {
+---
+
+### Step 2: Leaf Node (`File`)
+```java
+// Leaf Node: has no children
+public class File implements FileSystemItem {
     private final String name;
-    private final int sizeInKB;
+    private final int sizeInKb;
 
-    public File(String name, int sizeInKB) {
-        this.name = Objects.requireNonNull(name);
-        this.sizeInKB = Math.max(0, sizeInKB);
+    public File(String name, int sizeInKb) {
+        this.name = name;
+        this.sizeInKb = sizeInKb;
     }
 
     @Override
-    public String getName() {
-        return name;
+    public String getName() { return name; }
+
+    @Override
+    public int getSize() { return sizeInKb; }
+
+    @Override
+    public void ls() {
+        System.out.println("  [File] " + name + " (" + sizeInKb + " KB)");
     }
 
     @Override
-    public int getSize() {
-        return sizeInKB;
+    public void openAll(String indent) {
+        System.out.println(indent + "📄 " + name + " (" + sizeInKb + " KB)");
     }
 
     @Override
-    public void ls(int indentLevel) {
-        String indent = "  ".repeat(indentLevel);
-        System.out.println(indent + "📄 " + name + " (" + sizeInKB + " KB)");
+    public FileSystemItem cd(String targetName) {
+        // You cannot cd into a leaf file
+        System.out.println("Cannot cd into file: " + name);
+        return null;
     }
 }
+```
 
-// 3. Composite Class: Directory (Can hold Files and Sub-Directories uniformly)
-public class Directory implements FileSystemNode {
+---
+
+### Step 3: Composite Node (`Folder`)
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+// Composite Node: can contain other Files and Folders
+public class Folder implements FileSystemItem {
     private final String name;
-    // Polymorphic collection: holds both Files and nested Directories!
-    private final List<FileSystemNode> children = new ArrayList<>();
+    private final List<FileSystemItem> children = new ArrayList<>();
 
-    public Directory(String name) {
-        this.name = Objects.requireNonNull(name);
+    public Folder(String name) {
+        this.name = name;
     }
 
-    public void addComponent(FileSystemNode node) {
-        if (node != null) children.add(node);
-    }
-
-    public void removeComponent(FileSystemNode node) {
-        children.remove(node);
+    public void add(FileSystemItem item) {
+        children.add(item);
     }
 
     @Override
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
 
-    // Recursive size calculation across the entire subtree
+    // Recursively sums the sizes of all contained items
     @Override
     public int getSize() {
         int totalSize = 0;
-        for (FileSystemNode child : children) {
-            totalSize += child.getSize(); // Polymorphic recursive dispatch!
+        for (FileSystemItem child : children) {
+            totalSize += child.getSize(); // Recursive delegation!
         }
         return totalSize;
     }
 
-    // Recursive directory tree printing with visual indentation
+    // Lists immediate children
     @Override
-    public void ls(int indentLevel) {
-        String indent = "  ".repeat(indentLevel);
-        System.out.println(indent + "📁 [" + name + "] (Total: " + getSize() + " KB)");
-        for (FileSystemNode child : children) {
-            child.ls(indentLevel + 1); // Recurse with deeper indentation
+    public void ls() {
+        System.out.println("Directory listing for: " + name);
+        for (FileSystemItem child : children) {
+            System.out.println("  " + child.getName() + " (" + child.getSize() + " KB)");
         }
+    }
+
+    // Recursively prints entire sub-tree with indentation
+    @Override
+    public void openAll(String indent) {
+        System.out.println(indent + "📁 " + name + "/ (" + getSize() + " KB total)");
+        for (FileSystemItem child : children) {
+            child.openAll(indent + "    "); // Recurse with increased indentation
+        }
+    }
+
+    // Navigates to an immediate child directory
+    @Override
+    public FileSystemItem cd(String targetName) {
+        for (FileSystemItem child : children) {
+            if (child.getName().equalsIgnoreCase(targetName) && child instanceof Folder) {
+                return child;
+            }
+        }
+        System.out.println("Directory not found: " + targetName);
+        return null;
     }
 }
 ```
 
 ---
 
-## 10. Code Walkthrough
+### Step 4: Client Code & Demonstration
+```java
+public class Main {
+    public static void main(String[] args) {
+        // Build the tree hierarchy
+        Folder root = new Folder("root");
 
-1. `FileSystemNode`: The core contract providing uniform polymorphic access.
-2. `File.getSize()`: Base case of the recursion; returns the file's raw size.
-3. `Directory.getSize()`: Recursive step; iterates through `children`, invoking `child.getSize()` without knowing whether a child is a leaf file or a nested directory.
-4. `Directory.ls()`: Prints the directory header and recurses on all children with `indentLevel + 1` to format a visual folder hierarchy.
+        File file1 = new File("file1.txt", 10);
+        File file2 = new File("file2.txt", 25);
+        root.add(file1);
+        root.add(file2);
 
----
+        Folder docs = new Folder("docs");
+        File resume = new File("resume.pdf", 120);
+        File notes = new File("notes.txt", 15);
+        docs.add(resume);
+        docs.add(notes);
 
-## 11. Important Design Decisions
+        root.add(docs);
 
-- **Uniformity vs. Type Safety**: Child management methods (`addComponent()`, `removeComponent()`) are placed on `Directory` rather than the `FileSystemNode` interface. This preserves compile-time type safety so clients cannot accidentally invoke `addComponent()` on a single `File`.
+        // 1. Recursive Tree Printing via openAll()
+        System.out.println("=== Recursive Open All ===");
+        root.openAll("");
 
----
+        // 2. Uniform Size Calculation
+        System.out.println("\n=== Size Computation ===");
+        System.out.println("Docs folder total size: " + docs.getSize() + " KB");
+        System.out.println("Root folder total size: " + root.getSize() + " KB");
 
-## 12. Edge Cases
+        // 3. Navigation via cd()
+        System.out.println("\n=== Directory Navigation ===");
+        FileSystemItem cwd = root.cd("docs");
+        if (cwd != null) {
+            cwd.ls();
+        }
+    }
+}
+```
 
-- **Empty Directory**: Returns `getSize() == 0` and prints an empty folder without throwing errors.
-- **Cyclic References / Symlinks**: If symbolic links are introduced, an object tree could contain a cycle ($A \rightarrow B \rightarrow A$), causing infinite recursion and `StackOverflowError`. Solved by tracking visited nodes via a `Set<FileSystemNode>`.
+### Execution Output:
+```text
+=== Recursive Open All ===
+📁 root/ (170 KB total)
+    📄 file1.txt (10 KB)
+    📄 file2.txt (25 KB)
+    📁 docs/ (135 KB total)
+        📄 resume.pdf (120 KB)
+        📄 notes.txt (15 KB)
 
----
+=== Size Computation ===
+Docs folder total size: 135 KB
+Root folder total size: 170 KB
 
-## 13. Production Considerations
-
-- **Arithmetic Expression Trees**: Another canonical use case of Composite:
-  - **Leaf**: `Number(5)`, `Number(10)`
-  - **Composite**: `AddExpression(left, right)`, `MultiplyExpression(left, right)`
-  - Calling `eval()` on the root evaluates the full mathematical formula recursively.
-
----
-
-## 14. Advantages
-
-- **Simplifies Client Code**: Clients treat complex trees and primitive leaves identically.
-- **Open/Closed Principle**: Adding new node types (e.g. `SymlinkNode`, `ZipArchiveNode`) requires zero changes to existing classes.
-
----
-
-## 15. Disadvantages / Trade-offs
-
-- **Over-generalization**: It can make designs overly general when you want to restrict which components can be children of other components.
-
----
-
-## 16. Related Patterns / Alternatives
-
-- **Composite vs. Decorator**: Both share similar recursive structures, but Decorator adds responsibilities dynamically to an object, whereas Composite focuses on aggregating tree structures.
-- **Composite + Iterator**: Often combined to traverse hierarchical trees sequentially.
-
----
-
-## 17. SOLID / OOP Connections
-
-- **Open/Closed Principle (OCP)**: New leaves and composites can be introduced without modifying existing tree processing logic.
-- **Single Responsibility Principle (SRP)**: Leaves handle primitive operations; composites handle aggregation and delegation.
-
----
-
-## 18. Common Mistakes
-
-- **Duplicating Lists**: Using separate lists for leaves and composites inside the container class instead of a single polymorphic collection.
-- **Forgetting Base Case in Recursion**: Ensuring leaf nodes return values directly without attempting to recurse.
+=== Directory Navigation ===
+Directory listing for: docs
+  resume.pdf (120 KB)
+  notes.txt (15 KB)
+```
 
 ---
 
-## 19. Interview Questions
+## 6. Real-World Applications
 
-1. **What problem does the Composite Pattern solve?**
-   - *Answer*: It allows client code to treat individual objects (leaves) and compositions of objects (composites) uniformly in a tree structure, avoiding conditional type checking and dual loops.
-2. **Where do you declare child management methods (`add`/`remove`) in Composite?**
-   - *Answer*: Either in the Component interface (prioritizing Uniformity, but leaves must throw exceptions) or only in the Composite class (prioritizing Type Safety, which is preferred in Java).
-3. **How do you calculate directory size in the Composite pattern?**
-   - *Answer*: By defining `getSize()` on the component interface; the leaf returns its own size, while the composite iterates over its child collection and returns the sum of `child.getSize()`.
+1. **DOM Tree in Web Browsers:** HTML `<head>`, `<body>`, `<div>` tags are Composites containing child elements (`<p>`, `<span>`, or plain text Leaf nodes). Calling `.render()` or `.getBoundingClientRect()` triggers recursive aggregation.
+2. **GUI Layout Frameworks (Swing / JavaFX / React):** A `Container` / `Panel` holds child `Button`, `Label`, or nested `Panel` components. Calling `paint()` paints the entire container hierarchy.
+3. **E-Commerce Product Bundling:** An order item can be an individual product or a "Gift Box / Bundle" containing multiple products and nested smaller gift packs. Calling `getPrice()` recursively calculates the total.
+4. **Organizational Hierarchy:** An `Employee` can be an individual contributor or a `Manager` with a team of subordinates. Calling `getHeadcount()` or `calculateBudget()` aggregates recursively.
 
 ---
 
-## 20. Quick Revision
+## 7. Trade-offs & Limitations
 
-### Core Idea
-> Composite structures objects into tree hierarchies so clients treat individual leaf items and composite collections uniformly.
+| Advantages | Limitations |
+| :--- | :--- |
+| **Uniformity:** Client treats leaves and composites identically; no `instanceof` checks. | **Over-generalization:** Interface must declare operations that might not make sense for leaf nodes (e.g., `cd()` or `add()` on a `File`). |
+| **Open-Closed Principle:** Adding new leaf or composite types requires zero modifications to existing traversal code. | **Type Safety vs. Transparency:** If `add()` is placed in the Component interface, leaf nodes must throw `UnsupportedOperationException`. If `add()` is only on `Folder`, client loses transparency when handling references typed as `FileSystemItem`. |
 
-### Remember
-- Component = Shared interface (`FileSystemNode`).
-- Leaf = Primitive node with no children (`File`).
-- Composite = Container storing polymorphic children (`Directory`).
+---
 
-### Java Implementation Idea
-> Store `List<FileSystemNode>` in `Directory`, and implement `getSize()` and `ls()` via recursive delegation to children.
+## 8. Interview Perspective
 
-### Most Important Interview Point
-> Point out how Composite eliminates dual-list anti-patterns and `instanceof` checks when traversing tree-structured domains.
+- **Q: How does Composite pattern eliminate conditional logic?**
+  *A: Instead of the client checking whether an item is a File or a Folder with `if-else` or `switch`, polymorphism handles it automatically. `Folder.getSize()` calls `.getSize()` on its children, which in turn could be files or sub-folders.*
+- **Q: Where should child management methods (`add()`, `remove()`) reside?**
+  *A: Two classical approaches exist:*
+  1. *Transparency:* Put `add()` in the base Component interface. Leaves throw an exception. Maximizes uniform treatment.
+  2. *Safety (Instructor's preference):* Put `add()` only in the Composite class (`Folder`). Leaves don't have invalid methods, but client must know it has a `Folder` before calling `add()`.*
+- **Q: How does recursion terminate in Composite structures?**
+  *A: Leaf nodes serve as the base cases of the recursive traversal (e.g., `File.getSize()` returns its own size without delegating).*
 
-### Common Trap
-> Be vigilant about cyclic links (like symlinks in file systems) that can trigger infinite recursive loops and `StackOverflowError`.
+---
+
+## 9. Quick Revision
+
+```text
+Tree Hierarchy: Component (base) <- Leaf (File) & Composite (Folder).
+Composite HAS-A List<Component> and delegates operations down recursively.
+Eliminates instanceof checks, enables uniform client interactions.
+```

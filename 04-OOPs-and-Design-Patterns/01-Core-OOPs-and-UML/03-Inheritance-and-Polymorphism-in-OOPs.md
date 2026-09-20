@@ -150,6 +150,13 @@ class AccelerateExample {
 ```
 The compiler determines exactly which method to invoke at compile-time based on the arguments supplied.
 
+#### Lecture Bonus / Interview Question: What is Operator Overloading & Why Doesn't Java Support It?
+At the conclusion of the lecture, the instructor assigns a classic homework/interview question:
+- **What is Operator Overloading?** In languages like C++, operators (such as `+`, `*`, `<<`, `==`) can be overloaded for user-defined classes (e.g., adding two `ComplexNumber` or `Matrix` objects using `c1 + c2`).
+- **Why does C++ support it while Java does not?**
+  1. **Simplicity and Readability:** James Gosling designed Java to eliminate C++ pitfalls. Operator overloading often leads to cryptic, confusing, and unreadable code (e.g., an overloaded `+` performing database mutations or subtracting values).
+  2. **Predictability:** In Java, `+` is only overloaded by the language runtime itself for `String` concatenation; user-defined operator overloading is explicitly omitted to prevent unexpected side effects and keep the language clean and tooling simple.
+
 ---
 
 ### B. Runtime Polymorphism (Method Overriding & Dynamic Dispatch)

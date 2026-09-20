@@ -1,5 +1,9 @@
 # 11. Build Zomato Food Delivery App LLD ("Tomato App")
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-ready Low-Level Design (LLD) case study designing a production-grade Food Delivery System (Zomato / Swiggy clone, dubbed "Tomato App") faithfully derived from the complete lecture transcript. Demonstrates a **Bottom-Up Design approach**, integrating multiple GoF patterns: **Factory Method** (`OrderFactory`, `NowOrderFactory`, `ScheduledOrderFactory`) for immediate vs advance order lifecycles, **Strategy Pattern** for pluggable checkout payments (`PaymentStrategy`), **Singleton Pattern** for `RestaurantManager` catalog caching, and a lightweight **Notification Engine**. Analyzes the architectural trade-off of a centralized `TomatoApp` Orchestrator (Facade) versus decentralized REST microservices.
+
+---
+
 ## 1. Problem Statement
 
 Design a production-grade Low-Level Object-Oriented system for an online food delivery application (modeled after **Zomato / Swiggy**, named **Tomato** in the lecture). The system models the end-to-end customer journey:

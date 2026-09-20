@@ -1,6 +1,6 @@
 # 34. Build Snake and Ladder Game LLD
 
-> 💡 **Quick Revision Anchor**: A classic Top-Down Machine Coding architecture for **Snake and Ladder**. Models snakes and ladders uniformly using a **`Jump` abstraction** (where `start > end` is a Snake and `start < end` is a Ladder), dynamic dice configurations, a round-robin player queue (`Deque<Player>`), and pluggable board generation (**Strategy Pattern**).
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused Low-Level Design of a modular multiplayer Snake and Ladder board game faithfully derived from the complete lecture transcript. Unifies snakes and ladders under a polymorphic `Jump` / `BoardEntity` abstraction (`start > end` represents a snake bite sliding downward, while `start < end` represents a ladder climb), configurable $K$-dice rolling mechanics, an exact-landing boundary victory condition (cell 100), and round-robin player turn cycling via `Deque<Player>`.
 
 ---
 

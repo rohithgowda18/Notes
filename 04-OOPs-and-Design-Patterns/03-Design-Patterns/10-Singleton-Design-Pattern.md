@@ -1,5 +1,9 @@
 # 10. Singleton Design Pattern
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused examination of the Singleton Design Pattern faithfully derived from the complete lecture transcript. Traces the complete evolutionary path: **Eager Initialization** vs **Thread-Unsafe Lazy Initialization**, the performance bottlenecks of **Synchronized Method**, the mechanics and memory-barrier intricacies of **Double-Checked Locking (DCL)** with `volatile`, the elegant **Bill Pugh Static Inner Class Holder**, and the production-standard **Enum Singleton**. Thoroughly analyzes attack vectors (Reflection, Serialization, Cloning) and how to protect against them in interview discussions.
+
+---
+
 ## 1. Overview
 
 The **Singleton Design Pattern** is a creational design pattern that guarantees a class has **strictly one instance** in JVM memory throughout the application lifecycle and provides a single, global access point to that instance.

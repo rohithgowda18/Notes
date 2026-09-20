@@ -1,6 +1,6 @@
 # 33. Build Tic Tac Toe Game LLD
 
-> 💡 **Quick Revision Anchor**: A classic Top-Down Machine Coding architecture for an $N \times N$ multiplayer Tic-Tac-Toe game. Features an $O(1)$/$O(N)$ winning strategy algorithm (**Strategy Pattern**), round-robin turn management using a double-ended queue (`Deque<Player>`), and clean separation between Board, Symbols, Rules, and Game Controller.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused Low-Level Design of an $N \times N$ multiplayer Tic-Tac-Toe game faithfully derived from the complete lecture transcript. Features an extensible $O(N)$ move-validation and win-detection subsystem using the **Strategy Pattern** (`IWinningStrategy`, checking rows, columns, diagonals, and anti-diagonals), round-robin player turn cycling via a `Deque<Player>`, and clean architectural separation across `Board`, `PlayingPiece`, `Player`, and `GameController`.
 
 ---
 

@@ -1,6 +1,6 @@
 # 39. Memento Design Pattern
 
-> 💡 **Quick Revision Anchor**: The **Memento Pattern** is a **behavioral design pattern** that captures and externalizes an object's internal state without violating encapsulation, enabling the object to be restored to this saved state later (Undo/Rollback operations).
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Memento Design Pattern faithfully derived from the complete lecture transcript. Resolves the **Encapsulation Paradox** by capturing and externalizing an object's internal snapshot without exposing private state fields. Deconstructs the three foundational participants: **Originator** (creator and consumer of snapshots), **Memento** (immutable state container), and **Caretaker** (lifecycle manager and history stack). Grounded in the lecture's canonical **Database Transaction Management System** (`BEGIN TRANSACTION`, `COMMIT`, `ROLLBACK`) and contrasts Memento's declarative snapshot restoration with Command Pattern's imperative undo execution.
 
 ---
 

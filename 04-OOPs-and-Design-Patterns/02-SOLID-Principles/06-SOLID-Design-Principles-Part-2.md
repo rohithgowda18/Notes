@@ -1,5 +1,9 @@
 # 06. SOLID Design Principles — Part 2: LSP Deep Dive, ISP & DIP
 
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-ready guide to the remaining SOLID principles faithfully derived from the complete lecture transcript. Features the **Liskov Substitution Principle (LSP) Deep Dive** with its three formal rule sets (Signature Rules covering contravariance, covariance, and checked exceptions; Property Rules governing class invariants and history constraints; and Method Rules enforcing precondition weakening and postcondition strengthening), **Interface Segregation Principle (ISP)** demonstrated through the 2D vs 3D Shapes and Worker interfaces, and **Dependency Inversion Principle (DIP)** breaking tight coupling between `UserService` and concrete databases (`MySQLDatabase`, `MongoDBDatabase`) via constructor injection. Concludes with the instructor's crucial perspective on design trade-offs and contextual object modeling (Ola vs Swiggy).
+
+---
+
 ## 1. Overview
 
 Part 2 of the SOLID design principles completes the foundation of object-oriented design:

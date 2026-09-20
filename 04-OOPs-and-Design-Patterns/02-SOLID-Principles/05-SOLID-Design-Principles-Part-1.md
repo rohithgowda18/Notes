@@ -1,6 +1,6 @@
 # 05. SOLID Design Principles — Part 1 (SRP, OCP, LSP)
 
-> 💡 **Quick Revision Anchor**: A comprehensive, interview-ready examination of the first three SOLID principles introduced by Robert C. Martin ("Uncle Bob") in 2000. Covers **Single Responsibility Principle (SRP)** through the decomposition of a monolithic **ShoppingCart**, **Open/Closed Principle (OCP)** through interface-driven **CartPersistence (SQL, Mongo, File)**, and **Liskov Substitution Principle (LSP)** through the classic **Bank Account Hierarchy (Savings, Current, FixedDeposit)** and why client-side `instanceof` checks signify architectural failure.
+> 💡 **Quick Revision Anchor**: A comprehensive, interview-ready examination of the first three SOLID principles introduced by Robert C. Martin ("Uncle Bob") in 2000, faithfully derived from the complete lecture transcript. Explores **Single Responsibility Principle (SRP)** through the architectural decomposition of a monolithic **ShoppingCart** (separating cart calculations, invoice printing, and persistence), **Open/Closed Principle (OCP)** through interface-driven **CartPersistence (SQL, Mongo, File)**, and **Liskov Substitution Principle (LSP)** through the canonical **Bank Account Hierarchy (Savings, Current, FixedDeposit)**, demonstrating why client-side `instanceof` checks represent catastrophic architectural anti-patterns.
 
 ---
 
