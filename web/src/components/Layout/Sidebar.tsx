@@ -22,6 +22,7 @@ interface SidebarProps {
   onItemClick?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  className?: string;
 }
 
 const FOLDERS_STORAGE_KEY = "study_notes_expanded_folders";
@@ -304,6 +305,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onItemClick,
   isCollapsed = false,
   onToggleCollapse,
+  className,
 }) => {
   const { tree: notesTree, loading: notesLoading } = useRepo();
   const { tree: lcTree, loading: lcLoading } = useLeetcode();
@@ -435,7 +437,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const lcCount = lcTree?.allFiles.length || 0;
 
   return (
-    <aside className="w-72 shrink-0 border-r border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col select-none">
+    <aside
+      className={`select-none flex flex-col ${
+        className
+          ? className
+          : "w-72 shrink-0 border-r border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md h-[calc(100vh-3.5rem)] sticky top-14"
+      }`}
+    >
       {/* Sidebar Header with Dashboard Link & Tabs */}
       <div className="border-b border-neutral-200 dark:border-neutral-800 p-2 space-y-1.5">
         <Link

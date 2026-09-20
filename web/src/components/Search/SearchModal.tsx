@@ -8,6 +8,7 @@ import {
 } from "../../services/search";
 import { useRepo } from "../../context/RepoContext";
 import { useLeetcode } from "../../context/LeetcodeContext";
+import { EmptyState } from "../UI/EmptyState";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -138,9 +139,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
         {/* Results Container */}
         <div className="max-h-[60vh] overflow-y-auto p-2">
           {query.trim() && !searching && results.length === 0 ? (
-            <div className="py-12 text-center text-neutral-500 dark:text-neutral-400 text-sm">
-              No matching notes or content found for <span className="font-semibold text-neutral-700 dark:text-neutral-300">"{query}"</span>.
-            </div>
+            <EmptyState
+              title="No results found"
+              description={`No matching notes, code snippets, or solutions found for "${query}".`}
+              actionText="Clear Search"
+              onAction={() => setQuery("")}
+            />
           ) : !query.trim() ? (
             <div className="py-10 text-center text-neutral-400 dark:text-neutral-500 text-xs space-y-1">
               <p>Type keywords to search titles, folder names, and full Markdown text.</p>

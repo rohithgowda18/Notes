@@ -278,7 +278,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenSearch }) =>
               {
                 title: "Spring Boot",
                 icon: Layers,
-                route: "/folder/05-Spring-Boot",
+                route: "/folder/06-Java-and-Spring-Boot",
                 desc: "IOC, MVC, Security, JPA",
                 color: "text-green-500",
               },
