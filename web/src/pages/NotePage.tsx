@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { RefreshCw, ChevronRight, Folder, AlertCircle, ArrowLeft } from "lucide-react";
+import { RefreshCw, ChevronRight, Folder, AlertCircle, ArrowLeft, Clock } from "lucide-react";
 import { fetchRawMarkdown } from "../services/github";
 import { useRepo } from "../context/RepoContext";
 import { MarkdownRenderer } from "../components/Markdown/MarkdownRenderer";
@@ -25,6 +25,14 @@ export const NotePage: React.FC = () => {
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const wordCount = useMemo(() => {
+    return content.trim() ? content.trim().split(/\s+/).length : 0;
+  }, [content]);
+
+  const readingTimeMins = useMemo(() => {
+    return Math.max(1, Math.ceil(wordCount / 200));
+  }, [wordCount]);
 
   // Load note content
   const loadNote = async (forceRefresh = false) => {
@@ -138,7 +146,13 @@ export const NotePage: React.FC = () => {
               Dashboard
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
-            <span className="text-neutral-600 dark:text-neutral-400 font-medium">Study Notes</span>
+            <Link
+              to="/notes"
+              className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium text-neutral-600 dark:text-neutral-400"
+              title="All Study Modules"
+            >
+              Study Notes
+            </Link>
             {pathParts.map((part, index) => {
               const isLast = index === pathParts.length - 1;
               const isFolder = !isLast;
@@ -201,6 +215,18 @@ export const NotePage: React.FC = () => {
         {/* Rendered Markdown Body */}
         {!loading && !error && (
           <>
+            {/* Reading Metadata */}
+            {content.trim().length > 0 && (
+              <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 mb-6 pb-3 border-b border-neutral-100 dark:border-neutral-800">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>{readingTimeMins} min read</span>
+                </span>
+                <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                <span>{wordCount.toLocaleString()} words</span>
+              </div>
+            )}
+
             <article className="min-w-0">
               <MarkdownRenderer content={content} currentFilePath={filePath} />
             </article>

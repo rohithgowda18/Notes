@@ -317,27 +317,51 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
     }
   };
 
-  const handlePrevPage = () => {
+  const handlePrevPage = useCallback(() => {
     if (currentPage > 1) {
       scrollToPage(currentPage - 1);
     }
-  };
+  }, [currentPage]);
 
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     if (currentPage < numPages) {
       scrollToPage(currentPage + 1);
     }
-  };
+  }, [currentPage, numPages]);
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     setIsFitWidth(false);
     setScale((prev) => Math.min(Math.round((prev + 0.15) * 100) / 100, 3.0));
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     setIsFitWidth(false);
     setScale((prev) => Math.max(Math.round((prev - 0.15) * 100) / 100, 0.5));
-  };
+  }, []);
+
+  // Keyboard Shortcuts for PDF Navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        (e.target as HTMLElement)?.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault();
+        handlePrevPage();
+      } else if (e.key === "ArrowRight" || e.key === "PageDown") {
+        e.preventDefault();
+        handleNextPage();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handlePrevPage, handleNextPage]);
 
   const handleToggleFitWidth = () => {
     setIsFitWidth(true);

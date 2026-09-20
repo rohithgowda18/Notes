@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { RefreshCw, ChevronRight, Folder, AlertCircle, ArrowLeft, Code2 } from "lucide-react";
+import { RefreshCw, ChevronRight, Folder, AlertCircle, ArrowLeft, Code2, Clock } from "lucide-react";
 import { fetchLeetcodeMarkdown } from "../services/leetcode";
 import { useLeetcode } from "../context/LeetcodeContext";
 import { MarkdownRenderer } from "../components/Markdown/MarkdownRenderer";
@@ -18,6 +18,14 @@ export const LeetcodeNotePage: React.FC = () => {
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  const wordCount = useMemo(() => {
+    return content.trim() ? content.trim().split(/\s+/).length : 0;
+  }, [content]);
+
+  const readingTimeMins = useMemo(() => {
+    return Math.max(1, Math.ceil(wordCount / 200));
+  }, [wordCount]);
 
   const loadNote = async (forceRefresh = false) => {
     if (!filePath) return;
@@ -147,9 +155,9 @@ export const LeetcodeNotePage: React.FC = () => {
             </Link>
             <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
             <Link
-              to="/leetcode/folder/dsa"
+              to="/leetcode"
               className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium flex items-center gap-1"
-              title="LeetCode Solutions"
+              title="LeetCode Hub"
             >
               <Code2 className="w-3.5 h-3.5 text-emerald-500" />
               <span>LeetCode</span>
@@ -213,6 +221,18 @@ export const LeetcodeNotePage: React.FC = () => {
         {/* Rendered Markdown Body */}
         {!loading && !error && (
           <>
+            {/* Reading Metadata */}
+            {content.trim().length > 0 && (
+              <div className="flex items-center gap-3 text-xs text-neutral-500 dark:text-neutral-400 mb-6 pb-3 border-b border-neutral-100 dark:border-neutral-800">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-neutral-400" />
+                  <span>{readingTimeMins} min read</span>
+                </span>
+                <span className="text-neutral-300 dark:text-neutral-700">•</span>
+                <span>{wordCount.toLocaleString()} words</span>
+              </div>
+            )}
+
             <article className="min-w-0">
               <MarkdownRenderer content={content} currentFilePath={`leetcode/${filePath}`} />
             </article>

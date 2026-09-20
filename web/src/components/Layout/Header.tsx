@@ -122,6 +122,32 @@ export const Header: React.FC<HeaderProps> = ({
             {isLeetcode ? "LeetCode Solutions" : "Knowledge Hub"}
           </span>
         </Link>
+
+        {/* Desktop Quick Nav Links */}
+        <div className="hidden sm:flex items-center gap-1 border-l border-neutral-200 dark:border-neutral-800 pl-3 ml-1">
+          <Link
+            to="/notes"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+              !isLeetcode && location.pathname !== "/"
+                ? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Notes</span>
+          </Link>
+          <Link
+            to="/leetcode"
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+              isLeetcode
+                ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400"
+                : "text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            }`}
+          >
+            <Code2 className="w-3.5 h-3.5" />
+            <span>LeetCode</span>
+          </Link>
+        </div>
       </div>
 
       {/* Middle: Search input trigger */}

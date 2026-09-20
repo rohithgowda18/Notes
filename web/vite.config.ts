@@ -108,4 +108,22 @@ export default defineConfig({
     tailwindcss(),
     localNotesPlugin(),
   ],
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/') || id.includes('node_modules/react-router-dom/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/pdfjs-dist/')) {
+            return 'vendor-pdf';
+          }
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'vendor-icons';
+          }
+        },
+      },
+    },
+  },
 })
