@@ -46,10 +46,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenSearch }) =>
   const dsaFiles = lcFiles.filter((f) => f.path.startsWith("dsa/"));
   const dbFiles = lcFiles.filter((f) => f.path.startsWith("database/"));
 
-  const firstNotePath =
-    folders[0]?.files[0]?.path
-      ? `/note/${encodeURIComponent(folders[0].files[0].path)}`
-      : "/note/README.md";
+  const firstFolderPath =
+    folders[0]?.path
+      ? `/folder/${encodeURIComponent(folders[0].path)}`
+      : "/folder/01-Operating-Systems";
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] bg-neutral-50/50 dark:bg-neutral-950 px-4 sm:px-6 md:px-12 py-10 md:py-16">
@@ -166,7 +166,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onOpenSearch }) =>
             {/* Bottom CTA */}
             <div className="pt-6 mt-6 border-t border-neutral-100 dark:border-neutral-800/80">
               <Link
-                to={firstNotePath}
+                to={firstFolderPath}
                 className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition-all shadow-xs hover:shadow group/btn cursor-pointer"
               >
                 <span>Browse Study Notes</span>

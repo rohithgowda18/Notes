@@ -265,6 +265,17 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
   }
 }
 
+function isHtmlResponse(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    trimmed.startsWith("<!DOCTYPE html") ||
+    trimmed.startsWith("<html") ||
+    trimmed.startsWith("<!--") ||
+    trimmed.includes('<meta property="og:') ||
+    trimmed.includes("<script type=")
+  );
+}
+
 /**
  * Fetch raw markdown content for a specific file
  */
@@ -273,19 +284,21 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
 
   if (!forceRefresh) {
     const cachedContent = sessionStorage.getItem(cacheKey);
-    if (cachedContent) {
+    if (cachedContent && !isHtmlResponse(cachedContent)) {
       return cachedContent;
     }
   }
 
   // 1. In local dev server, read directly from local workspace
-  if (import.meta.env.DEV || isLocalFallbackActive()) {
+  if (import.meta.env.DEV) {
     try {
       const localRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
       if (localRes.ok) {
         const text = await localRes.text();
-        sessionStorage.setItem(cacheKey, text);
-        return text;
+        if (!isHtmlResponse(text)) {
+          sessionStorage.setItem(cacheKey, text);
+          return text;
+        }
       }
     } catch {
       // Continue to GitHub fetch
@@ -298,24 +311,52 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
     headers["Authorization"] = `token ${token}`;
   }
 
+  // 2. Fetch directly from GitHub raw URL
   const url = `${GITHUB_RAW_BASE}/${encodeURI(filePath)}`;
   try {
     const response = await fetch(url, { headers });
     if (response.ok) {
       const content = await response.text();
-      sessionStorage.setItem(cacheKey, content);
-      return content;
+      if (!isHtmlResponse(content)) {
+        sessionStorage.setItem(cacheKey, content);
+        return content;
+      }
     }
   } catch (e) {
     console.warn("Raw GitHub fetch failed", e);
   }
 
-  // Fallback to local server if on dev
-  const fallbackRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
-  if (fallbackRes.ok) {
-    const text = await fallbackRes.text();
-    sessionStorage.setItem(cacheKey, text);
-    return text;
+  // 3. If token is present, try GitHub API contents endpoint (for private repositories)
+  if (token) {
+    try {
+      const apiRes = await fetch(`${GITHUB_API_BASE}/contents/${encodeURI(filePath)}`, {
+        headers: {
+          Accept: "application/vnd.github.raw+json",
+          Authorization: `token ${token}`,
+        },
+      });
+      if (apiRes.ok) {
+        const text = await apiRes.text();
+        if (!isHtmlResponse(text)) {
+          sessionStorage.setItem(cacheKey, text);
+          return text;
+        }
+      }
+    } catch (e) {
+      console.warn("GitHub API raw contents fetch failed", e);
+    }
+  }
+
+  // 4. Fallback to local server only if on dev
+  if (import.meta.env.DEV) {
+    const fallbackRes = await fetch(`/api/local-file?path=${encodeURIComponent(filePath)}`);
+    if (fallbackRes.ok) {
+      const text = await fallbackRes.text();
+      if (!isHtmlResponse(text)) {
+        sessionStorage.setItem(cacheKey, text);
+        return text;
+      }
+    }
   }
 
   throw new Error(`Unable to load note from path: ${filePath}`);

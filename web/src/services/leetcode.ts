@@ -199,6 +199,17 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
   };
 }
 
+function isHtmlResponse(text: string): boolean {
+  const trimmed = text.trim();
+  return (
+    trimmed.startsWith("<!DOCTYPE html") ||
+    trimmed.startsWith("<html") ||
+    trimmed.startsWith("<!--") ||
+    trimmed.includes('<meta property="og:') ||
+    trimmed.includes("<script type=")
+  );
+}
+
 /**
  * Fetch raw markdown content for a LeetCode solution directly from GitHub
  */
@@ -210,10 +221,10 @@ export async function fetchLeetcodeMarkdown(
 
   if (!forceRefresh) {
     const cached = sessionStorage.getItem(cacheKey);
-    if (cached) return cached;
+    if (cached && !isHtmlResponse(cached)) return cached;
   }
 
-  // 1. Fetch directly from GitHub raw URL (Option B)
+  // 1. Fetch directly from GitHub raw URL
   const token = getStoredGitHubToken();
   const headers: Record<string, string> = {};
   if (token) {
@@ -225,11 +236,34 @@ export async function fetchLeetcodeMarkdown(
     const response = await fetch(rawUrl, { headers });
     if (response.ok) {
       const content = await response.text();
-      sessionStorage.setItem(cacheKey, content);
-      return content;
+      if (!isHtmlResponse(content)) {
+        sessionStorage.setItem(cacheKey, content);
+        return content;
+      }
     }
   } catch (e) {
     console.warn("Direct GitHub raw fetch failed for LeetCode solution", e);
+  }
+
+  // 2. If token is present, try GitHub API contents endpoint (for private repositories)
+  if (token) {
+    try {
+      const apiRes = await fetch(`${LEETCODE_API_BASE}/contents/${encodeURI(filePath)}`, {
+        headers: {
+          Accept: "application/vnd.github.raw+json",
+          Authorization: `token ${token}`,
+        },
+      });
+      if (apiRes.ok) {
+        const text = await apiRes.text();
+        if (!isHtmlResponse(text)) {
+          sessionStorage.setItem(cacheKey, text);
+          return text;
+        }
+      }
+    } catch (e) {
+      console.warn("GitHub API raw contents fetch failed for LeetCode solution", e);
+    }
   }
 
   throw new Error(`Unable to load LeetCode solution: ${filePath}`);
