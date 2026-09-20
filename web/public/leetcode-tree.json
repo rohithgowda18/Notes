@@ -1,0 +1,298 @@
+{
+  "files": [
+    {
+      "path": "database/0177-nth-highest-salary.md",
+      "name": "0177-nth-highest-salary.md",
+      "type": "markdown",
+      "size": 1807
+    },
+    {
+      "path": "database/0180-consecutive-numbers.md",
+      "name": "0180-consecutive-numbers.md",
+      "type": "markdown",
+      "size": 1349
+    },
+    {
+      "path": "database/0197-rising-temperature.md",
+      "name": "0197-rising-temperature.md",
+      "type": "markdown",
+      "size": 1689
+    },
+    {
+      "path": "database/0610-triangle-judgement.md",
+      "name": "0610-triangle-judgement.md",
+      "type": "markdown",
+      "size": 1342
+    },
+    {
+      "path": "database/1193-monthly-transactions-i.md",
+      "name": "1193-monthly-transactions-i.md",
+      "type": "markdown",
+      "size": 2648
+    },
+    {
+      "path": "database/1661-average-time-of-process-per-machine.md",
+      "name": "1661-average-time-of-process-per-machine.md",
+      "type": "markdown",
+      "size": 3910
+    },
+    {
+      "path": "database/1934-confirmation-rate.md",
+      "name": "1934-confirmation-rate.md",
+      "type": "markdown",
+      "size": 3590
+    },
+    {
+      "path": "dsa/0006-zigzag-conversion.md",
+      "name": "0006-zigzag-conversion.md",
+      "type": "markdown",
+      "size": 1938
+    },
+    {
+      "path": "dsa/0012-integer-to-roman.md",
+      "name": "0012-integer-to-roman.md",
+      "type": "markdown",
+      "size": 2814
+    },
+    {
+      "path": "dsa/0014-longest-common-prefix.md",
+      "name": "0014-longest-common-prefix.md",
+      "type": "markdown",
+      "size": 1487
+    },
+    {
+      "path": "dsa/0019-remove-nth-node-from-end-of-list.md",
+      "name": "0019-remove-nth-node-from-end-of-list.md",
+      "type": "markdown",
+      "size": 1458
+    },
+    {
+      "path": "dsa/0052-n-queens-ii.md",
+      "name": "0052-n-queens-ii.md",
+      "type": "markdown",
+      "size": 1838
+    },
+    {
+      "path": "dsa/0146-lru-cache.md",
+      "name": "0146-lru-cache.md",
+      "type": "markdown",
+      "size": 4119
+    },
+    {
+      "path": "dsa/0151-reverse-words-in-a-string.md",
+      "name": "0151-reverse-words-in-a-string.md",
+      "type": "markdown",
+      "size": 2121
+    },
+    {
+      "path": "dsa/0167-two-sum-ii-input-array-is-sorted.md",
+      "name": "0167-two-sum-ii-input-array-is-sorted.md",
+      "type": "markdown",
+      "size": 2164
+    },
+    {
+      "path": "dsa/0207-course-schedule.md",
+      "name": "0207-course-schedule.md",
+      "type": "markdown",
+      "size": 2510
+    },
+    {
+      "path": "dsa/0210-course-schedule-ii.md",
+      "name": "0210-course-schedule-ii.md",
+      "type": "markdown",
+      "size": 3115
+    },
+    {
+      "path": "dsa/0224-basic-calculator.md",
+      "name": "0224-basic-calculator.md",
+      "type": "markdown",
+      "size": 2417
+    },
+    {
+      "path": "dsa/0239-sliding-window-maximum.md",
+      "name": "0239-sliding-window-maximum.md",
+      "type": "markdown",
+      "size": 1793
+    },
+    {
+      "path": "dsa/0289-game-of-life.md",
+      "name": "0289-game-of-life.md",
+      "type": "markdown",
+      "size": 3645
+    },
+    {
+      "path": "dsa/0340-longest-substring-with-at-most-k-distinct-characters.md",
+      "name": "0340-longest-substring-with-at-most-k-distinct-characters.md",
+      "type": "markdown",
+      "size": 1120
+    },
+    {
+      "path": "dsa/0394-decode-string.md",
+      "name": "0394-decode-string.md",
+      "type": "markdown",
+      "size": 2693
+    },
+    {
+      "path": "dsa/0399-evaluate-division.md",
+      "name": "0399-evaluate-division.md",
+      "type": "markdown",
+      "size": 4181
+    },
+    {
+      "path": "dsa/0424-longest-repeating-character-replacement.md",
+      "name": "0424-longest-repeating-character-replacement.md",
+      "type": "markdown",
+      "size": 1851
+    },
+    {
+      "path": "dsa/0547-number-of-provinces.md",
+      "name": "0547-number-of-provinces.md",
+      "type": "markdown",
+      "size": 2176
+    },
+    {
+      "path": "dsa/0785-is-graph-bipartite.md",
+      "name": "0785-is-graph-bipartite.md",
+      "type": "markdown",
+      "size": 3120
+    },
+    {
+      "path": "dsa/0835-image-overlap.md",
+      "name": "0835-image-overlap.md",
+      "type": "markdown",
+      "size": 2428
+    },
+    {
+      "path": "dsa/0909-snakes-and-ladders.md",
+      "name": "0909-snakes-and-ladders.md",
+      "type": "markdown",
+      "size": 4159
+    },
+    {
+      "path": "dsa/0994-rotting-oranges.md",
+      "name": "0994-rotting-oranges.md",
+      "type": "markdown",
+      "size": 2636
+    },
+    {
+      "path": "dsa/1552-magnetic-force-between-two-balls.md",
+      "name": "1552-magnetic-force-between-two-balls.md",
+      "type": "markdown",
+      "size": 2505
+    },
+    {
+      "path": "dsa/1927-sum-game.md",
+      "name": "1927-sum-game.md",
+      "type": "markdown",
+      "size": 2833
+    },
+    {
+      "path": "dsa/2058-find-the-minimum-and-maximum-number-of-nodes-between-critical-points.md",
+      "name": "2058-find-the-minimum-and-maximum-number-of-nodes-between-critical-points.md",
+      "type": "markdown",
+      "size": 3803
+    },
+    {
+      "path": "dsa/2091-removing-minimum-and-maximum-from-array.md",
+      "name": "2091-removing-minimum-and-maximum-from-array.md",
+      "type": "markdown",
+      "size": 2924
+    },
+    {
+      "path": "dsa/2265-count-nodes-equal-to-average-of-subtree.md",
+      "name": "2265-count-nodes-equal-to-average-of-subtree.md",
+      "type": "markdown",
+      "size": 2291
+    },
+    {
+      "path": "dsa/2559-count-vowel-strings-in-ranges.md",
+      "name": "2559-count-vowel-strings-in-ranges.md",
+      "type": "markdown",
+      "size": 2406
+    },
+    {
+      "path": "dsa/2904-shortest-and-lexicographically-smallest-beautiful-string.md",
+      "name": "2904-shortest-and-lexicographically-smallest-beautiful-string.md",
+      "type": "markdown",
+      "size": 3337
+    },
+    {
+      "path": "dsa/3075-maximize-happiness-of-selected-children.md",
+      "name": "3075-maximize-happiness-of-selected-children.md",
+      "type": "markdown",
+      "size": 2767
+    },
+    {
+      "path": "dsa/3443-maximum-manhattan-distance-after-k-changes.md",
+      "name": "3443-maximum-manhattan-distance-after-k-changes.md",
+      "type": "markdown",
+      "size": 2601
+    },
+    {
+      "path": "dsa/3483-unique-3-digit-even-numbers.md",
+      "name": "3483-unique-3-digit-even-numbers.md",
+      "type": "markdown",
+      "size": 2047
+    },
+    {
+      "path": "dsa/3568-minimum-moves-to-clean-the-classroom.md",
+      "name": "3568-minimum-moves-to-clean-the-classroom.md",
+      "type": "markdown",
+      "size": 5389
+    },
+    {
+      "path": "dsa/3718-smallest-missing-multiple-of-k.md",
+      "name": "3718-smallest-missing-multiple-of-k.md",
+      "type": "markdown",
+      "size": 1362
+    },
+    {
+      "path": "dsa/3875-construct-uniform-parity-array-i.md",
+      "name": "3875-construct-uniform-parity-array-i.md",
+      "type": "markdown",
+      "size": 1598
+    },
+    {
+      "path": "dsa/3876-construct-uniform-parity-array-ii.md",
+      "name": "3876-construct-uniform-parity-array-ii.md",
+      "type": "markdown",
+      "size": 2229
+    },
+    {
+      "path": "dsa/4031-find-all-numbers-disappeared-in-an-array-ii.md",
+      "name": "4031-find-all-numbers-disappeared-in-an-array-ii.md",
+      "type": "markdown",
+      "size": 2797
+    },
+    {
+      "path": "dsa/4043-count-rotations-with-exactly-k-equal-adjacent-pairs.md",
+      "name": "4043-count-rotations-with-exactly-k-equal-adjacent-pairs.md",
+      "type": "markdown",
+      "size": 2369
+    },
+    {
+      "path": "dsa/4044-count-good-cyclic-rotations.md",
+      "name": "4044-count-good-cyclic-rotations.md",
+      "type": "markdown",
+      "size": 3015
+    },
+    {
+      "path": "dsa/4045-count-robot-groups.md",
+      "name": "4045-count-robot-groups.md",
+      "type": "markdown",
+      "size": 3540
+    },
+    {
+      "path": "dsa/4049-count-values-with-equally-spaced-occurrences-ii.md",
+      "name": "4049-count-values-with-equally-spaced-occurrences-ii.md",
+      "type": "markdown",
+      "size": 2301
+    },
+    {
+      "path": "README.md",
+      "name": "README.md",
+      "type": "markdown",
+      "size": 650
+    }
+  ]
+}

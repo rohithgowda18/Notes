@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   BookOpen,
   Moon,
@@ -8,9 +8,11 @@ import {
   RefreshCw,
   Menu,
   PanelLeft,
+  Code2,
 } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
 import { useRepo } from "../../context/RepoContext";
+import { useLeetcode } from "../../context/LeetcodeContext";
 import { GITHUB_OWNER, GITHUB_REPO } from "../../config/github";
 
 interface HeaderProps {
@@ -24,9 +26,15 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMobileNav,
   onToggleSidebar,
 }) => {
+  const location = useLocation();
+  const isLeetcode = location.pathname.startsWith("/leetcode");
   const { theme, toggleTheme } = useTheme();
-  const { refresh, loading, lastSynced } = useRepo();
+  const { refresh: refreshNotes, loading: notesLoading, lastSynced } = useRepo();
+  const { refresh: refreshLeetcode, loading: lcLoading } = useLeetcode();
   const [timeAgo, setTimeAgo] = useState<string>("just now");
+
+  const isLoading = isLeetcode ? lcLoading : notesLoading;
+  const handleRefresh = isLeetcode ? refreshLeetcode : refreshNotes;
 
   useEffect(() => {
     if (!lastSynced) return;
@@ -75,18 +83,32 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <Link
-          to="/note/README.md"
+          to={isLeetcode ? "/leetcode/note/dsa" : "/note/README.md"}
           onClick={() => {
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
           className="flex items-center gap-2.5 group cursor-pointer"
-          title="Study Notes Overview"
+          title={isLeetcode ? "LeetCode Solutions" : "Study Notes Overview"}
         >
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-xs">
-            <BookOpen className="w-3.5 h-3.5" />
+          <div
+            className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-xs transition-colors ${
+              isLeetcode ? "bg-emerald-600" : "bg-blue-600"
+            }`}
+          >
+            {isLeetcode ? (
+              <Code2 className="w-3.5 h-3.5" />
+            ) : (
+              <BookOpen className="w-3.5 h-3.5" />
+            )}
           </div>
-          <span className="font-semibold text-sm tracking-tight text-neutral-900 dark:text-neutral-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-            Study Notes
+          <span
+            className={`font-semibold text-sm tracking-tight transition-colors ${
+              isLeetcode
+                ? "text-neutral-900 dark:text-neutral-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+                : "text-neutral-900 dark:text-neutral-100 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+            }`}
+          >
+            {isLeetcode ? "LeetCode Solutions" : "Study Notes"}
           </span>
         </Link>
       </div>
@@ -119,14 +141,14 @@ export const Header: React.FC<HeaderProps> = ({
           <Search className="w-4 h-4" />
         </button>
 
-        {/* Refresh Notes with relative timestamp */}
+        {/* Refresh Notes / LeetCode with relative timestamp */}
         <button
-          onClick={refresh}
-          disabled={loading}
+          onClick={handleRefresh}
+          disabled={isLoading}
           className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
-          title="Fetch latest notes from GitHub"
+          title={isLeetcode ? "Fetch latest LeetCode solutions" : "Fetch latest notes from GitHub"}
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-blue-500" : ""}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? `animate-spin ${isLeetcode ? "text-emerald-500" : "text-blue-500"}` : ""}`} />
           <span className="hidden sm:inline">Refresh</span>
           <span className="text-[10px] text-neutral-400 dark:text-neutral-500 hidden xl:inline">
             ({timeAgo})

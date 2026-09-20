@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/sync-notes.js",
+    "prebuild": "node scripts/sync-notes.js && node scripts/sync-leetcode.js",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",

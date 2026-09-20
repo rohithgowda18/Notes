@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, FileText, BookOpen, X, Hash, Loader2 } from "lucide-react";
+import { Search, FileText, BookOpen, X, Hash, Loader2, Code2 } from "lucide-react";
 import {
   searchNotesAndContent,
   warmSearchIndex,
   type SearchResult,
 } from "../../services/search";
 import { useRepo } from "../../context/RepoContext";
+import { useLeetcode } from "../../context/LeetcodeContext";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -14,13 +15,21 @@ interface SearchModalProps {
 }
 
 export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => {
-  const { allFiles } = useRepo();
+  const { allFiles: noteFiles } = useRepo();
+  const { allFiles: lcFiles } = useLeetcode();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  // Merge files with source tag for search
+  const allFiles = React.useMemo(() => {
+    const noteFilesTagged = noteFiles.map((f) => ({ ...f, _source: "notes" as const }));
+    const lcFilesTagged = lcFiles.map((f) => ({ ...f, _source: "leetcode" as const }));
+    return [...noteFilesTagged, ...lcFilesTagged];
+  }, [noteFiles, lcFiles]);
 
   useEffect(() => {
     if (isOpen) {
@@ -29,12 +38,12 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
       setResults([]);
       setSelectedIndex(0);
 
-      // Pre-warm search index in background
-      if (allFiles.length > 0) {
-        warmSearchIndex(allFiles);
+      // Pre-warm search index in background (notes only, LC is smaller)
+      if (noteFiles.length > 0) {
+        warmSearchIndex(noteFiles);
       }
     }
-  }, [isOpen, allFiles]);
+  }, [isOpen, noteFiles]);
 
   // Debounced search
   useEffect(() => {
@@ -60,8 +69,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
 
   const handleSelect = (result: SearchResult) => {
     onClose();
+    const isLeetcode = (result.file as any)._source === "leetcode";
+
     if (result.file.type === "pdf") {
       navigate(`/pdf/${encodeURIComponent(result.file.path)}`);
+    } else if (isLeetcode) {
+      const hash = result.headingId ? `#${result.headingId}` : "";
+      navigate(`/leetcode/note/${encodeURIComponent(result.file.path)}${hash}`);
     } else {
       const hash = result.headingId ? `#${result.headingId}` : "";
       navigate(`/note/${encodeURIComponent(result.file.path)}${hash}`);
@@ -103,7 +117,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search notes, chapters, topics, or full content... (e.g. @Transactional)"
+            placeholder="Search notes, LeetCode solutions, topics... (e.g. Two Sum, @Transactional)"
             className="w-full bg-transparent text-sm sm:text-base text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none"
           />
           {searching ? (
@@ -130,13 +144,14 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
           ) : !query.trim() ? (
             <div className="py-10 text-center text-neutral-400 dark:text-neutral-500 text-xs space-y-1">
               <p>Type keywords to search titles, folder names, and full Markdown text.</p>
-              <p className="text-[11px] text-neutral-400">Try searching for: <span className="font-mono text-blue-500">@Transactional</span>, <span className="font-mono text-blue-500">DispatcherServlet</span>, or <span className="font-mono text-blue-500">JWT</span></p>
+              <p className="text-[11px] text-neutral-400">Try searching for: <span className="font-mono text-blue-500">Two Sum</span>, <span className="font-mono text-blue-500">@Transactional</span>, or <span className="font-mono text-emerald-500">sliding-window</span></p>
             </div>
           ) : (
             <ul className="space-y-1.5">
               {results.map((result, idx) => {
                 const isSelected = idx === selectedIndex;
                 const isPdf = result.file.type === "pdf";
+                const isLeetcode = (result.file as any)._source === "leetcode";
 
                 return (
                   <li
@@ -154,6 +169,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                       <div className="flex items-center gap-2 min-w-0">
                         {isPdf ? (
                           <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                        ) : isLeetcode ? (
+                          <Code2 className="w-4 h-4 text-emerald-500 shrink-0" />
                         ) : (
                           <BookOpen className="w-4 h-4 text-blue-500 shrink-0" />
                         )}
@@ -161,9 +178,16 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
                           {result.file.name.replace(/\.(md|markdown|pdf)$/i, "")}
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono tracking-wider text-neutral-400 dark:text-neutral-500 shrink-0 truncate max-w-[220px]">
-                        {result.category}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {isLeetcode && (
+                          <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400">
+                            LC
+                          </span>
+                        )}
+                        <span className="text-[11px] font-mono tracking-wider text-neutral-400 dark:text-neutral-500 truncate max-w-[180px]">
+                          {result.category}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Subtitle / Heading Match */}
@@ -189,7 +213,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose }) => 
 
         {/* Footer info */}
         <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-50 dark:bg-neutral-850 border-t border-neutral-200 dark:border-neutral-800 text-[11px] text-neutral-500 dark:text-neutral-400 font-sans">
-          <span>Search in files & content</span>
+          <span>Search in notes & LeetCode solutions</span>
           <span>Press <kbd className="font-mono bg-neutral-200 dark:bg-neutral-700 px-1 rounded">Enter</kbd> to open</span>
         </div>
       </div>

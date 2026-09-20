@@ -6,9 +6,10 @@ import type { RepoFile } from "../../types";
 interface PrevNextNavProps {
   currentFile: RepoFile;
   siblingFiles: RepoFile[];
+  routePrefix?: string;
 }
 
-export const PrevNextNav: React.FC<PrevNextNavProps> = ({ currentFile, siblingFiles }) => {
+export const PrevNextNav: React.FC<PrevNextNavProps> = ({ currentFile, siblingFiles, routePrefix = "/note" }) => {
   // Only consider markdown notes for chapter sequential navigation
   const markdownSiblings = siblingFiles.filter((f) => f.type === "markdown");
   const currentIndex = markdownSiblings.findIndex((f) => f.path === currentFile.path);
@@ -26,7 +27,7 @@ export const PrevNextNav: React.FC<PrevNextNavProps> = ({ currentFile, siblingFi
     <div className="mt-12 pt-6 border-t border-neutral-200 dark:border-neutral-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
       {prevFile ? (
         <Link
-          to={`/note/${encodeURIComponent(prevFile.path)}`}
+          to={`${routePrefix}/${encodeURIComponent(prevFile.path)}`}
           className="group flex flex-col p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-blue-400 dark:hover:border-blue-600 transition-all shadow-2xs text-left"
         >
           <div className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mb-1">
@@ -43,7 +44,7 @@ export const PrevNextNav: React.FC<PrevNextNavProps> = ({ currentFile, siblingFi
 
       {nextFile && (
         <Link
-          to={`/note/${encodeURIComponent(nextFile.path)}`}
+          to={`${routePrefix}/${encodeURIComponent(nextFile.path)}`}
           className="group flex flex-col p-4 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:border-blue-400 dark:hover:border-blue-600 transition-all shadow-2xs text-right sm:col-start-2"
         >
           <div className="flex items-center justify-end gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 mb-1">

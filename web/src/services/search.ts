@@ -1,5 +1,6 @@
 import type { RepoFile } from "../types";
 import { fetchRawMarkdown } from "./github";
+import { fetchLeetcodeMarkdown } from "./leetcode";
 
 export interface SearchResult {
   file: RepoFile;
@@ -118,7 +119,10 @@ export async function searchNotesAndContent(
     let text = contentIndex.get(file.path);
     if (!text) {
       try {
-        text = await fetchRawMarkdown(file.path);
+        const isLeetcode = (file as any)._source === "leetcode";
+        text = isLeetcode
+          ? await fetchLeetcodeMarkdown(file.path)
+          : await fetchRawMarkdown(file.path);
         contentIndex.set(file.path, text);
       } catch {
         continue;

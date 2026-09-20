@@ -28,7 +28,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ isOpen, onClose }) => {
             className="font-semibold text-sm text-neutral-900 dark:text-neutral-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             title="Study Notes Overview"
           >
-            Study Directory
+            Study Library
           </Link>
           <button
             onClick={onClose}

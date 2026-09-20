@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { RepoProvider, useRepo } from "./context/RepoContext";
+import { LeetcodeProvider } from "./context/LeetcodeContext";
 import { Header } from "./components/Layout/Header";
 import { Sidebar } from "./components/Layout/Sidebar";
 import { MobileNav } from "./components/Layout/MobileNav";
 import { SearchModal } from "./components/Search/SearchModal";
 import { NotePage } from "./pages/NotePage";
 import { PdfPage } from "./pages/PdfPage";
+import { LeetcodeNotePage } from "./pages/LeetcodeNotePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 const SIDEBAR_COLLAPSE_KEY = "study_notes_sidebar_collapsed";
@@ -112,6 +114,7 @@ function MainLayout() {
             <Route path="/" element={<HomeRedirect />} />
             <Route path="/note/*" element={<NotePage />} />
             <Route path="/pdf/*" element={<PdfPage />} />
+            <Route path="/leetcode/note/*" element={<LeetcodeNotePage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </main>
@@ -127,10 +130,12 @@ export default function App() {
   return (
     <ThemeProvider>
       <RepoProvider>
-        <BrowserRouter>
-          <ScrollRestoration />
-          <MainLayout />
-        </BrowserRouter>
+        <LeetcodeProvider>
+          <BrowserRouter>
+            <ScrollRestoration />
+            <MainLayout />
+          </BrowserRouter>
+        </LeetcodeProvider>
       </RepoProvider>
     </ThemeProvider>
   );
