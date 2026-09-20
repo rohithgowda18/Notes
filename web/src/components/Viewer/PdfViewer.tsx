@@ -208,6 +208,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
   const [isFitWidth, setIsFitWidth] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
   const { allFiles } = useRepo();
   const fileName = filePath.split("/").pop() || "Document.pdf";
@@ -220,9 +221,11 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
   // 1. Fetch & Load PDF Document
   useEffect(() => {
     let isCancelled = false;
+    let createdBlobUrl: string | null = null;
     setLoading(true);
     setError(null);
     setPdfDoc(null);
+    setBlobUrl(null);
     setCurrentPage(1);
 
     async function loadPdf() {
@@ -234,6 +237,11 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
 
         const arrayBuffer = await response.arrayBuffer();
         if (isCancelled) return;
+
+        // Create an explicit application/pdf blob so browsers render natively instead of forcing octet-stream download
+        const pdfBlob = new Blob([arrayBuffer], { type: "application/pdf" });
+        createdBlobUrl = URL.createObjectURL(pdfBlob);
+        setBlobUrl(createdBlobUrl);
 
         const loadingTask = pdfjsLib.getDocument({
           data: new Uint8Array(arrayBuffer),
@@ -263,6 +271,9 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
 
     return () => {
       isCancelled = true;
+      if (createdBlobUrl) {
+        URL.revokeObjectURL(createdBlobUrl);
+      }
     };
   }, [pdfUrl]);
 
@@ -444,7 +455,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
 
           {/* Open in New Tab */}
           <a
-            href={pdfUrl}
+            href={blobUrl || pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-2xs transition-colors cursor-pointer"
@@ -456,7 +467,7 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
 
           {/* Download */}
           <a
-            href={pdfUrl}
+            href={blobUrl || pdfUrl}
             download={fileName}
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-medium transition-colors cursor-pointer"
             title="Download PDF to device"
