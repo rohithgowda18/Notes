@@ -1,9 +1,16 @@
 import type { RepoFile, RepoFolder, RepoTree } from "../types";
 import defaultLeetcodeData from "../../public/leetcode-tree.json";
+import {
+  LEETCODE_API_BASE,
+  LEETCODE_BRANCH,
+  LEETCODE_RAW_BASE,
+} from "../config/github";
+import { getStoredGitHubToken } from "./github";
 
 const LC_TREE_CACHE_KEY = "leetcode_tree_cache";
 const LC_TREE_CACHE_TS_KEY = "leetcode_tree_timestamp";
 const LC_CONTENT_CACHE_PREFIX = "leetcode_content_";
+
 
 function getFileType(path: string): "markdown" | "pdf" | "other" {
   const lower = path.toLowerCase();
@@ -112,7 +119,7 @@ function buildTreeFromItems(
 }
 
 /**
- * Fetch the LeetCode solutions tree from the static leetcode-tree.json
+ * Fetch the LeetCode solutions tree directly from GitHub with local fallbacks
  */
 export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
   tree: RepoTree;
@@ -133,6 +140,37 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
     }
   }
 
+  // 1. Try fetching directly from GitHub API (Leetcode-Solutions repo)
+  const token = getStoredGitHubToken();
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+  };
+  if (token) {
+    headers["Authorization"] = `token ${token}`;
+  }
+
+  const url = `${LEETCODE_API_BASE}/git/trees/${LEETCODE_BRANCH}?recursive=1`;
+  try {
+    const response = await fetch(url, { headers });
+    if (response.ok) {
+      const data = await response.json();
+      const items = (data.tree || []).filter((item: any) => {
+        const p = item.path.toLowerCase();
+        return p.startsWith("dsa/") || p.startsWith("database/");
+      });
+      if (items.length > 0) {
+        const tree = buildTreeFromItems(items);
+        const now = Date.now();
+        sessionStorage.setItem(LC_TREE_CACHE_KEY, JSON.stringify(tree));
+        sessionStorage.setItem(LC_TREE_CACHE_TS_KEY, now.toString());
+        return { tree, lastSynced: now };
+      }
+    }
+  } catch (e) {
+    console.warn("Direct GitHub fetch for LeetCode tree failed, trying fallback", e);
+  }
+
+  // 2. Try static leetcode-tree.json
   try {
     const res = await fetch(`/leetcode-tree.json?t=${Date.now()}`);
     if (res.ok) {
@@ -149,13 +187,12 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
     // fall through
   }
 
-  // Fallback to pre-bundled data from repository
+  // 3. Fallback to pre-bundled data from repository
   if (defaultLeetcodeData?.files && defaultLeetcodeData.files.length > 0) {
     const tree = buildTreeFromItems(defaultLeetcodeData.files as any);
     return { tree, lastSynced: Date.now() };
   }
 
-  // Return empty tree if no data
   return {
     tree: { folders: [], rootFiles: [], allFiles: [] },
     lastSynced: Date.now(),
@@ -163,7 +200,7 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
 }
 
 /**
- * Fetch raw markdown content for a LeetCode solution
+ * Fetch raw markdown content for a LeetCode solution directly from GitHub
  */
 export async function fetchLeetcodeMarkdown(
   filePath: string,
@@ -176,14 +213,37 @@ export async function fetchLeetcodeMarkdown(
     if (cached) return cached;
   }
 
-  // Try static /leetcode/ path (Vercel CDN)
-  const staticRes = await fetch(`/leetcode/${encodeURI(filePath)}`);
-  if (staticRes.ok) {
-    const text = await staticRes.text();
-    if (!text.trim().startsWith("<!DOCTYPE html") && !text.trim().startsWith("<html")) {
-      sessionStorage.setItem(cacheKey, text);
-      return text;
+  // 1. Fetch directly from GitHub raw URL (Option B)
+  const token = getStoredGitHubToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `token ${token}`;
+  }
+
+  const rawUrl = `${LEETCODE_RAW_BASE}/${encodeURI(filePath)}`;
+  try {
+    const response = await fetch(rawUrl, { headers });
+    if (response.ok) {
+      const content = await response.text();
+      sessionStorage.setItem(cacheKey, content);
+      return content;
     }
+  } catch (e) {
+    console.warn("Direct GitHub raw fetch failed for LeetCode solution", e);
+  }
+
+  // 2. Fallback to static /leetcode/ path if present
+  try {
+    const staticRes = await fetch(`/leetcode/${encodeURI(filePath)}`);
+    if (staticRes.ok) {
+      const text = await staticRes.text();
+      if (!text.trim().startsWith("<!DOCTYPE html") && !text.trim().startsWith("<html")) {
+        sessionStorage.setItem(cacheKey, text);
+        return text;
+      }
+    }
+  } catch {
+    // fall through
   }
 
   throw new Error(`Unable to load LeetCode solution: ${filePath}`);

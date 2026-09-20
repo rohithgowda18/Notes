@@ -94,241 +94,241 @@
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/01-Introduction-To-System-Design.md",
       "name": "01-Introduction-To-System-Design.md",
       "type": "markdown",
-      "size": 9702
+      "size": 11969
     },
     {
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/02-OOPs-Real-World-Examples-Abstraction-Encapsulation.md",
       "name": "02-OOPs-Real-World-Examples-Abstraction-Encapsulation.md",
       "type": "markdown",
-      "size": 11234
+      "size": 10625
     },
     {
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/03-Inheritance-and-Polymorphism-in-OOPs.md",
       "name": "03-Inheritance-and-Polymorphism-in-OOPs.md",
       "type": "markdown",
-      "size": 11024
+      "size": 13328
     },
     {
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/04-UML-Diagrams-Class-and-Sequence-Diagrams.md",
       "name": "04-UML-Diagrams-Class-and-Sequence-Diagrams.md",
       "type": "markdown",
-      "size": 9933
+      "size": 13418
     },
     {
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/05-SOLID-Design-Principles-Part-1.md",
       "name": "05-SOLID-Design-Principles-Part-1.md",
       "type": "markdown",
-      "size": 11136
+      "size": 12696
     },
     {
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/06-SOLID-Design-Principles-Part-2.md",
       "name": "06-SOLID-Design-Principles-Part-2.md",
       "type": "markdown",
-      "size": 12548
+      "size": 11735
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/08-Strategy-Design-Pattern.md",
       "name": "08-Strategy-Design-Pattern.md",
       "type": "markdown",
-      "size": 6845
+      "size": 11972
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/09-Factory-Design-Pattern.md",
       "name": "09-Factory-Design-Pattern.md",
       "type": "markdown",
-      "size": 7781
+      "size": 9616
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/10-Singleton-Design-Pattern.md",
       "name": "10-Singleton-Design-Pattern.md",
       "type": "markdown",
-      "size": 7276
+      "size": 8900
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/12-Observer-Design-Pattern.md",
       "name": "12-Observer-Design-Pattern.md",
       "type": "markdown",
-      "size": 7876
+      "size": 10006
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/13-Decorator-Design-Pattern.md",
       "name": "13-Decorator-Design-Pattern.md",
       "type": "markdown",
-      "size": 7212
+      "size": 10333
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/15-Command-Design-Pattern.md",
       "name": "15-Command-Design-Pattern.md",
       "type": "markdown",
-      "size": 7700
+      "size": 10860
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/16-Adapter-Design-Pattern.md",
       "name": "16-Adapter-Design-Pattern.md",
       "type": "markdown",
-      "size": 8520
+      "size": 9088
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/17-Facade-Design-Pattern.md",
       "name": "17-Facade-Design-Pattern.md",
       "type": "markdown",
-      "size": 7514
+      "size": 8946
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/19-Composite-Design-Pattern-File-System.md",
       "name": "19-Composite-Design-Pattern-File-System.md",
       "type": "markdown",
-      "size": 7563
+      "size": 11224
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/20-Template-Method-Pattern.md",
       "name": "20-Template-Method-Pattern.md",
       "type": "markdown",
-      "size": 7244
+      "size": 11538
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/21-Proxy-Design-Pattern.md",
       "name": "21-Proxy-Design-Pattern.md",
       "type": "markdown",
-      "size": 9254
+      "size": 8822
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/22-Chain-of-Responsibility-Pattern.md",
       "name": "22-Chain-of-Responsibility-Pattern.md",
       "type": "markdown",
-      "size": 9182
+      "size": 12320
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/25-Bridge-Pattern.md",
       "name": "25-Bridge-Pattern.md",
       "type": "markdown",
-      "size": 7991
+      "size": 8110
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/28-Builder-Design-Pattern.md",
       "name": "28-Builder-Design-Pattern.md",
       "type": "markdown",
-      "size": 9920
+      "size": 11090
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/29-Iterator-Design-Pattern.md",
       "name": "29-Iterator-Design-Pattern.md",
       "type": "markdown",
-      "size": 8751
+      "size": 11512
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/30-Flyweight-Design-Pattern.md",
       "name": "30-Flyweight-Design-Pattern.md",
       "type": "markdown",
-      "size": 9579
+      "size": 14247
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/32-State-Design-Pattern-Vending-Machine.md",
       "name": "32-State-Design-Pattern-Vending-Machine.md",
       "type": "markdown",
-      "size": 12357
+      "size": 12597
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/35-Mediator-Design-Pattern-Chat-Room.md",
       "name": "35-Mediator-Design-Pattern-Chat-Room.md",
       "type": "markdown",
-      "size": 10753
+      "size": 11129
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/36-Prototype-Design-Pattern.md",
       "name": "36-Prototype-Design-Pattern.md",
       "type": "markdown",
-      "size": 8987
+      "size": 9216
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/38-Visitor-Design-Pattern.md",
       "name": "38-Visitor-Design-Pattern.md",
       "type": "markdown",
-      "size": 10002
+      "size": 10229
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/39-Memento-Design-Pattern.md",
       "name": "39-Memento-Design-Pattern.md",
       "type": "markdown",
-      "size": 8308
+      "size": 8766
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/40-Null-Object-Pattern.md",
       "name": "40-Null-Object-Pattern.md",
       "type": "markdown",
-      "size": 6919
+      "size": 7197
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/07-Build-Google-Docs-Document-Editor-LLD.md",
       "name": "07-Build-Google-Docs-Document-Editor-LLD.md",
       "type": "markdown",
-      "size": 10350
+      "size": 23978
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/11-Build-Zomato-Food-Delivery-App.md",
       "name": "11-Build-Zomato-Food-Delivery-App.md",
       "type": "markdown",
-      "size": 8182
+      "size": 27271
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/14-Build-Your-Own-Notification-Engine.md",
       "name": "14-Build-Your-Own-Notification-Engine.md",
       "type": "markdown",
-      "size": 7286
+      "size": 28089
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/18-Build-Spotify-Music-Player-App.md",
       "name": "18-Build-Spotify-Music-Player-App.md",
       "type": "markdown",
-      "size": 14524
+      "size": 18809
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/23-Build-Payment-Gateway-System.md",
       "name": "23-Build-Payment-Gateway-System.md",
       "type": "markdown",
-      "size": 12359
+      "size": 14086
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/24-Build-Discount-Coupon-Engine.md",
       "name": "24-Build-Discount-Coupon-Engine.md",
       "type": "markdown",
-      "size": 12091
+      "size": 17083
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/26-Build-Zepto-Inventory-Management.md",
       "name": "26-Build-Zepto-Inventory-Management.md",
       "type": "markdown",
-      "size": 13633
+      "size": 18181
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/27-Build-Tinder-Dating-Site.md",
       "name": "27-Build-Tinder-Dating-Site.md",
       "type": "markdown",
-      "size": 11652
+      "size": 17563
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/31-Build-Splitwise-Clone.md",
       "name": "31-Build-Splitwise-Clone.md",
       "type": "markdown",
-      "size": 15876
+      "size": 35777
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/33-Build-Tic-Tac-Toe-Game.md",
       "name": "33-Build-Tic-Tac-Toe-Game.md",
       "type": "markdown",
-      "size": 10790
+      "size": 10962
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/34-Build-Snake-and-Ladder-Game.md",
       "name": "34-Build-Snake-and-Ladder-Game.md",
       "type": "markdown",
-      "size": 9060
+      "size": 9229
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/37-Build-Chess-Game.md",
       "name": "37-Build-Chess-Game.md",
       "type": "markdown",
-      "size": 16460
+      "size": 16733
     },
     {
       "path": "04-OOPs-and-Design-Patterns/Design_Patterns_Placement_Notes.pdf",

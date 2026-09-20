@@ -24,3 +24,13 @@ export const GITHUB_RAW_BASE = `https://raw.githubusercontent.com/${GITHUB_OWNER
  * GitHub API base endpoint for repository tree traversal
  */
 export const GITHUB_API_BASE = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`;
+
+/**
+ * LeetCode Solutions External Repository Configuration
+ */
+export const LEETCODE_OWNER = "rohithgowda18";
+export const LEETCODE_REPO = "Leetcode-Solutions";
+export const LEETCODE_BRANCH = "main";
+export const LEETCODE_RAW_BASE = `https://raw.githubusercontent.com/${LEETCODE_OWNER}/${LEETCODE_REPO}/${LEETCODE_BRANCH}`;
+export const LEETCODE_API_BASE = `https://api.github.com/repos/${LEETCODE_OWNER}/${LEETCODE_REPO}`;
+
