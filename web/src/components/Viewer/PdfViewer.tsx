@@ -442,27 +442,27 @@ export const PdfViewer: React.FC<PdfViewerProps> = ({ filePath, pathParts = [] }
             <span>Fit Width</span>
           </button>
 
-          {/* Open Externally */}
+          {/* Open in New Tab */}
           <a
             href={pdfUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden lg:flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 font-medium"
-            title="Open in new browser tab"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium shadow-2xs transition-colors cursor-pointer"
+            title="Open PDF in new browser tab"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            <span>Open</span>
+            <span>Open in New Tab</span>
           </a>
 
           {/* Download */}
           <a
             href={pdfUrl}
             download={fileName}
-            className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-2xs transition-colors cursor-pointer"
-            title="Download PDF"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 text-xs font-medium transition-colors cursor-pointer"
+            title="Download PDF to device"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>Download</span>
+            <span className="hidden sm:inline">Download</span>
           </a>
         </div>
       </div>
