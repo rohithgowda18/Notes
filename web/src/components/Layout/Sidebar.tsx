@@ -10,11 +10,11 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Code2,
+  Home,
 } from "lucide-react";
 import { useRepo } from "../../context/RepoContext";
 import { useLeetcode } from "../../context/LeetcodeContext";
 import type { RepoFile, RepoFolder, RepoTree } from "../../types";
-import { getFolderTargetRoute } from "../../utils/navigation";
 
 type SidebarTab = "notes" | "leetcode";
 
@@ -108,10 +108,8 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
         <Link
           to={
             routePrefix === "/leetcode/note"
-              ? folder.files[0]
-                ? `/leetcode/note/${encodeURIComponent(folder.files[0].path)}`
-                : "#"
-              : getFolderTargetRoute(folder.path, allFiles)
+              ? `/leetcode/folder/${encodeURIComponent(folder.path)}`
+              : `/folder/${encodeURIComponent(folder.path)}`
           }
           onClick={() => {
             if (!isOpen) {
@@ -122,7 +120,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
             }
           }}
           className="flex-1 flex items-center gap-1.5 min-w-0 py-0.5 truncate text-neutral-700 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer"
-          title={`Open ${folderDisplayName}`}
+          title={`Open ${folderDisplayName} overview`}
         >
           {isOpen ? (
             <FolderOpen className="w-4 h-4 text-amber-500 shrink-0" />
@@ -438,10 +436,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside className="w-72 shrink-0 border-r border-neutral-200 dark:border-neutral-800 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md h-[calc(100vh-3.5rem)] sticky top-14 flex flex-col select-none">
-      {/* Sidebar Header with Tabs */}
-      <div className="border-b border-neutral-200 dark:border-neutral-800">
-        <div className="flex items-center justify-between px-4 py-2.5">
-          <div className="flex items-center gap-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5">
+      {/* Sidebar Header with Dashboard Link & Tabs */}
+      <div className="border-b border-neutral-200 dark:border-neutral-800 p-2 space-y-1.5">
+        <Link
+          to="/"
+          onClick={onItemClick}
+          className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group cursor-pointer"
+          title="Return to Dashboard"
+        >
+          <div className="flex items-center gap-2">
+            <Home className="w-3.5 h-3.5 text-neutral-400 group-hover:text-blue-500 transition-colors" />
+            <span>Dashboard Hub</span>
+          </div>
+          <ChevronRight className="w-3 h-3 text-neutral-400 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-0.5 bg-neutral-100 dark:bg-neutral-800 rounded-lg p-0.5 w-full">
             <button
               onClick={() => handleTabChange("notes")}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${

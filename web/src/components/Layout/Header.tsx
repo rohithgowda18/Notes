@@ -83,12 +83,12 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <Link
-          to={isLeetcode ? "/leetcode/note/dsa" : "/note/README.md"}
+          to="/"
           onClick={() => {
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
           className="flex items-center gap-2.5 group cursor-pointer"
-          title={isLeetcode ? "LeetCode Solutions" : "Study Notes Overview"}
+          title="Return to Dashboard"
         >
           <div
             className={`w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-xs transition-colors ${
@@ -108,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
                 : "text-neutral-900 dark:text-neutral-100 group-hover:text-blue-600 dark:group-hover:text-blue-400"
             }`}
           >
-            {isLeetcode ? "LeetCode Solutions" : "Study Notes"}
+            {isLeetcode ? "LeetCode Solutions" : "Knowledge Hub"}
           </span>
         </Link>
       </div>

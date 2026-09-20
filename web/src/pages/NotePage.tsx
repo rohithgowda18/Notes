@@ -6,7 +6,6 @@ import { useRepo } from "../context/RepoContext";
 import { MarkdownRenderer } from "../components/Markdown/MarkdownRenderer";
 import { PrevNextNav } from "../components/Navigation/PrevNextNav";
 import type { RepoFile, RepoFolder } from "../types";
-import { getFolderTargetRoute } from "../utils/navigation";
 
 const SCROLL_POS_PREFIX = "study_notes_scroll_";
 
@@ -102,25 +101,36 @@ export const NotePage: React.FC = () => {
       <div className="flex-1 max-w-[1100px] px-6 sm:px-12 md:px-16 py-8 md:py-12 min-w-0">
         {/* Breadcrumb & Folder Back Navigation */}
         <div className="flex flex-col gap-2 mb-6">
-          {parentFolderPath && (
+          {parentFolderPath ? (
             <Link
-              to={getFolderTargetRoute(parentFolderPath, allFiles)}
+              to={`/folder/${encodeURIComponent(parentFolderPath)}`}
               className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group w-fit cursor-pointer"
               title={`Back to ${parentFolderPath.split("/").pop()}`}
             >
               <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Back to {parentFolderPath.split("/").pop()}</span>
+              <span>Back to {parentFolderPath.split("/").pop()?.replace(/^[0-9]+[-_]/, "").replace(/[-_]/g, " ")}</span>
+            </Link>
+          ) : (
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group w-fit cursor-pointer"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back to Dashboard</span>
             </Link>
           )}
 
           <nav className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 font-sans flex-wrap">
             <Link
-              to="/note/README.md"
+              to="/"
               className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors font-medium"
-              title="Study Library Root"
+              title="Dashboard"
             >
-              Study Library
+              Dashboard
             </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <span className="text-neutral-600 dark:text-neutral-400 font-medium">Study Notes</span>
             {pathParts.map((part, index) => {
               const isLast = index === pathParts.length - 1;
               const isFolder = !isLast;
@@ -131,12 +141,12 @@ export const NotePage: React.FC = () => {
                   <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                   {isFolder ? (
                     <Link
-                      to={getFolderTargetRoute(subFolderPath, allFiles)}
+                      to={`/folder/${encodeURIComponent(subFolderPath)}`}
                       className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                       title={`Open ${part} notes`}
                     >
                       <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                      <span>{part}</span>
+                      <span>{part.replace(/^[0-9]+[-_]/, "").replace(/[-_]/g, " ")}</span>
                     </Link>
                   ) : (
                     <span className="font-semibold text-neutral-800 dark:text-neutral-200 truncate max-w-sm sm:max-w-md">

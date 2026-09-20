@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
-import { RepoProvider, useRepo } from "./context/RepoContext";
+import { RepoProvider } from "./context/RepoContext";
 import { LeetcodeProvider } from "./context/LeetcodeContext";
 import { Header } from "./components/Layout/Header";
 import { Sidebar } from "./components/Layout/Sidebar";
@@ -10,6 +10,9 @@ import { SearchModal } from "./components/Search/SearchModal";
 import { NotePage } from "./pages/NotePage";
 import { PdfPage } from "./pages/PdfPage";
 import { LeetcodeNotePage } from "./pages/LeetcodeNotePage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { FolderPage } from "./pages/FolderPage";
+import { LeetcodeFolderPage } from "./pages/LeetcodeFolderPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
 const SIDEBAR_COLLAPSE_KEY = "study_notes_sidebar_collapsed";
@@ -27,38 +30,11 @@ function ScrollRestoration() {
   return null;
 }
 
-// HomeRedirect: Automatically opens the first note or README so the site is immediately a document reader
-function HomeRedirect() {
-  const { tree, loading } = useRepo();
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-12 text-neutral-400">
-        <div className="space-y-4 max-w-md w-full animate-pulse">
-          <div className="h-8 bg-neutral-200 dark:bg-neutral-800 rounded w-2/3" />
-          <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded w-full" />
-          <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded w-4/5" />
-        </div>
-      </div>
-    );
-  }
-
-  // Find preferred default note: README.md or first markdown file in first folder
-  const firstNote =
-    tree?.allFiles.find((f) => f.name.toLowerCase() === "readme.md") ||
-    tree?.folders[0]?.files.find((f) => f.type === "markdown") ||
-    tree?.allFiles.find((f) => f.type === "markdown");
-
-  if (firstNote) {
-    return <Navigate to={`/note/${encodeURIComponent(firstNote.path)}`} replace />;
-  }
-
-  return <NotFoundPage />;
-}
-
 function MainLayout() {
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState<boolean>(false);
+  const location = useLocation();
+  const isDashboard = location.pathname === "/";
 
   // Remember sidebar collapse state across sessions
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
@@ -92,18 +68,20 @@ function MainLayout() {
       <Header
         onOpenSearch={() => setIsSearchOpen(true)}
         onToggleMobileNav={() => setIsMobileNavOpen(true)}
-        onToggleSidebar={toggleSidebarCollapse}
+        onToggleSidebar={!isDashboard ? toggleSidebarCollapse : undefined}
       />
 
       {/* Main Reading Workspace */}
       <div className="flex-1 flex w-full">
-        {/* Persistent Left Sidebar */}
-        <div className="hidden lg:block shrink-0">
-          <Sidebar
-            isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={toggleSidebarCollapse}
-          />
-        </div>
+        {/* Persistent Left Sidebar - hidden on dashboard */}
+        {!isDashboard && (
+          <div className="hidden lg:block shrink-0">
+            <Sidebar
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={toggleSidebarCollapse}
+            />
+          </div>
+        )}
 
         {/* Mobile Nav Slide-Over */}
         <MobileNav isOpen={isMobileNavOpen} onClose={() => setIsMobileNavOpen(false)} />
@@ -111,7 +89,9 @@ function MainLayout() {
         {/* Dedicated Document Reading View */}
         <main className="flex-1 flex flex-col min-w-0">
           <Routes>
-            <Route path="/" element={<HomeRedirect />} />
+            <Route path="/" element={<DashboardPage onOpenSearch={() => setIsSearchOpen(true)} />} />
+            <Route path="/folder/*" element={<FolderPage />} />
+            <Route path="/leetcode/folder/*" element={<LeetcodeFolderPage />} />
             <Route path="/note/*" element={<NotePage />} />
             <Route path="/pdf/*" element={<PdfPage />} />
             <Route path="/leetcode/note/*" element={<LeetcodeNotePage />} />

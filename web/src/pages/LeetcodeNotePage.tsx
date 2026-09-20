@@ -122,27 +122,33 @@ export const LeetcodeNotePage: React.FC = () => {
   return (
     <div className="flex-1 flex justify-center w-full min-w-0">
       <div className="flex-1 max-w-[1100px] px-6 sm:px-12 md:px-16 py-8 md:py-12 min-w-0">
-        {/* Breadcrumb */}
+        {/* Breadcrumb & Category Back Navigation */}
         <div className="flex flex-col gap-2 mb-6">
-          {parentFolderPath && (
-            <Link
-              to={`/leetcode/note/${encodeURIComponent(parentFolder?.files[0]?.path || filePath)}`}
-              className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group w-fit cursor-pointer"
-              title={`Back to ${formatCategory(parentFolderPath)}`}
-            >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              <span>Back to {formatCategory(parentFolderPath)}</span>
-            </Link>
-          )}
+          <Link
+            to={parentFolderPath ? `/leetcode/folder/${encodeURIComponent(parentFolderPath)}` : "/leetcode/folder/dsa"}
+            className="inline-flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors group w-fit cursor-pointer"
+            title={`Back to ${formatCategory(parentFolderPath || "all")}`}
+          >
+            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to {formatCategory(parentFolderPath || "Solutions")}</span>
+          </Link>
 
           <nav className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400 font-sans flex-wrap">
             <Link
               to="/"
+              className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium"
+              title="Dashboard"
+            >
+              Dashboard
+            </Link>
+            <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
+            <Link
+              to="/leetcode/folder/dsa"
               className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-medium flex items-center gap-1"
               title="LeetCode Solutions"
             >
               <Code2 className="w-3.5 h-3.5 text-emerald-500" />
-              LeetCode
+              <span>LeetCode</span>
             </Link>
             {pathParts.map((part, index) => {
               const isLast = index === pathParts.length - 1;
@@ -150,10 +156,14 @@ export const LeetcodeNotePage: React.FC = () => {
                 <React.Fragment key={index}>
                   <ChevronRight className="w-3.5 h-3.5 text-neutral-400 shrink-0" />
                   {!isLast ? (
-                    <span className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400">
+                    <Link
+                      to={`/leetcode/folder/${encodeURIComponent(part)}`}
+                      className="flex items-center gap-1 text-neutral-600 dark:text-neutral-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                      title={`Open ${formatCategory(part)} problems`}
+                    >
                       <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                       <span>{formatCategory(part)}</span>
-                    </span>
+                    </Link>
                   ) : (
                     <span className="font-semibold text-neutral-800 dark:text-neutral-200 truncate max-w-sm sm:max-w-md">
                       {formatSolutionName(part)}
