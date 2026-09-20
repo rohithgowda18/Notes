@@ -1,90 +1,63 @@
 # 15. Command Design Pattern
 
-> 💡 **Quick Revision Anchor**: A comprehensive, interview-focused guide to the Command Design Pattern faithfully derived from the complete lecture transcript. Explores how turning requests into first-class objects decouples the **Invoker** from the **Receiver**. Details the four essential participants: `Invoker`, `ICommand`, `ConcreteCommand`, and `Receiver`. Grounded in the lecture's canonical **Universal Smart Home Remote Control** (dynamic button slot binding and state toggling), with an in-depth implementation of a **Multi-Level Undo & Redo mechanism** using command history stacks.
+> 💡 **Quick Revision Anchor**
+> - The **Command Pattern** turns a request into a standalone object, decoupling the object invoking the request (**Invoker**) from the object performing the work (**Receiver**).
+> - Key Philosophy: **"Encapsulate method invocation as an object"** to support parameterization, dynamic re-binding, queuing, and undo/redo.
+> - Primary lecture example: **Universal Smart Home Remote Control** where slots dynamically bind to appliances (`Light`, `Fan`) and pressing a button toggles state via `execute()` and `undo()`. Real-world applications include text editor `Ctrl+Z` undo stacks and GUI button click dispatchers.
 
 ---
 
-## 1. Introduction & Motivation
+## 1. What Problem Are We Solving?
 
-In object-oriented software engineering, we frequently have an object (the **Source** or **Invoker**) that wants to trigger an action on another object (the **Receiver**). 
+Suppose you are building a **Universal Smart Home Remote Control**:
+- The remote has buttons (slots 0, 1, 2, etc.) that control appliances like lights, fans, and ACs.
+- Today, Button 0 turns ON the **Living Room Light**.
+- Tomorrow, the user buys a **Smart Fan** and wants Button 0 remapped to control the fan instead.
+- If the user presses the button once, the appliance turns ON (`execute()`). If pressed again, the action is reversed (`undo()`).
 
-The naive approach is for the Source to directly invoke methods on the Receiver:
+---
+
+## 2. Initial / Naive Approach: Direct Hardcoding
+
+In a naive implementation, the remote control directly references every concrete appliance:
+
+```text
+❌ Naive Tightly-Coupled Remote:
+┌───────────────────────────┐
+│     BadRemoteControl      │
+├───────────────────────────┤
+│ -Light light              │ ────▶ calls light.turnOn()
+│ -Fan fan                  │ ────▶ calls fan.startRotate()
+│ -AC ac                    │ ────▶ calls ac.setTemperature(24)
+├───────────────────────────┤
+│ +pressButton(int slot)    │ ────▶ large if-else ladder!
+└───────────────────────────┘
 ```
-Source --------------------> Receiver.turnOn()
-(Tightly coupled to Receiver's concrete class and method)
+
+### Why Does It Fail?
+- **Tight Coupling:** The Remote must know the exact classes, method names (`turnOn`, `startRotate`, `setTemperature`), and parameters of every appliance.
+- **OCP Violation:** Adding a new appliance (e.g., Geyser) requires opening, modifying, and recompiling `BadRemoteControl`.
+- **No Uniform Undo/Redo:** Because every appliance has completely different method signatures, tracking a unified undo history stack is impossible.
+
+---
+
+## 3. Key Design Idea: The Command Object
+
+Decouple the caller from the receiver by introducing a unified command contract:
+1. **Command Interface:** Declare abstract `execute()` and `undo()`.
+2. **Concrete Commands:** Bind specific receiver methods to `execute()` and `undo()`.
+3. **Invoker (Remote):** Holds only `ICommand` slots and triggers them uniformly without knowing what receiver is behind them.
+
 ```
-
-However, direct invocation causes severe architectural problems:
-1. **Tight Coupling**: The caller must know the exact concrete type, method signature, and internal contract of the receiver.
-2. **OCP Violation**: Whenever a new receiver is added or a button's behavior changes, the caller class must be modified and recompiled.
-3. **No Support for Undo / Redo**: When actions are executed as ad-hoc procedural method calls, it is nearly impossible to track history, reverse an operation, or maintain an undo stack.
-4. **No Queuing or Logging**: You cannot easily serialize, log, or queue raw method invocations.
-
-The **Command Design Pattern** solves this by turning a request/action itself into a standalone first-class **Object**:
-
-```
-Source (Invoker) --------> Command Object (execute() / undo()) --------> Receiver (Light / Fan)
+[Invoker: Remote] ──calls──▶ [ICommand: execute()/undo()] ──delegates──▶ [Receiver: Light/Fan]
 ```
 
 ---
 
-## 2. Real-World Domain: Universal Smart Home Remote Control
-
-To understand the pattern intuitively, consider designing a **Smart Home Remote Control**:
-- The remote has multiple physical or digital buttons.
-- Today, Button 0 controls a **Light**, and Button 1 controls a **Fan**.
-- Tomorrow, the user buys a **Smart AC** or **Smart Room Heater** and wants Button 0 remapped to the AC.
-- If the user presses Button 0 once, the light turns **ON**. If they press it again, the action is **UNDONE** (the light turns **OFF**).
-
-### Naive Implementation (Anti-Pattern)
-```java
-// ❌ NAIVE APPROACH: Hardcoding appliances inside the RemoteControl
-public class BadRemoteControl {
-    private Light livingRoomLight;
-    private Fan ceilingFan;
-    private AC airConditioner;
-
-    public void pressButton(int buttonIndex) {
-        if (buttonIndex == 0) {
-            livingRoomLight.turnOn(); // Hardcoded tight coupling!
-        } else if (buttonIndex == 1) {
-            ceilingFan.turnOn();
-        } else if (buttonIndex == 2) {
-            airConditioner.setTemp(24);
-            airConditioner.turnOn();
-        }
-        // Adding a Room Heater breaks Open/Closed Principle!
-    }
-}
-```
-
-### The Command Pattern Solution
-Instead of hardcoding appliances:
-1. Define an `ICommand` interface with `execute()` and `undo()`.
-2. Encapsulate each device action into a concrete command: `LightCommand`, `FanCommand`.
-3. The `RemoteControl` only holds a collection of `ICommand` references and a state tracker (`isButtonPressed[]`).
-4. When a button is pressed, the remote delegates execution to `command.execute()` or `command.undo()`.
-
----
-
-## 3. Core Roles in Command Design Pattern
-
-| Role | Class / Interface | Responsibility |
-| :--- | :--- | :--- |
-| **Command Interface** | `ICommand` | Declares abstract operations for executing and undoing an action (`execute()`, `undo()`). |
-| **Concrete Command** | `LightCommand`, `FanCommand` | Encapsulates the binding between a specific action and its **Receiver**. Implements `execute()` by delegating to receiver methods. |
-| **Receiver** | `Light`, `Fan` | The target hardware or domain entity that actually knows how to perform the low-level work (e.g., turning on electricity, spinning motor). |
-| **Invoker** | `RemoteControl` | Holds command references (e.g., in an array or slots) and triggers them on user interaction without knowing what receiver is affected. |
-| **Client** | `Main` | Instantiates receivers, configures concrete commands with receivers, and binds commands into the remote control's slots. |
-
----
-
-## 4. Class Diagram
+## 4. Visual Architecture
 
 ```mermaid
 classDiagram
-    direction TB
-
     class ICommand {
         <<interface>>
         +execute() void
@@ -92,15 +65,15 @@ classDiagram
     }
 
     class LightCommand {
-        -light: Light
-        +LightCommand(light: Light)
+        -Light light
+        +LightCommand(Light light)
         +execute() void
         +undo() void
     }
 
     class FanCommand {
-        -fan: Fan
-        +FanCommand(fan: Fan)
+        -Fan fan
+        +FanCommand(Fan fan)
         +execute() void
         +undo() void
     }
@@ -116,336 +89,216 @@ classDiagram
     }
 
     class RemoteControl {
-        -numButtons: int
-        -buttons: ICommand[]
-        -isButtonPressed: boolean[]
-        +RemoteControl(numButtons: int)
-        +setCommand(index: int, command: ICommand) void
-        +pressButton(index: int) void
+        -ICommand[] buttons
+        -boolean[] isButtonPressed
+        +setCommand(int slot, ICommand cmd) void
+        +pressButton(int slot) void
     }
 
     ICommand <|.. LightCommand
     ICommand <|.. FanCommand
     LightCommand --> Light : Receiver
     FanCommand --> Fan : Receiver
-    RemoteControl o-- ICommand : Invoker
+    RemoteControl o-- ICommand : Invoker holds slots
 ```
 
 ---
 
-## 5. Complete Java Implementation
-
-### 5.1 Command Interface
+## 5. Concise Java Implementation (Primary Lecture Example)
 
 ```java
-package com.coderarmy.command;
-
-// Abstract Command Contract
-public interface ICommand {
+// ==========================================
+// 1. COMMAND CONTRACT
+// ==========================================
+interface ICommand {
     void execute();
     void undo();
 }
-```
 
----
-
-### 5.2 Receivers (Appliance Hardware Abstractions)
-
-Receivers do **not** know about the Command pattern, remotes, or callers. They focus purely on domain actions.
-
-```java
-package com.coderarmy.command;
-
-// Receiver 1: Light
-public class Light {
-    public void on() {
-        System.out.println("[LIGHT] Bulb is ON (Illuminating room).");
-    }
-
-    public void off() {
-        System.out.println("[LIGHT] Bulb is OFF (Room is dark).");
-    }
+// ==========================================
+// 2. RECEIVERS (Hardware / Domain Entities)
+// ==========================================
+class Light {
+    public void on() { System.out.println("💡 [LIGHT] Bulb is ON."); }
+    public void off() { System.out.println("💡 [LIGHT] Bulb is OFF."); }
 }
-```
 
-```java
-package com.coderarmy.command;
-
-// Receiver 2: Fan
-public class Fan {
-    public void on() {
-        System.out.println("[FAN] Motor spinning ON at default speed.");
-    }
-
-    public void off() {
-        System.out.println("[FAN] Motor stopped (OFF).");
-    }
+class Fan {
+    public void on() { System.out.println("🌀 [FAN] Motor spinning ON."); }
+    public void off() { System.out.println("🌀 [FAN] Motor stopped (OFF)."); }
 }
-```
 
----
-
-### 5.3 Concrete Commands
-
-Each concrete command holds a reference to its specific receiver and coordinates the action.
-
-```java
-package com.coderarmy.command;
-
-// Concrete Command for Light
-public class LightCommand implements ICommand {
+// ==========================================
+// 3. CONCRETE COMMANDS (Binding Action to Receiver)
+// ==========================================
+class LightCommand implements ICommand {
     private final Light light;
 
     public LightCommand(Light light) {
         this.light = light;
     }
 
-    @Override
-    public void execute() {
-        light.on();
-    }
-
-    @Override
-    public void undo() {
-        light.off();
-    }
+    @Override public void execute() { light.on(); }
+    @Override public void undo() { light.off(); }
 }
-```
 
-```java
-package com.coderarmy.command;
-
-// Concrete Command for Fan
-public class FanCommand implements ICommand {
+class FanCommand implements ICommand {
     private final Fan fan;
 
     public FanCommand(Fan fan) {
         this.fan = fan;
     }
 
-    @Override
-    public void execute() {
-        fan.on();
-    }
-
-    @Override
-    public void undo() {
-        fan.off();
-    }
+    @Override public void execute() { fan.on(); }
+    @Override public void undo() { fan.off(); }
 }
-```
 
----
-
-### 5.4 Invoker (Smart Remote Control with Toggle / Undo Tracking)
-
-The invoker maintains slots for commands and tracks button states using a boolean array so that pressing an active button automatically triggers `undo()`.
-
-```java
-package com.coderarmy.command;
-
-public class RemoteControl {
-    private final int numButtons;
+// ==========================================
+// 4. INVOKER (Remote Control with Toggle State)
+// ==========================================
+class RemoteControl {
     private final ICommand[] buttons;
     private final boolean[] isButtonPressed;
 
-    public RemoteControl(int numButtons) {
-        this.numButtons = numButtons;
-        this.buttons = new ICommand[numButtons];
-        this.isButtonPressed = new boolean[numButtons]; // Defaults to false
+    public RemoteControl(int slots) {
+        this.buttons = new ICommand[slots];
+        this.isButtonPressed = new boolean[slots];
     }
 
-    // Dynamic configuration of buttons (remap at runtime)
-    public void setCommand(int index, ICommand command) {
-        if (index < 0 || index >= numButtons) {
-            throw new IllegalArgumentException("Invalid button index: " + index);
-        }
-        this.buttons[index] = command;
-        this.isButtonPressed[index] = false; // Reset state on re-binding
+    public void setCommand(int slot, ICommand command) {
+        buttons[slot] = command;
+        isButtonPressed[slot] = false; // Reset toggle state
     }
 
-    // Pressing button executes or undos based on state
-    public void pressButton(int index) {
-        if (index < 0 || index >= numButtons) {
-            System.out.println("[ERROR] Button " + index + " does not exist on this remote.");
+    public void pressButton(int slot) {
+        if (slot < 0 || slot >= buttons.length || buttons[slot] == null) {
+            System.out.println("⚠️ Slot " + slot + " is empty.");
             return;
         }
 
-        ICommand command = buttons[index];
-        if (command == null) {
-            System.out.println("[WARNING] Button " + index + " has no command assigned.");
-            return;
-        }
-
-        if (!isButtonPressed[index]) {
-            // First press -> Turn ON (Execute)
-            System.out.println("-> Remote Button " + index + " pressed (EXECUTE):");
-            command.execute();
-            isButtonPressed[index] = true;
+        if (!isButtonPressed[slot]) {
+            buttons[slot].execute();
+            isButtonPressed[slot] = true;
         } else {
-            // Second press -> Toggle OFF (Undo)
-            System.out.println("-> Remote Button " + index + " pressed again (UNDO):");
-            command.undo();
-            isButtonPressed[index] = false;
+            buttons[slot].undo();
+            isButtonPressed[slot] = false;
         }
     }
 }
-```
 
----
-
-### 5.5 Client Execution & Demonstration
-
-```java
-package com.coderarmy.command;
-
-public class Main {
+// ==========================================
+// 5. CLIENT DEMONSTRATION
+// ==========================================
+public class CommandPatternDemo {
     public static void main(String[] args) {
-        System.out.println("=== INITIALIZING SMART HOME REMOTE (4 SLOTS) ===");
         RemoteControl remote = new RemoteControl(4);
 
-        // 1. Instantiate Receivers
         Light livingRoomLight = new Light();
         Fan bedroomFan = new Fan();
 
-        // 2. Instantiate Concrete Commands
-        ICommand lightCommand = new LightCommand(livingRoomLight);
-        ICommand fanCommand = new FanCommand(bedroomFan);
+        remote.setCommand(0, new LightCommand(livingRoomLight));
+        remote.setCommand(1, new FanCommand(bedroomFan));
 
-        // 3. Configure Invoker Slots
-        remote.setCommand(0, lightCommand);
-        remote.setCommand(1, fanCommand);
+        System.out.println("--- Testing Button 0 (Light Toggle) ---");
+        remote.pressButton(0); // Turns ON
+        remote.pressButton(0); // Turns OFF (Undo)
 
-        System.out.println("\n=== TESTING BUTTON 0 (LIGHT TOGGLE) ===");
-        remote.pressButton(0); // Turns light ON
-        remote.pressButton(0); // Turns light OFF (Undo)
+        System.out.println("\n--- Testing Button 1 (Fan Toggle) ---");
+        remote.pressButton(1); // Turns ON
+        remote.pressButton(1); // Turns OFF (Undo)
 
-        System.out.println("\n=== TESTING BUTTON 1 (FAN TOGGLE) ===");
-        remote.pressButton(1); // Turns fan ON
-        remote.pressButton(1); // Turns fan OFF (Undo)
-
-        System.out.println("\n=== DYNAMIC RUNTIME RE-BINDING ===");
-        System.out.println("User swaps Button 0 from Light to Bedroom Fan:");
-        remote.setCommand(0, fanCommand);
+        System.out.println("\n--- Dynamic Runtime Re-mapping: Slot 0 -> Fan ---");
+        remote.setCommand(0, new FanCommand(bedroomFan));
         remote.pressButton(0); // Now controls fan!
-
-        System.out.println("\n=== TESTING UNASSIGNED SLOT ===");
-        remote.pressButton(3); // Warning: no command assigned
     }
 }
 ```
 
+### Execution Output:
+```text
+--- Testing Button 0 (Light Toggle) ---
+💡 [LIGHT] Bulb is ON.
+💡 [LIGHT] Bulb is OFF.
+
+--- Testing Button 1 (Fan Toggle) ---
+🌀 [FAN] Motor spinning ON.
+🌀 [FAN] Motor stopped (OFF).
+
+--- Dynamic Runtime Re-mapping: Slot 0 -> Fan ---
+🌀 [FAN] Motor spinning ON.
+```
+
 ---
 
-## 6. Execution Trace & Sequence Diagram
+## 6. Sequence Diagram: Button Press & Undo Flow
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor User
     participant Remote as RemoteControl (Invoker)
-    participant Cmd as LightCommand (Command)
+    participant Cmd as LightCommand
     participant Device as Light (Receiver)
 
+    Note over User,Device: First Press -> Execute
     User->>Remote: pressButton(0)
-    activate Remote
-    Note over Remote: isButtonPressed[0] is false
     Remote->>Cmd: execute()
-    activate Cmd
     Cmd->>Device: on()
-    activate Device
     Device-->>Cmd: Bulb is ON
-    deactivate Device
-    Cmd-->>Remote: done
-    deactivate Cmd
-    Note over Remote: isButtonPressed[0] set to true
-    deactivate Remote
 
-    User->>Remote: pressButton(0) [Second Press]
-    activate Remote
-    Note over Remote: isButtonPressed[0] is true
+    Note over User,Device: Second Press -> Undo
+    User->>Remote: pressButton(0)
     Remote->>Cmd: undo()
-    activate Cmd
     Cmd->>Device: off()
-    activate Device
     Device-->>Cmd: Bulb is OFF
-    deactivate Device
-    Cmd-->>Remote: done
-    deactivate Cmd
-    Note over Remote: isButtonPressed[0] reset to false
-    deactivate Remote
 ```
 
 ---
 
 ## 7. Deep Architectural Doubts Explored in Lecture
 
-In the lecture, two crucial design dilemmas were analyzed in detail:
-
-### Doubt 1: Why does `ICommand` NOT hold a reference to `Light` or `Receiver`?
-- **Question**: Why is the HAS-A relationship with the receiver placed inside `LightCommand` rather than in the base `ICommand` interface?
-- **Explanation**: 
-  - `ICommand` is a pure abstraction declaring only *what* can be done (`execute()`, `undo()`). It does not care *who* executes it.
-  - If `ICommand` held a receiver reference, it would force all commands to bind to that single type of receiver.
-  - By placing the receiver inside concrete commands (`LightCommand HAS-A Light`, `FanCommand HAS-A Fan`), each command binds exclusively to the exact receiver it needs.
+### Doubt 1: Why does `ICommand` NOT hold a reference to `Receiver`?
+- `ICommand` is a pure behavioral abstraction declaring *what* can be done (`execute()`, `undo()`).
+- If `ICommand` held a `Receiver` reference, it would force all commands to bind to a single receiver type. Concrete commands encapsulate the exact receiver they interact with.
 
 ### Doubt 2: Why not create a common `Appliance` parent class for all receivers?
-- **Question**: Why not create `class Appliance { on(); off(); }` and have `Command HAS-A Appliance` so we only need one generic `Command` class?
-- **Explanation**:
-  - **Liskov Substitution Principle (LSP) Violation**: Not all smart appliances fit into a simple `on()` / `off()` interface. 
-    - An **AC** has `setTemperature(int temp)`, `setMode(Mode mode)`.
-    - A **Smart Refrigerator** has `setFreezerTemp()`, `defrost()`.
-    - A **Room Heater** has `setTimer(int mins)`.
-  - Forcing all appliances into a monolithic `Appliance` interface violates LSP and ISP (Interface Segregation Principle).
-  - Concrete commands allow each command to interact with the unique, rich API of its specific receiver while presenting the identical, uniform `execute()`/`undo()` interface to the invoker.
+- **Violates Liskov Substitution Principle (LSP) & ISP:** Different appliances have incompatible feature sets. An AC has `setTemperature(int)` and `setMode()`; a Smart TV has `changeChannel()`; a Light only has `on()`/`off()`.
+- Forcing all appliances into an `Appliance` interface results in empty dummy methods or runtime exceptions. Concrete commands allow rich, device-specific APIs to be invoked behind a uniform `execute()`/`undo()`.
 
 ---
 
-## 8. Real-World Use Cases
+## 8. Real-World Applications Mentioned in Lecture
 
-1. **GUI Text Editors & Photoshop (Undo / Redo Stacks)**:
-   - When you press `Ctrl + Z` (or `Cmd + Z`), you undo the last action.
-   - Every operation (type character, delete word, bold text, crop image) is packaged as a `Command` object and pushed onto a **History Stack** (`Stack<ICommand>`).
-   - When undo is triggered, the system pops the top command and invokes `command.undo()`.
-2. **Keyboard Shortcut Customization**:
-   - Operating systems and IDEs (e.g. VS Code, IntelliJ) allow developers to map any key combination to an action. The keystroke listener is the Invoker, which triggers whichever `Command` is bound in the keymap configuration.
-3. **Task Queuing & Background Job Schedulers**:
-   - Commands can be added to thread-safe queues (`BlockingQueue<ICommand>`) for asynchronous execution by worker thread pools.
-4. **Transactional Logging & Crash Recovery**:
-   - Because commands encapsulate all state needed to execute an action, they can be written to a write-ahead log (WAL) on disk. In the event of a system crash, the log is replayed to reconstruct system state.
+1. **GUI Text Editors (Undo / Redo History):**
+   - Each keystroke, cut, copy, or paste is an `ICommand` pushed onto a `Stack<ICommand>`.
+   - Pressing `Ctrl + Z` pops the top command and executes `command.undo()`.
+2. **Task Queuing & Job Schedulers:**
+   - Background workers pull command objects from thread-safe queues and call `execute()`.
+3. **Write-Ahead Logging (WAL) & Crash Recovery:**
+   - Commands are serialized to disk before execution; on server reboot, uncommitted commands are replayed.
 
 ---
 
-## Quick Revision
+## 9. Interview Questions & Key Discussion Points
 
-### Core Idea
-The **Command Pattern** turns a request into a standalone **Object**, decoupling the object that invokes the command (**Invoker**) from the object that performs the low-level logic (**Receiver**).
+1. **How do you implement Multi-Level Undo and Redo?**
+   - Maintain two stacks: `undoStack` and `redoStack`.
+   - On execution: push command to `undoStack`, clear `redoStack`.
+   - On Undo: pop from `undoStack`, call `command.undo()`, push to `redoStack`.
+   - On Redo: pop from `redoStack`, call `command.execute()`, push to `undoStack`.
+2. **What is the difference between Strategy and Command Pattern?**
+   - **Strategy:** Replaces *how* a task is achieved (different algorithms, e.g., `QuickSort` vs. `MergeSort`).
+   - **Command:** Encapsulates *what* request to trigger, decoupling the caller from execution timing, history, and target.
+3. **Should a Command object contain business logic?**
+   - No. Commands are dispatchers that coordinate receivers. The receiver owns the business or hardware logic.
 
-### Remember
-- **4 Key Players**:
-  - **Invoker** (`RemoteControl`): Triggers commands via slots or buttons.
-  - **Command** (`ICommand`): Contract with `execute()` and `undo()`.
-  - **Concrete Command** (`LightCommand`): Connects `execute()` to `receiver.on()`.
-  - **Receiver** (`Light`, `Fan`): Real hardware or business logic.
-- **LSP Compliance**: Do not try to force all receivers into a monolithic `Appliance` parent class; let concrete commands bind directly to concrete receivers.
+---
 
-### Java Implementation Idea
-```java
-// Receiver
-Light light = new Light();
+## 10. Quick Revision
 
-// Command
-ICommand lightOn = new LightCommand(light);
-
-// Invoker
-RemoteControl remote = new RemoteControl(4);
-remote.setCommand(0, lightOn);
-remote.pressButton(0); // Turns ON
-remote.pressButton(0); // Turns OFF (Undo)
+```text
+Problem: Hardcoding actions inside callers causes tight coupling and prevents undo/redo.
+Solution: Package the request into a Command object with execute() and undo().
+Participants: Invoker (Remote) -> Command (LightCommand) -> Receiver (Light).
+Key Invariant: Invoker never knows the Receiver directly.
 ```
-
-### Most Important Interview Point
-Explain how the pattern enables **Undo/Redo**: Since every action is an object with an `undo()` method, the invoker or an orchestrator can maintain a `Stack<ICommand>`. Pushing executed commands onto the stack allows multi-level undo by simply popping and calling `undo()`.
-
-### Common Trap
-Do not put appliance logic inside the Command class. The command is merely a **Dispatcher / Bridge** that delegates to the Receiver. Keep the Receiver responsible for hardware/business operations.
