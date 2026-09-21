@@ -180,6 +180,8 @@ flowchart LR
 
 In Java web applications, the **Servlet Container (e.g., Embedded Apache Tomcat)** accepts raw HTTP TCP connections and converts them into Java objects (`HttpServletRequest` and `HttpServletResponse`).
 
+![Filter vs Interceptor Execution Flow](./images/filter-vs-interceptor.png)
+
 ```mermaid
 flowchart LR
     Client(["Client Request"]) --> Tomcat["Servlet Container (Tomcat)"]
@@ -208,6 +210,8 @@ flowchart LR
 > 💡 **Quick Revision Anchor (2-3 Words)**: `DispatcherServlet 7 Steps`
 
 The core internal flow of every incoming web request follows **7 distinct steps**:
+
+![Spring MVC Request Processing Flow](./images/spring-mvc-flow.png)
 
 ```mermaid
 sequenceDiagram

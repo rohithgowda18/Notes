@@ -61,6 +61,8 @@ Client ──▶ Builder()
 
 ## 3. Visual Architecture
 
+![Builder Design Pattern UML Architecture](../images/builder-pattern.svg)
+
 ```mermaid
 classDiagram
     class HttpRequest {

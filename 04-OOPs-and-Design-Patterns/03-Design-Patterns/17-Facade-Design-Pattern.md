@@ -70,6 +70,8 @@ facade.startComputer();
 
 ## 4. Visual Architecture
 
+![Facade Design Pattern UML Architecture](../images/facade-pattern.svg)
+
 ```mermaid
 classDiagram
     class Client {

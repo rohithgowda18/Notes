@@ -40,7 +40,7 @@
       "path": "02-DBMS/DBMS-Advanced-Concepts.md",
       "name": "DBMS-Advanced-Concepts.md",
       "type": "markdown",
-      "size": 43176
+      "size": 43254
     },
     {
       "path": "02-DBMS/DBMS_Full_Notes.pdf",
@@ -124,7 +124,7 @@
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/05-SOLID-Design-Principles-Part-1.md",
       "name": "05-SOLID-Design-Principles-Part-1.md",
       "type": "markdown",
-      "size": 12696
+      "size": 12782
     },
     {
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/06-SOLID-Design-Principles-Part-2.md",
@@ -136,13 +136,13 @@
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/08-Strategy-Design-Pattern.md",
       "name": "08-Strategy-Design-Pattern.md",
       "type": "markdown",
-      "size": 11972
+      "size": 12038
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/09-Factory-Design-Pattern.md",
       "name": "09-Factory-Design-Pattern.md",
       "type": "markdown",
-      "size": 9616
+      "size": 9694
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/10-Singleton-Design-Pattern.md",
@@ -154,13 +154,13 @@
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/12-Observer-Design-Pattern.md",
       "name": "12-Observer-Design-Pattern.md",
       "type": "markdown",
-      "size": 10006
+      "size": 10076
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/13-Decorator-Design-Pattern.md",
       "name": "13-Decorator-Design-Pattern.md",
       "type": "markdown",
-      "size": 10333
+      "size": 10405
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/15-Command-Design-Pattern.md",
@@ -172,13 +172,13 @@
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/16-Adapter-Design-Pattern.md",
       "name": "16-Adapter-Design-Pattern.md",
       "type": "markdown",
-      "size": 9088
+      "size": 9163
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/17-Facade-Design-Pattern.md",
       "name": "17-Facade-Design-Pattern.md",
       "type": "markdown",
-      "size": 8946
+      "size": 9019
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/19-Composite-Design-Pattern-File-System.md",
@@ -214,7 +214,7 @@
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/28-Builder-Design-Pattern.md",
       "name": "28-Builder-Design-Pattern.md",
       "type": "markdown",
-      "size": 11090
+      "size": 11165
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/29-Iterator-Design-Pattern.md",
@@ -316,7 +316,7 @@
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/31-Build-Splitwise-Clone.md",
       "name": "31-Build-Splitwise-Clone.md",
       "type": "markdown",
-      "size": 35825
+      "size": 35933
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/33-Build-Tic-Tac-Toe-Game.md",
@@ -388,31 +388,31 @@
       "path": "06-Java-and-Spring-Boot/01-Spring-Framework-and-Core-IoC.md",
       "name": "01-Spring-Framework-and-Core-IoC.md",
       "type": "markdown",
-      "size": 28893
+      "size": 28971
     },
     {
       "path": "06-Java-and-Spring-Boot/02-Spring-Boot-and-Web-MVC.md",
       "name": "02-Spring-Boot-and-Web-MVC.md",
       "type": "markdown",
-      "size": 29465
+      "size": 29615
     },
     {
       "path": "06-Java-and-Spring-Boot/03-Data-Persistence-Spring-Data-JPA.md",
       "name": "03-Data-Persistence-Spring-Data-JPA.md",
       "type": "markdown",
-      "size": 29927
+      "size": 30171
     },
     {
       "path": "06-Java-and-Spring-Boot/04-Spring-Security-and-Authentication.md",
       "name": "04-Spring-Security-and-Authentication.md",
       "type": "markdown",
-      "size": 20667
+      "size": 20848
     },
     {
       "path": "06-Java-and-Spring-Boot/05-Spring-REST-Microservices-and-Production.md",
       "name": "05-Spring-REST-Microservices-and-Production.md",
       "type": "markdown",
-      "size": 32570
+      "size": 33063
     },
     {
       "path": "06-Java-and-Spring-Boot/java Programming.pdf",

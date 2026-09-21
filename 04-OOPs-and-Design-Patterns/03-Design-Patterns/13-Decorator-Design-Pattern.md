@@ -61,6 +61,8 @@ The Decorator pattern solves this by wrapping objects inside decorator layers:
 
 ## 3. Visual Architecture
 
+![Decorator Pattern UML Architecture](../images/decorator-pattern.svg)
+
 ```mermaid
 classDiagram
     class Character {

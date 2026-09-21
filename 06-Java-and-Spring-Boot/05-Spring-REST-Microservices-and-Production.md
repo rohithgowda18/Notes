@@ -261,6 +261,9 @@ timeline
 ### Implementation Examples:
 
 #### 1. OpenFeign (Declarative Interface Proxy)
+
+![OpenFeign Request Flow](./images/flow-of-feign-hd.png)
+
 ```java
 // 1. Declare the Feign Client Interface
 @FeignClient(name = "payment-service", url = "${payment.service.url}")
@@ -332,6 +335,8 @@ public class ReactiveDataService {
 
 ### Monolith vs. Microservices
 
+![Microservices Enterprise Architecture](./images/microservices-architecture.jpg)
+
 ```mermaid
 flowchart TD
     subgraph Monolith ["Monolithic Architecture"]
@@ -358,9 +363,13 @@ flowchart TD
    - **Single Entry Point**: All client requests route through the Gateway.
    - **Cross-Cutting Concerns**: Handles authentication, SSL termination, global rate-limiting, CORS, and request logging in one central location.
 
+![Spring Cloud Gateway Architecture](./images/api-gateway-architecture.png)
+
 2. **Service Discovery (e.g., Netflix Eureka / HashiCorp Consul)**:
    - Microservice instances start dynamically with variable IP addresses (especially in containerized/Kubernetes environments).
    - Each service registers with Eureka on boot. The Gateway and other services discover target service network locations dynamically.
+
+![Netflix Eureka Service Discovery Architecture](./images/eureka_architecture.png)
 
 3. **Centralized Configuration (e.g., Spring Cloud Config / Vault)**:
    - Centralizes `application.yml` files for all microservices in a single Git repository or secrets vault.
@@ -373,6 +382,8 @@ flowchart TD
 ---
 
 ### Resilience & Circuit Breakers (Resilience4j)
+
+![Resilience4j Circuit Breaker State Machine](./images/resilience4j-state-machine.jpg)
 
 When a downstream service slows down or fails, calling it repeatedly can exhaust thread pools and bring down the entire system (**cascading failure**). A **Circuit Breaker** monitors call failures:
 
@@ -593,6 +604,8 @@ public class OrderService {
 ### Production Logging Best Practices:
 1. **Never log sensitive data**: Mask credit card numbers, passwords, SSNs, and JWT tokens.
 2. **Correlation / Trace IDs (MDC)**: Use Mapped Diagnostic Context (`MDC.put("traceId", traceId)`) so every log line across microservices carries the same trace identifier for distributed debugging.
+
+![Distributed Tracing with Micrometer and Zipkin](./images/zipkin-architecture-web.png)
 
 ---
 

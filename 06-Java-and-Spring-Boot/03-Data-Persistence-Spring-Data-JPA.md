@@ -148,6 +148,8 @@ While JPA is standard for OLTP CRUD, `JdbcTemplate` is superior in specific scen
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `JPA Spec Hibernate`
 
+![JPA Architecture & Persistence Context](./images/jpa-architecture.jpg)
+
 ```mermaid
 flowchart TD
     App["Spring Boot Application Layer"] --> SpringData["Spring Data JPA (Repository Abstraction)"]
@@ -244,6 +246,8 @@ public class Student {
 ## 7. Spring Data Repository Hierarchy
 
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Repository Contract Tree`
+
+![Spring Data JPA Repository Hierarchy](./images/spring-data-jpa-architecture.png)
 
 ```mermaid
 classDiagram
@@ -531,6 +535,8 @@ flowchart LR
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Transaction Boundaries & ACID`
 
 A **Transaction** guarantees ACID compliance (Atomicity, Consistency, Isolation, Durability) across multiple database operations.
+
+![Transaction Propagation Decision Tree](./images/transaction-propagation.png)
 
 ```mermaid
 flowchart TD

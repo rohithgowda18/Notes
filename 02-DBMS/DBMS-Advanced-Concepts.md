@@ -632,6 +632,8 @@ When the Primary dies, an election elevates a replica to become the new Primary.
 
 In microservice and sharded database architectures, a single business transaction often spans across multiple separate database instances.
 
+![Two-Phase Commit (2PC) Protocol Architecture](./images/2pc-protocol.png)
+
 ```mermaid
 sequenceDiagram
     autonumber

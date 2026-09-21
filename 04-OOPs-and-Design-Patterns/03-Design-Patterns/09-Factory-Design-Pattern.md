@@ -59,6 +59,8 @@ When franchises have distinct recipes:
 
 The base `BurgerStore` defines an abstract `createBurger()` method, and franchise subclasses decide which concrete burger to instantiate:
 
+![Factory Method Pattern Architecture](../images/factory-method-pattern.jpg)
+
 ```mermaid
 classDiagram
     class BurgerStore {

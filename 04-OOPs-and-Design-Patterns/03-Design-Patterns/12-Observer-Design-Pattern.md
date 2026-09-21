@@ -50,6 +50,8 @@ Invert the responsibility:
 
 ## 4. Visual Architecture
 
+![Observer Pattern UML Architecture](../images/observer-pattern.svg)
+
 ```mermaid
 classDiagram
     class Channel {
