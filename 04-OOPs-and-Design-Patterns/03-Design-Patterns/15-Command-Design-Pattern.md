@@ -240,13 +240,13 @@ sequenceDiagram
     participant Cmd as LightCommand
     participant Device as Light (Receiver)
 
-    Note over User,Device: First Press -> Execute
+    Note over User,Device: First Press: Execute
     User->>Remote: pressButton(0)
     Remote->>Cmd: execute()
     Cmd->>Device: on()
     Device-->>Cmd: Bulb is ON
 
-    Note over User,Device: Second Press -> Undo
+    Note over User,Device: Second Press: Undo
     User->>Remote: pressButton(0)
     Remote->>Cmd: undo()
     Cmd->>Device: off()

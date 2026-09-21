@@ -362,13 +362,13 @@ sequenceDiagram
     I-->>O: Stock Reserved
     O->>P: 2. Process Payment
     P-->>O: Payment Successful
-    O->>O: 3. Order Status -> CONFIRMED
+    O->>O: 3. Order Status = CONFIRMED
 
     Note over O,P: Compensating Transaction (Failure Path)
     O->>P: 2. Process Payment (Card Declined!)
     P-->>O: Payment Failed
     O->>I: 3. COMPENSATE: Release Reserved Stock
-    O->>O: 4. Order Status -> CANCELLED
+    O->>O: 4. Order Status = CANCELLED
 ```
 
 ### Orchestrator Example (Java)

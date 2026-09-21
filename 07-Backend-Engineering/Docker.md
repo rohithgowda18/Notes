@@ -79,13 +79,13 @@ This is one of the most frequently asked Docker questions in interviews.
 ```mermaid
 flowchart LR
     subgraph Blueprint ["Docker Image"]
-        I["Read-only Template\n(Code + JRE + Config)"]
+        I["Read-only Template<br/>(Code + JRE + Config)"]
     end
 
     subgraph LiveInstances ["Running Containers"]
-        C1["Container 1\n(Running Instance)"]
-        C2["Container 2\n(Running Instance)"]
-        C3["Container 3\n(Running Instance)"]
+        C1["Container 1<br/>(Running Instance)"]
+        C2["Container 2<br/>(Running Instance)"]
+        C3["Container 3<br/>(Running Instance)"]
     end
 
     I -->|docker run| C1
@@ -122,17 +122,21 @@ flowchart LR
 Another classic interview question.
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph VM_Arch ["Virtual Machine (Heavyweight)"]
+        direction TB
         HW1["Host Hardware"] --> OS1["Host OS"] --> Hyp["Hypervisor"]
-        Hyp --> VM1["Guest OS 1 (Full OS: 2-10GB)\n+ App 1"]
-        Hyp --> VM2["Guest OS 2 (Full OS: 2-10GB)\n+ App 2"]
+        Hyp --> VM1["Guest OS 1 (Full OS: 2-10GB)<br/>+ App 1"]
+        Hyp --> VM2["Guest OS 2 (Full OS: 2-10GB)<br/>+ App 2"]
     end
 
+    VM_Arch ~~~ Container_Arch
+
     subgraph Container_Arch ["Docker Container (Lightweight)"]
+        direction TB
         HW2["Host Hardware"] --> OS2["Host OS (Linux Kernel)"] --> DE["Docker Engine"]
-        DE --> C1["Container 1\n(App 1 + Libs only)"]
-        DE --> C2["Container 2\n(App 2 + Libs only)"]
+        DE --> C1["Container 1<br/>(App 1 + Libs only)"]
+        DE --> C2["Container 2<br/>(App 2 + Libs only)"]
     end
 ```
 
@@ -157,9 +161,9 @@ flowchart TD
 Docker uses a simple **Client-Server architecture**:
 
 ```mermaid
-flowchart TD
-    Client["Docker CLI (Client)\nCommands: docker build, run, ps, stop"]
-    Daemon["Docker Daemon (Server Engine)\nPerforms all operations in background"]
+flowchart LR
+    Client["Docker CLI (Client)<br/>docker build, run, ps, stop"]
+    Daemon["Docker Daemon (Server Engine)<br/>Performs operations in background"]
     
     subgraph DaemonTasks ["Managed by Daemon"]
         Images["Images"]
@@ -168,7 +172,7 @@ flowchart TD
         Volumes["Volumes"]
     end
 
-    Registry["Docker Hub / Registry\nStores Public/Private Images"]
+    Registry["Docker Hub / Registry<br/>Stores Public/Private Images"]
 
     Client -->|REST API / Socket| Daemon
     Daemon --> Images
@@ -256,8 +260,8 @@ A `Dockerfile` is a text file containing instructions to build a Docker image.
 
 ```mermaid
 flowchart LR
-    DF["Dockerfile\n(Build instructions)"] -->|docker build| Img["Docker Image\n(Immutable template)"]
-    Img -->|docker run| Cont["Docker Container\n(Running app)"]
+    DF["Dockerfile<br/>(Build instructions)"] -->|docker build| Img["Docker Image<br/>(Immutable template)"]
+    Img -->|docker run| Cont["Docker Container<br/>(Running app)"]
 ```
 
 ### Basic Example (Spring Boot):
@@ -300,11 +304,12 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 Interviewers test whether you know the difference between the main process and default arguments:
 
 ```mermaid
-flowchart TD
-    E["ENTRYPOINT: Main process that CANNOT easily be overridden\n['java', '-jar', 'app.jar']"]
-    C["CMD: Default arguments that CAN easily be overridden\n['--server.port=8080']"]
+flowchart LR
+    E["ENTRYPOINT: Main process<br/>java -jar app.jar"]
+    C["CMD: Default arguments<br/>--server.port=8080"]
+    Result["Final Executed Command<br/>java -jar app.jar --server.port=8080"]
     E -->|Appends| C
-    C --> Result["Final Executed Command: java -jar app.jar --server.port=8080"]
+    C --> Result
 ```
 
 | Instruction | What it does | Can it be overridden easily? | Example |
@@ -470,15 +475,15 @@ Containers are **ephemeral** (disposable). When a container is deleted (`docker 
 For databases (PostgreSQL, MySQL), data must survive even if containers are destroyed and recreated.
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph Host ["Host Machine"]
-        V["Docker Named Volume (pgdata)\nManaged safely by Docker Engine"]
-        B["Host Folder (./src)\nDirectly on developer's disk"]
+        V["Docker Named Volume (pgdata)<br/>Managed safely by Docker Engine"]
+        B["Host Folder (./src)<br/>Directly on developer disk"]
     end
 
     subgraph Containers ["Docker Containers"]
-        DB["PostgreSQL Container\nMounts /var/lib/postgresql/data"]
-        Web["Frontend Container\nMounts /app/src"]
+        DB["PostgreSQL Container<br/>Mounts /var/lib/postgresql/data"]
+        Web["Frontend Container<br/>Mounts /app/src"]
     end
 
     V <===>|Persistent DB Data| DB
@@ -511,10 +516,10 @@ flowchart TD
 > When running inside Docker, why does Spring Boot throw **"Connection refused: localhost:5432"**?
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph Backend ["Backend Container"]
         App["Spring Boot"]
-        Localhost["localhost = points to Backend Container itself!\n(Postgres is NOT running inside this container)"]
+        Localhost["localhost = points to Backend Container itself!<br/>(Postgres is NOT running inside this container)"]
     end
 
     subgraph Database ["db Container"]
@@ -634,11 +639,11 @@ flowchart TD
     User(["Browser (User)"])
 
     subgraph FrontendTier ["Frontend Tier"]
-        Web["Web Container (Vite/React)\nPort: 5173"]
+        Web["Web Container (Vite/React)<br/>Port: 5173"]
     end
 
     subgraph GatewayTier ["API Gateway"]
-        Gateway["API Gateway Container\nPort: 8080"]
+        Gateway["API Gateway Container<br/>Port: 8080"]
     end
 
     subgraph MicroservicesTier ["Microservices"]

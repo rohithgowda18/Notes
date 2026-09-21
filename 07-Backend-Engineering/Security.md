@@ -1,4 +1,4 @@
-﻿# 🔐 Web Security & Backend Defense Architecture
+# 🔐 Web Security & Backend Defense Architecture
 
 > **Core Philosophy**: Security is not an afterthought or an external plugin—it is **defense in depth**. Assume every network packet is hostile, every client input is untrusted, and internal microservice boundaries must authenticate and authorize every single operation.
 
@@ -52,14 +52,19 @@ $$\text{Password Hash} = \mathbf{\text{Argon2id}} \text{ or } \mathbf{\text{Bcry
 ## 3. Session-Based Auth vs. JWT (JSON Web Tokens)
 
 ```mermaid
-flowchart TD
-    subgraph SessionAuth [Stateful Session Auth]
+flowchart LR
+    subgraph SessionAuth ["Stateful Session Auth"]
+        direction TB
         C1[Client] -->|"Cookie: session_id=abc"| S1[Server]
-        S1 <-->|"Lookup session_id in RAM/Redis"| Redis[(Redis Session Store)]
+        S1 <-->|"Lookup session in Redis"| Redis[(Redis Session Store)]
     end
-    subgraph JWTAuth [Stateless JWT Auth]
+
+    SessionAuth ~~~ JWTAuth
+
+    subgraph JWTAuth ["Stateless JWT Auth"]
+        direction TB
         C2[Client] -->|"Header: Bearer eyJhbGciOi..."| S2[Server]
-        S2 -->|"Verify Cryptographic HMAC/RSA Signature locally"| S2
+        S2 -->|"Verify HMAC/RSA Signature locally"| S2
     end
 ```
 

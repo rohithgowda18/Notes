@@ -53,9 +53,14 @@ Suddenly, the exact same query breaks down:
 ```mermaid
 flowchart LR
     subgraph SmallScale ["Small Scale (5,000 Products)"]
+        direction TB
         Q1["SQL LIKE '%laptop%'"] --> T1["Latency: ~50 ms ✅"]
     end
+
+    SmallScale ~~~ LargeScale
+
     subgraph LargeScale ["Large Scale (Millions of Products)"]
+        direction TB
         Q2["SQL LIKE '%laptop%'"] --> T2["Latency: 30+ seconds ❌"]
     end
 ```
@@ -140,11 +145,16 @@ Computer scientists in the field of Information Retrieval (IR) had researched th
 > **Instead of searching through documents to find terms, invert the problem: search through terms to find documents.**
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph TraditionalSearch ["Traditional Search (Forward Search)"]
+        direction TB
         D1["Document / Book"] --> T1["Scan text character-by-character to find word"]
     end
+
+    TraditionalSearch ~~~ InvertedSearch
+
     subgraph InvertedSearch ["Inverted Index (Reverse Search)"]
+        direction TB
         W1["Word / Term"] --> D2["Instant list of documents & exact positions"]
     end
 ```
@@ -307,12 +317,17 @@ flowchart LR
 In Elasticsearch, data entities are stored as **JSON documents** (analogous to documents in MongoDB). When defining an index mapping, understanding the distinction between `text` and `keyword` is fundamental:
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph TextField ["'text' Field Type"]
+        direction TB
         T_Raw["'MacBook Pro 16'"] --> T_Analyzed["Analyzer: ['macbook', 'pro', '16']"]
         T_Analyzed --> T_Use["Used for: Full-text search, relevance scoring, partial matching"]
     end
+
+    TextField ~~~ KeywordField
+
     subgraph KeywordField ["'keyword' Field Type"]
+        direction TB
         K_Raw["'positive'"] --> K_Exact["Stored exact: 'positive' (No tokenization)"]
         K_Exact --> K_Use["Used for: Exact filtering, aggregation, sorting, sentiment, tags"]
     end

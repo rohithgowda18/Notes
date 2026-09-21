@@ -114,6 +114,9 @@ flowchart LR
     subgraph TightCoupling ["Tight Coupling (Standard Java)"]
         Car1["Car"] -->|"new PetrolEngine()"| PE["PetrolEngine (Hardcoded)"]
     end
+
+    TightCoupling ~~~ LooseCoupling
+
     subgraph LooseCoupling ["Loose Coupling (Spring IoC)"]
         Car2["Car"] --> Inter["<< Engine >> (Interface)"]
         Inter -.-> PE2["PetrolEngine"]
@@ -278,7 +281,7 @@ sequenceDiagram
     IoC->>Bean: 2. Inject Dependencies (@Autowired)
     IoC->>Bean: 3. Invoke @PostConstruct method (initialize())
     Note over Bean: Bean is ready for use in application!
-    IoC->>Bean: 4. Application shuts down -> Invoke @PreDestroy (destroy())
+    IoC->>Bean: 4. Application shuts down: Invoke @PreDestroy (destroy())
     IoC->>JVM: 5. Container closes & releases memory
 ```
 
@@ -582,6 +585,9 @@ flowchart LR
         Boot1["App Startup"] --> Create1["Instantiates All Singleton Beans"]
         Create1 --> Ready1["App Ready (Startup slower, runtime fast)"]
     end
+
+    Eager ~~~ Lazy
+
     subgraph Lazy ["Lazy Instantiation (@Lazy)"]
         Boot2["App Startup"] --> Skip["Skips @Lazy Beans"]
         Skip --> Call["Client calls getBean()"]
@@ -625,6 +631,9 @@ flowchart LR
         M1 --- Tx["Transaction boundary"]
         M1 --- Core["Actual Business Logic"]
     end
+
+    Tangled ~~~ CleanAOP
+
     subgraph CleanAOP ["With Spring AOP (Clean Code)"]
         Core2["Core Business Logic only"]
         Aspect["Separate Aspect Class: Logging, Security, Tx"]

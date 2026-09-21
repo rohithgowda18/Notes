@@ -70,7 +70,7 @@ The foundational rule of resilient distributed systems: **Every network call MUS
 ```mermaid
 sequenceDiagram
     autonumber
-    Client->>Server: 1. TCP Handshake (SYN -> SYN-ACK -> ACK)
+    Client->>Server: 1. TCP Handshake (SYN to SYN-ACK to ACK)
     Note over Client,Server: Connect Timeout applies here (e.g., 500ms - 2s)
     Client->>Server: 2. Send HTTP Request Payload
     Server-->>Client: 3. Wait for First Response Byte
@@ -310,14 +310,18 @@ flowchart TD
 The **Bulkhead Pattern** is named after the watertight compartments in maritime ships (such as submarines and cargo vessels). If the hull is breached and one compartment floods, the bulkhead walls isolate the leak, keeping the remainder of the ship buoyant and afloat.
 
 ```mermaid
-flowchart TD
-    subgraph Danger ["Shared Thread Pool (Catastrophic Failure)"]
-        PoolAll["Shared Worker Pool (100 Threads)"]
-        PoolAll --> T_Hung["Payment Service hangs -> Consumes ALL 100 threads!"]
-        T_Hung --> Starve["Auth, Search, & Home Endpoints starved -> Server Dies 💥"]
+flowchart LR
+    subgraph Danger ["Shared Thread Pool (Catastrophic)"]
+        direction TB
+        PoolAll["Shared Pool (100 Threads)"]
+        PoolAll --> T_Hung["Payment hangs: Takes 100 threads!"]
+        T_Hung --> Starve["Auth & Search starved: Server Dies 💥"]
     end
+
+    Danger ~~~ Safe
     
     subgraph Safe ["Bulkhead Isolation (Resilient System)"]
+        direction TB
         subgraph Pool1 ["Search Pool"]
             P1["50 Threads"]
         end
@@ -327,7 +331,7 @@ flowchart TD
         subgraph Pool3 ["Payment Pool"]
             P3["20 Threads"]
         end
-        P3 --> T_Isolate["Payment hangs -> Only its 20 threads block! Search & Auth unaffected ✅"]
+        P3 --> T_Isolate["Payment hangs: Only 20 threads blocked!<br/>Search & Auth stay responsive ✅"]
     end
 ```
 
@@ -418,15 +422,19 @@ Rate limiting protects backend APIs against denial-of-service (DDoS) attacks, br
 ### The Four Primary Algorithms
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph TB ["1. Token Bucket"]
-        TB_Add["Tokens added at constant rate R"] --> TB_Bucket["Bucket (Max Capacity C)"]
-        TB_Req["Request consumes 1 token"] --> TB_Check{"Token available?"}
+        direction TB
+        TB_Add["Tokens refill at constant rate R"] --> TB_Bucket["Bucket (Max Capacity C)"]
+        TB_Req["Incoming request"] --> TB_Check{"Token available?"}
         TB_Check -- "Yes" --> TB_Allow["Pass request ✅"]
         TB_Check -- "No" --> TB_Drop["Drop / 429 ❌"]
     end
+
+    TB ~~~ LB
     
     subgraph LB ["2. Leaky Bucket"]
+        direction TB
         LB_Req["Bursty traffic enters"] --> LB_Queue["FIFO Queue (Buffer size B)"]
         LB_Queue --> LB_Leak["Requests leak out at constant rate L"]
     end

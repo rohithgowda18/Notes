@@ -1,4 +1,4 @@
-﻿# 📦 Maven — Build Automation & Dependency Management
+# 📦 Maven — Build Automation & Dependency Management
 
 > **Core Philosophy**: **Maven** is a project management and build automation tool for Java applications. It standardizes the project folder layout, automatically resolves direct and transitive dependencies from central repositories, manages build lifecycles (`compile → test → package → install`), and packages runnable artifacts (`JAR` / `WAR`).
 
@@ -166,7 +166,7 @@ sequenceDiagram
     Maven->>Target: Delete existing target/ folder
     Maven->>Repo: Check if dependencies exist locally
     Note over Repo, Cent: If missing in ~/.m2, download from Maven Central
-    Maven->>Target: Compile .java -> target/classes/
+    Maven->>Target: Compile .java into target/classes/
     Maven->>Maven: Execute JUnit Tests in src/test/java
     Maven->>Target: Package classes into target/user-service-1.0.0.jar
 ```

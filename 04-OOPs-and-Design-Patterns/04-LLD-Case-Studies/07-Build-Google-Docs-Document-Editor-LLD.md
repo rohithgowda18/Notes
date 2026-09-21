@@ -13,30 +13,15 @@ Design a scalable, production-grade Document Editor (akin to Google Docs or a ri
 - **Architectural Trade-offs**: Navigating the tension between SRP and the **Principle of Least Knowledge (Law of Demeter)** during document rendering and client interaction.
 
 ```mermaid
-mindmap
-  root((Document Editor LLD))
-    Engineering Approaches
-      Top-Down Approach
-      Bottom-Up Approach (Chosen)
-    Document Element Hierarchy
-      DocumentElement Interface
-      TextElement
-      ImageElement
-      NewLineElement
-      TabSpaceElement
-    Core Document Management
-      Document Aggregate CRUD
-      DocumentEditor Orchestrator
-    Rendering Subsystem
-      DocumentRenderer
-      Principle of Least Knowledge / Law of Demeter
-      Delegation vs Direct Coupling
-    Persistence Subsystem
-      Persistence Interface
-      FileStorage
-      DatabaseStorage
-    Client Workflow
-      Lifecycle: Create -> Edit -> Render -> Save
+flowchart LR
+    Root(["Document Editor LLD"])
+
+    Root --> Approaches["Engineering Approach<br/>• Bottom-Up (Chosen)<br/>• Clean SOLID Foundations"]
+    Root --> Elements["Element Hierarchy<br/>• DocumentElement Interface<br/>• Text / Image / NewLine / Tab"]
+    Root --> Core["Core Management<br/>• Document Aggregate CRUD<br/>• DocumentEditor Orchestrator"]
+    Root --> Render["Rendering Subsystem<br/>• DocumentRenderer<br/>• Law of Demeter / Delegation"]
+    Root --> Persist["Persistence Subsystem<br/>• Persistence Interface<br/>• FileStorage / DatabaseStorage"]
+    Root --> Flow["Client Lifecycle<br/>Create to Edit to Render to Save"]
 ```
 
 ---

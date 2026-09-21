@@ -1,4 +1,4 @@
-﻿# 🧱 Object-Oriented Programming (OOP) & SOLID Principles
+# 🧱 Object-Oriented Programming (OOP) & SOLID Principles
 
 > **Core Philosophy**: Object-Oriented Design structures software around **data and behavior encapsulated inside objects**. 
 > Writing maintainable, enterprise-scale software requires following the **4 Core OOP Pillars** and the **SOLID Principles** to ensure loose coupling, high cohesion, and seamless extensibility.
@@ -25,21 +25,13 @@
 ## 1. The 4 Core Pillars of OOP
 
 ```mermaid
-mindmap
-  root((4 Pillars of OOP))
-    Encapsulation
-      Data Hiding
-      Getters / Setters
-      Access Modifiers
-    Abstraction
-      Hiding Implementation
-      Interfaces & Abstract Classes
-    Inheritance
-      Code Reusability
-      IS-A Hierarchy
-    Polymorphism
-      Method Overloading (Static)
-      Method Overriding (Dynamic)
+flowchart LR
+    Root(["4 Pillars of OOP"])
+
+    Root --> E["1. Encapsulation<br/>• Data Hiding<br/>• Getters / Setters<br/>• Access Modifiers"]
+    Root --> A["2. Abstraction<br/>• Hide Implementation<br/>• Interfaces & Abstract Classes"]
+    Root --> I["3. Inheritance<br/>• Code Reusability<br/>• IS-A Hierarchy"]
+    Root --> P["4. Polymorphism<br/>• Overloading (Static)<br/>• Overriding (Dynamic)"]
 ```
 
 ---
@@ -120,14 +112,16 @@ public class Dog extends Animal {
 
 ```mermaid
 flowchart LR
-    subgraph Bad Design [Violates SRP: Employee doing everything]
+    subgraph BadDesign ["❌ Bad Design (Violates SRP)"]
         E1[Employee Class] --> E11[Calculate Salary]
         E1 --> E12[Save to Database]
         E1 --> E13[Generate PDF Report]
         E1 --> E14[Send Welcome Email]
     end
+
+    BadDesign ~~~ CleanDesign
     
-    subgraph Clean SRP Design [Separated Responsibilities]
+    subgraph CleanDesign ["✅ Clean SRP Design (Separated)"]
         E2[Employee Model] --- R2[EmployeeRepository: DB ops]
         E2 --- P2[PayrollService: Salary calc]
         E2 --- N2[NotificationService: Email]
@@ -252,12 +246,16 @@ public class Robot implements Workable {
 > *2. Abstractions should not depend on details. Details should depend on abstractions."*
 
 ```mermaid
-flowchart TD
-    subgraph Bad Coupling
+flowchart LR
+    subgraph BadCoupling ["❌ Bad Coupling (Concrete Dependency)"]
+        direction TB
         High1[NotificationService] -->|Direct Concrete Dependency| Low1[EmailService]
     end
 
-    subgraph Clean DIP with Interface
+    BadCoupling ~~~ CleanDIP
+
+    subgraph CleanDIP ["✅ Clean DIP (Depends on Abstraction)"]
+        direction TB
         High2[NotificationService] -->|Depends on Abstraction| Interface[MessageSender Interface]
         EmailImpl[EmailSender] -->|Implements| Interface
         SmsImpl[SmsSender] -->|Implements| Interface

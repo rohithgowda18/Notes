@@ -58,18 +58,22 @@ flowchart LR
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Identity vs Permission`
 
 ```mermaid
-flowchart TD
-    subgraph AuthN ["1. Authentication (HTTP 401 Unauthorized)"]
-        A1["Who are you? (Identity Verification)"] --> A2["Validates credentials (Username/Password, JWT Token)"]
-        A2 --> A3["Occurs FIRST in the pipeline"]
-        A3 --> A4["Failure -> HTTP 401 Unauthorized"]
+flowchart LR
+    subgraph AuthN ["1. Authentication (401 Unauthorized)"]
+        direction TB
+        A1["Who are you?<br/>(Identity Verification)"] --> A2["Validates credentials<br/>(Username/Password, JWT)"]
+        A2 --> A3["Occurs FIRST in pipeline"]
+        A3 --> A4["Failure: HTTP 401 Unauthorized"]
     end
-    subgraph AuthZ ["2. Authorization (HTTP 403 Forbidden)"]
-        B1["What are you allowed to do? (Access Control)"] --> B2["Evaluates roles, privileges, and authorities (e.g., ROLE_ADMIN)"]
-        B2 --> B3["Occurs AFTER successful Authentication"]
-        B3 --> B4["Failure -> HTTP 403 Forbidden"]
+
+    AuthN -->|Success: Passes Identity| AuthZ
+
+    subgraph AuthZ ["2. Authorization (403 Forbidden)"]
+        direction TB
+        B1["What are you allowed to do?<br/>(Access Control)"] --> B2["Evaluates roles & authorities<br/>(e.g., ROLE_ADMIN)"]
+        B2 --> B3["Occurs AFTER successful AuthN"]
+        B3 --> B4["Failure: HTTP 403 Forbidden"]
     end
-    AuthN --> AuthZ
 ```
 
 
@@ -181,19 +185,28 @@ Storing passwords in plaintext or using reversible algorithms is a critical secu
 ```mermaid
 flowchart LR
     subgraph EncodingSec ["1. Encoding (Base64)"]
+        direction TB
         E1["'password'"] -->|Base64| E2["'cGFzc3dvcmQ='"]
         E2 -->|Reversible without secret| E1
         Note1["Zero Security - Reversible! ❌"]
     end
+
+    EncodingSec ~~~ EncryptionSec
+
     subgraph EncryptionSec ["2. Encryption (AES / RSA)"]
+        direction TB
         En1["'password'"] -->|Encrypt with Key| En2["Ciphertext"]
         En2 -->|Decrypt with Key| En1
         Note2["Two-way function with secret key ⚠️"]
     end
+
+    EncryptionSec ~~~ HashingSec
+
     subgraph HashingSec ["3. Hashing (BCrypt / Argon2)"]
+        direction TB
         H1["'password'"] -->|Cryptographic Hash| H2["'$2a$10$e7...'"]
         H2 -.->|IMPOSSIBLE to reverse| H1
-        Note3["One-way non-reversible mathematical digest ✅"]
+        Note3["One-way non-reversible digest ✅"]
     end
 ```
 
@@ -358,7 +371,7 @@ sequenceDiagram
     Evil-->>Browser: Returns page with hidden auto-submitting form
     Browser->>Bank: 3. Forged POST /transfer?to=attacker&amount=10000
     Note over Browser,Bank: Browser AUTOMATICALLY attaches Bank.com session cookie!
-    Bank->>Bank: 4. Sees valid session cookie -> Transfers funds! 💥
+    Bank->>Bank: 4. Sees valid session cookie: Transfers funds! 💥
 ```
 
 

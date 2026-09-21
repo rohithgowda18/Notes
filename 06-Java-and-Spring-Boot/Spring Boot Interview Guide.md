@@ -71,6 +71,8 @@ flowchart LR
         A["OrderService"] -->|Calls 'new' directly| B["PaymentService"]
     end
 
+    TraditionalJava ~~~ SpringIoC
+
     subgraph SpringIoC ["Spring IoC Container (Loose Coupling)"]
         Container["Spring IoC Container (ApplicationContext)"]
         Container -->|Instantiates| P["PaymentService Bean"]
@@ -160,13 +162,13 @@ public class UserApiController {
 All four annotations tell Spring: *"This class is a Spring Bean—manage its lifecycle."* However, using specific stereotypes provides architectural clarity and enables specialized framework features.
 
 ```mermaid
-flowchart TD
-    Client(["HTTP Client / Frontend"]) --> Controller["@RestController\n(Presentation / API Layer)"]
-    Controller --> Service["@Service\n(Business Logic / Transaction Layer)"]
-    Service --> Repo["@Repository\n(Data Access / Persistence Layer)"]
+flowchart LR
+    Client(["HTTP Client / Frontend"]) --> Controller["@RestController<br/>(Presentation / API Layer)"]
+    Controller --> Service["@Service<br/>(Business Logic / Transaction Layer)"]
+    Service --> Repo["@Repository<br/>(Data Access / Persistence Layer)"]
     Repo --> DB[("Database")]
 
-    Component["@Component\n(Generic Utilities / Helpers / Listeners)"] -.-> Service
+    Component["@Component<br/>(Generic Utilities / Helpers / Listeners)"] -.-> Service
 ```
 
 | Annotation | Layer | Special Framework Behavior |
@@ -261,11 +263,11 @@ public class Application {
 `@SpringBootApplication` is a meta-annotation that bundles **three essential annotations**:
 
 ```mermaid
-flowchart TD
+flowchart LR
     SBA["@SpringBootApplication"]
-    SBA --> C["@Configuration\n(Class can define @Bean methods)"]
-    SBA --> EAC["@EnableAutoConfiguration\n(Auto-configures beans based on classpath JARs)"]
-    SBA --> CS["@ComponentScan\n(Scans current package & subpackages for Spring Beans)"]
+    SBA --> C["@Configuration<br/>(Class can define @Bean methods)"]
+    SBA --> EAC["@EnableAutoConfiguration<br/>(Auto-configures beans based on classpath JARs)"]
+    SBA --> CS["@ComponentScan<br/>(Scans current package & subpackages for Spring Beans)"]
 ```
 
 1. **`@Configuration`**: Marks the class as a configuration class capable of declaring `@Bean` factory methods.
@@ -417,14 +419,21 @@ flowchart TD
 Both scopes exist strictly within web-aware Spring application contexts:
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph RequestScope ["Request Scope (@RequestScope)"]
+        direction TB
         R1["HTTP Request 1"] --> B1["Bean Instance A"]
         R2["HTTP Request 2"] --> B2["Bean Instance B (New instance)"]
     end
 
+    RequestScope ~~~ SessionScope
+
     subgraph SessionScope ["Session Scope (@SessionScope)"]
-        U1["User Browser (Session 1)"] --> S1["HTTP Req 1"] & S2["HTTP Req 2"] --> BS1["Same Bean Instance A"]
+        direction TB
+        U1["User Browser (Session 1)"] --> S1["HTTP Req 1"]
+        U1 --> S2["HTTP Req 2"]
+        S1 --> BS1["Same Bean Instance A"]
+        S2 --> BS1
     end
 ```
 
@@ -775,17 +784,21 @@ In Spring, bean scopes define **how many instances** are created and **when** th
 When a **Prototype bean is directly injected into a Singleton bean**, a scope mismatch occurs:
 
 ```mermaid
-flowchart TD
-    subgraph Startup ["Application Startup (One-Time Execution)"]
+flowchart LR
+    subgraph Startup ["Application Startup (One-Time)"]
+        direction TB
         S["Singleton Controller Created"] --> Need["Requires Prototype Dependency"]
-        Need --> P1["Prototype Instance #1 Created & Injected"]
+        Need --> P1["Prototype Instance #1 Injected"]
     end
 
+    Startup ~~~ RuntimeCalls
+
     subgraph RuntimeCalls ["Runtime API Requests"]
-        R1["Request 1"] --> S
-        R2["Request 2"] --> S
-        R3["Request 3"] --> S
-        S -->|Always uses same reference| P1
+        direction TB
+        R1["Request 1"] --> S2["StudentController"]
+        R2["Request 2"] --> S2
+        R3["Request 3"] --> S2
+        S2 -->|Always uses same instance| P1_Ref["Prototype Instance #1"]
     end
 ```
 
@@ -1629,11 +1642,11 @@ public class UserCreateRequest {
 When asked *"Explain your Spring Boot project architecture"*, use this structured 4-layer response:
 
 ```mermaid
-flowchart TD
-    Client(["Client (Browser / Mobile)"]) --> Gateway["API Gateway / Security Filter (JWT Validation)"]
-    Gateway --> Controller["Controller Layer (@RestController)\nValidates DTO via @Valid"]
-    Controller --> Service["Service Layer (@Service, @Transactional)\nBusiness Rules & Orchestration"]
-    Service --> Repo["Repository Layer (Spring Data JPA)\nHikariCP Connection Pool"]
+flowchart LR
+    Client(["Client (Browser / Mobile)"]) --> Gateway["API Gateway / Security Filter<br/>(JWT Validation)"]
+    Gateway --> Controller["Controller Layer (@RestController)<br/>Validates DTO via @Valid"]
+    Controller --> Service["Service Layer (@Service, @Transactional)<br/>Business Rules & Orchestration"]
+    Service --> Repo["Repository Layer (Spring Data JPA)<br/>HikariCP Connection Pool"]
     Repo --> DB[("PostgreSQL Database")]
 ```
 
@@ -1858,13 +1871,17 @@ flowchart LR
 > 💡 **Quick Revision Anchor (2-3 Words)**: `Unit Mocking vs Integration`
 
 ```mermaid
-flowchart TD
+flowchart LR
     subgraph UnitTest ["Unit Test (@ExtendWith(MockitoExtension.class))"]
-        UT["Fast, in-memory test. Mocks Repository; tests isolated Service logic."]
+        direction TB
+        UT["Fast, in-memory test.<br/>Mocks Repository; tests isolated Service logic."]
     end
 
+    UnitTest ~~~ IntegrationTest
+
     subgraph IntegrationTest ["Integration Test (@SpringBootTest + MockMvc)"]
-        IT["Loads Spring Context, verifies HTTP Routing, Security, and Database."]
+        direction TB
+        IT["Loads Spring Context.<br/>Verifies HTTP Routing, Security, and Database."]
     end
 ```
 
@@ -1923,11 +1940,11 @@ class UserControllerTest {
 
 ```mermaid
 flowchart LR
-    Clean["mvn clean\n(Deletes target/ folder)"]
-    Compile["compile\n(Compiles src/ to .class)"]
-    Test["test\n(Executes JUnit tests)"]
-    Package["package\n(Packs into executable JAR)"]
-    Install["install\n(Copies JAR to local ~/.m2)"]
+    Clean["mvn clean<br/>(Deletes target/ folder)"]
+    Compile["compile<br/>(Compiles src/ to .class)"]
+    Test["test<br/>(Executes JUnit tests)"]
+    Package["package<br/>(Packs into executable JAR)"]
+    Install["install<br/>(Copies JAR to local ~/.m2)"]
 
     Compile --> Test --> Package --> Install
 ```

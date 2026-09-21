@@ -15,29 +15,14 @@ Design a production-grade Low-Level Object-Oriented system for an online food de
 - **System Orchestration**: Evaluating the architectural role and trade-offs of the top-level **`TomatoApp` Orchestrator (Facade)** versus modern decentralized API controller/service layers.
 
 ```mermaid
-mindmap
-  root((Tomato Food Delivery App))
-    Design Methodology
-      Bottom-Up Decomposition
-      Scope Management in 1hr Interview
-    Domain Models & Managers
-      User & Cart (Composition)
-      Restaurant & MenuItem
-      RestaurantManager (Location Indexing)
-    Order Lifecycle & Factory
-      Order Aggregate (PENDING, PAID, CANCELLED)
-      OrderFactory Hierarchy
-        NowOrderFactory
-        ScheduledOrderFactory
-    Payment Processing
-      PaymentStrategy (UPI, Card, NetBanking)
-    Notification Subsystem
-      NotificationService
-      Extensible Multi-Channel (Push, SMS, WhatsApp)
-    System Orchestration
-      TomatoApp Facade / Orchestrator
-      Trade-offs: SRP vs Centralized Facade
-      Modern Decoupled Controllers/Services
+flowchart LR
+    Root(["Food Delivery App (LLD)"])
+
+    Root --> Domain["Domain Models<br/>• User & Cart (Composition)<br/>• Restaurant & MenuItem<br/>• RestaurantManager"]
+    Root --> Lifecycle["Order Lifecycle & Factory<br/>• Order Aggregate (States)<br/>• NowOrderFactory<br/>• ScheduledOrderFactory"]
+    Root --> Payment["Payment Subsystem<br/>• PaymentStrategy<br/>• UPI, Card, NetBanking"]
+    Root --> Notify["Notification Engine<br/>• NotificationService<br/>• Push, SMS, WhatsApp"]
+    Root --> Orchestration["System Orchestrator<br/>• Facade / Service Layer<br/>• Decoupled Controllers"]
 ```
 
 ---

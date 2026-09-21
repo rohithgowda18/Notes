@@ -63,12 +63,12 @@ sequenceDiagram
     participant DB as Persistent Disk
 
     App->>Log: BEGIN TRANSACTION T1
-    App->>Mem: Read(Ram) => Returns 200
+    App->>Mem: Read(Ram): Returns 200
     Note over App: Check Funds: Ram balance is at least 100
     Note over App: Compute: Ram_Balance = 200 - 100 = 100
     App->>Mem: Write(Ram, 100)
     App->>Log: Log Entry: [T1, Ram, Old: 200, New: 100]
-    App->>Mem: Read(Shyam) => Returns 100
+    App->>Mem: Read(Shyam): Returns 100
     Note over App: Compute: Shyam_Balance = 100 + 100 = 200
     App->>Mem: Write(Shyam, 200)
     App->>Log: Log Entry: [T1, Shyam, Old: 100, New: 200]
@@ -125,24 +125,14 @@ stateDiagram-v2
 Relational database management systems guarantee data integrity via the four **ACID** properties:
 
 ```mermaid
-mindmap
-  root((ACID Invariants))
-    Atomicity
-      All or Nothing
-      Rollback via Undo Logs
-      Transaction Manager
-    Consistency
-      Preserves Schema Constraints
-      Financial Invariant Conservation
-      Application Logic + DBMS
-    Isolation
-      Intermediate State Hidden
-      Independent Parallel Execution
-      Concurrency Control Manager
-    Durability
-      Committed Data Survives Crashes
-      Write-Ahead Logging WAL
-      Recovery Manager
+flowchart TD
+    subgraph ACID ["ACID Properties & Invariants"]
+        direction TB
+        A["Atomicity<br/>• All or Nothing<br/>• Rollback via Undo Logs<br/>• Managed by Transaction Manager"]
+        C["Consistency<br/>• Preserves Schema Constraints<br/>• Financial Invariants Conserved<br/>• Managed by Application + DBMS"]
+        I["Isolation<br/>• Intermediate State Hidden<br/>• Independent Parallel Execution<br/>• Managed by Concurrency Controller"]
+        D["Durability<br/>• Committed Data Survives Crashes<br/>• Write-Ahead Logging (WAL)<br/>• Managed by Recovery Manager"]
+    end
 ```
 
 ### 1. Atomicity (All-or-Nothing)
@@ -268,10 +258,10 @@ A transaction overwrites the uncommitted value written by another active transac
 ANSI SQL defines four isolation levels offering progressive protection against concurrency anomalies:
 
 ```mermaid
-flowchart TD
-    L1["Read Uncommitted\n(Highest Concurrency, No Locking)"] --> L2["Read Committed\n(Default: Postgres, Oracle, SQL Server)"]
-    L2 --> L3["Repeatable Read\n(Default: MySQL InnoDB)"]
-    L3 --> L4["Serializable\n(Complete Isolation, Lowest Concurrency)"]
+flowchart LR
+    L1["Read Uncommitted<br/>(Lowest Isolation)"] --> L2["Read Committed<br/>(Default: Postgres/Oracle)"]
+    L2 --> L3["Repeatable Read<br/>(Default: MySQL InnoDB)"]
+    L3 --> L4["Serializable<br/>(Highest Isolation)"]
 ```
 
 | Isolation Level | Dirty Read | Non-Repeatable Read | Phantom Read | Lost Update | Implementation Mechanism |
@@ -290,19 +280,19 @@ flowchart TD
 A **Schedule** is the chronological sequence of concurrent operations across multiple transactions.
 
 ```mermaid
-flowchart TD
-    S["All Schedules"] --> Comp["Complete Schedules\n(All transactions reached Commit/Abort)"]
-    S --> Incomp["Incomplete Schedules\n(Active transactions without final marker)"]
+flowchart LR
+    S["All Schedules"] --> Comp["Complete Schedules<br/>(Commit or Abort)"]
+    S --> Incomp["Incomplete Schedules<br/>(Still Active)"]
 
-    Comp --> Ser["Serial Schedules\n(T1 commits before T2 begins)"]
-    Comp --> NonSer["Concurrent / Non-Serial Schedules\n(Interleaved execution)"]
+    Comp --> Ser["Serial Schedules<br/>(Zero Interleaving)"]
+    Comp --> NonSer["Concurrent Schedules<br/>(Interleaved Execution)"]
 
-    NonSer --> Rec["Recoverability Hierarchy"]
-    Rec --> Irrec["Irrecoverable Schedules\n(Commit reader before uncommitted writer)"]
-    Rec --> Recoverable["Recoverable Schedules\n(Commit writer before commit reader)"]
-    Recoverable --> Cascading["Cascading Schedules\n(One abort triggers chain reaction rollbacks)"]
-    Recoverable --> Cascadeless["Cascadeless Schedules\n(Only read committed data)"]
-    Cascadeless --> Strict["Strict Schedules\n(Only read & write committed data)"]
+    NonSer --> Irrec["Irrecoverable<br/>(Reader commits before writer)"]
+    NonSer --> Rec["Recoverable Schedules<br/>(Writer commits before reader)"]
+
+    Rec --> Casc["Cascading Aborts<br/>(Chain reaction rollbacks)"]
+    Rec --> Cascless["Cascadeless Schedules<br/>(Only read committed data)"]
+    Cascless --> Strict["Strict Schedules<br/>(Only read & write committed data)"]
 ```
 
 ### The Recoverability Hierarchy:
@@ -332,6 +322,8 @@ flowchart LR
         C2 -->|"Context Switch"| C3["T3 running"]
         C3 -->|"Context Switch"| C1
     end
+
+    ConcurrentScheduling ~~~ ParallelScheduling
 
     subgraph ParallelScheduling ["Parallel Scheduling (Multi-Core CPU)"]
         direction TB
@@ -406,7 +398,7 @@ S: R1(A) -> R2(A) -> W1(A) -> W3(A) -> W2(B) -> R3(B)
 flowchart LR
     T2((T2)) -->|"R2(A) precedes W1(A)"| T1((T1))
     T1 -->|"R1(A), W1(A) precede W3(A)"| T3((T3))
-    T2 -->|"R2(A), W2(B) precede W3(A), R3(B)"| T3
+    T2 -->|"R2(A), W2(B) precede W3(A), R3(B)"| T3((T3))
 ```
 
 #### Step 3: Check for Cycles & Apply Topological Sort
@@ -431,9 +423,9 @@ When a Precedence Graph contains a directed cycle, the schedule is **not** confl
 ```mermaid
 flowchart TD
     subgraph Rules ["The 3 View Equivalence Conditions (for each data item X)"]
-        R1["1. Initial Read Rule:\nIf T_i reads the initial value of X in S,\nit must read the initial value of X in S'"]
-        R2["2. Updated Read (Read-From) Rule:\nIf T_j reads X written by T_i in S,\nit must read X written by T_i in S'"]
-        R3["3. Final Write Rule:\nIf T_k performs the final write on X in S,\nit must perform the final write on X in S'"]
+        R1["1. Initial Read Rule:<br/>If T_i reads the initial value of X in S,<br/>it must read the initial value of X in S'"]
+        R2["2. Updated Read (Read-From) Rule:<br/>If T_j reads X written by T_i in S,<br/>it must read X written by T_i in S'"]
+        R3["3. Final Write Rule:<br/>If T_k performs the final write on X in S,<br/>it must perform the final write on X in S'"]
     end
 ```
 
@@ -495,14 +487,10 @@ flowchart LR
 ## 12. The 4 Variants of 2PL (Strict, Rigorous, Conservative)
 
 ```mermaid
-flowchart TD
-    Basic["1. Basic 2PL\n(Guarantees Serializability, but allows Cascading Aborts & Deadlocks)"]
-    Strict["2. Strict 2PL\n(Holds X-locks until Commit/Abort; eliminates Cascading Aborts)"]
-    Rigorous["3. Rigorous 2PL\n(Holds ALL S and X locks until Commit/Abort; strictest isolation)"]
-    Conservative["4. Conservative / Static 2PL\n(Acquires ALL locks before execution; eliminates Deadlocks)"]
-
-    Basic --> Strict --> Rigorous
-    Basic --> Conservative
+flowchart LR
+    Basic["1. Basic 2PL<br/>(Base Protocol)"] --> Strict["2. Strict 2PL<br/>(Holds X-locks to commit)"]
+    Strict --> Rigorous["3. Rigorous 2PL<br/>(Holds S & X locks to commit)"]
+    Basic --> Conservative["4. Conservative 2PL<br/>(Acquires all locks upfront)"]
 ```
 
 ### 1. Basic 2PL
@@ -601,17 +589,11 @@ Periodically, the DBMS flushes all dirty buffer pages to disk and writes a `<CHE
 ### The ARIES Recovery Algorithm (3 Phases)
 
 ```mermaid
-flowchart TD
-    Crash["System Boots After Crash"] --> P1["Phase 1: Analysis Phase\n(Scan log FORWARD from checkpoint)"]
-    P1 --> P1_Out["Identify: Active Transactions (Losers) & Dirty Pages (RecLSN)"]
-
-    P1_Out --> P2["Phase 2: Redo Phase\n(Scan log FORWARD repeating history)"]
-    P2 --> P2_Out["Replay all logged changes (Committed & Uncommitted) to disk"]
-
-    P2_Out --> P3["Phase 3: Undo Phase\n(Scan log BACKWARD rolling back losers)"]
-    P3 --> P3_Out["Revert loser updates; write Compensation Log Records (CLRs)"]
-
-    P3_Out --> Done["Database Ready for Production Traffic!"]
+flowchart LR
+    Crash["💥 System Crash<br/>& Restart"] --> P1["1. Analysis Phase<br/>(Scan forward from checkpoint)<br/>Find losers & dirty pages"]
+    P1 --> P2["2. Redo Phase<br/>(Repeat history forward)<br/>Replay all changes to disk"]
+    P2 --> P3["3. Undo Phase<br/>(Scan backward)<br/>Roll back losers; write CLRs"]
+    P3 --> Done["✅ Ready for<br/>Production!"]
 ```
 
 1. **Analysis Phase (Forward Scan):** Reconstructs the Transaction Table (identifying uncommitted "Loser Transactions") and the Dirty Page Table (identifying earliest unwritten pages via `RecLSN`).

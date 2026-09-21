@@ -1,4 +1,4 @@
-﻿# 🤖 Video-Mind AI (YT_ChatBot) — RAG-Powered YouTube Video Intelligence
+# 🤖 Video-Mind AI (YT_ChatBot) — RAG-Powered YouTube Video Intelligence
 
 > **Project Summary**: An AI-powered video intelligence and question-answering platform built with **React, FastAPI, LangChain, HuggingFace Embeddings, FAISS, and Gemini 2.5 Flash**. 
 > Uses **Retrieval-Augmented Generation (RAG)** to extract YouTube video transcripts, chunk and index them in a local vector database, and provide grounded, timestamp-backed answers, executive summaries, and key takeaways without hallucination.
@@ -145,21 +145,12 @@ In addition to open-ended Q&A, the platform provides:
 ## 8. RAG vs. Traditional LLM vs. Fine-Tuning
 
 ```mermaid
-mindmap
-  root((LLM Approaches))
-    Traditional LLM
-      General Knowledge
-      Static Training Cutoff
-      Hallucination Risk on Private Data
-    RAG (This Project)
-      Dynamic Knowledge Ingestion
-      Zero Retraining Cost
-      Source Attribution & Citations
-      Controlled Grounding
-    Fine-Tuning
-      Changes Model Weights
-      Teaches Tone / Style / Format
-      Expensive & Cannot Easily Remove Data
+flowchart LR
+    Root(["LLM Approaches"])
+
+    Root --> Traditional["Traditional LLM<br/>• General Knowledge<br/>• Static Training Cutoff<br/>• Hallucination Risk"]
+    Root --> RAG["RAG (Video-Mind AI)<br/>• Dynamic Knowledge Ingestion<br/>• Zero Retraining Cost<br/>• Direct Grounding & Citations"]
+    Root --> FineTuning["Fine-Tuning<br/>• Modifies Model Weights<br/>• Adapts Tone / Domain Syntax<br/>• High Compute & Retrain Cost"]
 ```
 
 > **Interview Distinction**:  
