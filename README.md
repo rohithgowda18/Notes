@@ -31,6 +31,7 @@ Welcome to the organized, comprehensive revision repository for Software Enginee
 ## 2. Database Management Systems
 📁 **Directory:** [`02-DBMS/`](./02-DBMS/) | 📖 [Module Guide](./02-DBMS/README.md)
 
+- 💳 [Transactions & Concurrency Control — Master Guide](./02-DBMS/Transactions-and-Concurrency-Control.md) — Complete placement guide: ACID, States, Anomalies, Schedules, Conflict/View Serializability, 2PL variants, BTO, and ARIES Crash Recovery
 - 🌟 [DBMS Advanced Concepts & Internals](./02-DBMS/DBMS-Advanced-Concepts.md) — Concurrency (2PL, MVCC), Deadlocks (Wait-Die, Wound-Wait), Isolation Levels, B+ Trees, Buffer Pool & Slotted Pages, WAL & ARIES, Candidate Keys, 2PC & Replication
 - 📝 [SQL Placement — High-Value Query Patterns](./02-DBMS/SQL-High-Value-Query-Patterns.md) — Master query patterns (Ranking, Top-N per group, LAG/LEAD, Deduplication, Anti-joins, Conditional Aggregation)
 - 📝 [SQL Advanced Syntax Cheat Sheet](./02-DBMS/SQL-Advanced-Syntax-CheatSheet.md) — Non-trivial syntax: Frame clauses (`ROWS BETWEEN`), `NTILE`, Recursive CTEs, Date/Time math, Regex, `ROLLUP`, and `FOR UPDATE` locking
