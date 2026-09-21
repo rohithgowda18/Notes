@@ -59,7 +59,7 @@ Suppose you are building a simulation containing various robots:
 
 ## 4. Visual Architecture
 
-![Strategy Pattern Architecture](https://refactoring.guru/images/patterns/diagrams/strategy/structure.png)
+![Strategy Pattern Architecture](https://media.geeksforgeeks.org/wp-content/uploads/20260121161105607331/class_diagram_of_strategy_design_pattern_2.webp)
 
 ```mermaid
 classDiagram

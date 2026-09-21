@@ -64,7 +64,7 @@
 
 When multiple transactions execute concurrently on shared database items, interleaved operations can corrupt data unless strictly regulated.
 
-![Concurrency Anomalies](./images/concurrency-anomalies.jpg)
+![Concurrency Anomalies](https://media.geeksforgeeks.org/wp-content/uploads/20190823132421/d110.jpg)
 
 ### The 4 Concurrency Anomalies
 
@@ -173,7 +173,7 @@ The SQL-92 standard defines 4 transaction isolation levels. Each level trades of
 
 A deadlock occurs when two or more transactions are waiting indefinitely for locks held by each other, creating a circular dependency where neither can proceed.
 
-![Deadlock Wait-For Graph](./images/deadlock-waitfor-graph.jpg)
+![Deadlock Wait-For Graph](https://media.geeksforgeeks.org/wp-content/cdn-uploads/deadlock.png)
 
 ### The 4 Coffman Deadlock Conditions
 1. **Mutual Exclusion**: Resources cannot be shared; locks are held exclusively.

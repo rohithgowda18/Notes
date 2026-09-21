@@ -50,7 +50,7 @@ Invert the responsibility:
 
 ## 4. Visual Architecture
 
-![Observer Pattern UML Architecture](https://refactoring.guru/images/patterns/diagrams/observer/structure.png)
+![Observer Pattern UML Architecture](https://media.geeksforgeeks.org/wp-content/uploads/20260210122522665161/class_diagram_of_observer_design_pattern.webp)
 
 ```mermaid
 classDiagram

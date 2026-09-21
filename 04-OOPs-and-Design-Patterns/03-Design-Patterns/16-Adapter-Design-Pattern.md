@@ -64,7 +64,7 @@ The Adapter bridges the gap:
 
 ## 4. Visual Architecture
 
-![Adapter Design Pattern UML Architecture](https://refactoring.guru/images/patterns/diagrams/adapter/structure-object-adapter.png)
+![Adapter Design Pattern UML Architecture](https://media.geeksforgeeks.org/wp-content/uploads/20260121150752866319/class_diagram_of_adapter_design_pattern.webp)
 
 ```mermaid
 classDiagram

@@ -70,7 +70,7 @@ facade.startComputer();
 
 ## 4. Visual Architecture
 
-![Facade Design Pattern UML Architecture](https://refactoring.guru/images/patterns/diagrams/facade/structure.png)
+![Facade Design Pattern UML Architecture](https://media.geeksforgeeks.org/wp-content/uploads/20260121161840033820/component_of_facade_method_design_pattern.webp)
 
 ```mermaid
 classDiagram
