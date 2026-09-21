@@ -61,7 +61,7 @@ Client ──▶ Builder()
 
 ## 3. Visual Architecture
 
-![Builder Design Pattern UML Architecture](../images/builder-pattern.svg)
+![Builder Design Pattern UML Architecture](https://refactoring.guru/images/patterns/diagrams/builder/structure.png)
 
 ```mermaid
 classDiagram

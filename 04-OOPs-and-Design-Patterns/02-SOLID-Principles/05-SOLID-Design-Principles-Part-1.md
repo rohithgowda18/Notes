@@ -18,7 +18,7 @@ Introduced by **Robert C. Martin ("Uncle Bob")**, SOLID principles guide object-
 - **I:** Interface Segregation Principle (ISP) — *Covered in Part 2*
 - **D:** Dependency Inversion Principle (DIP) — *Covered in Part 2*
 
-![SOLID Design Principles Overview](../images/solid-principles.webp)
+![SOLID Design Principles Overview](https://media.geeksforgeeks.org/wp-content/uploads/20260414110000305916/s_o_l_i_d.webp)
 
 ---
 

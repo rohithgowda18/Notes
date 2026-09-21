@@ -59,7 +59,7 @@ When franchises have distinct recipes:
 
 The base `BurgerStore` defines an abstract `createBurger()` method, and franchise subclasses decide which concrete burger to instantiate:
 
-![Factory Method Pattern Architecture](../images/factory-method-pattern.jpg)
+![Factory Method Pattern Architecture](https://refactoring.guru/images/patterns/diagrams/factory-method/structure.png)
 
 ```mermaid
 classDiagram
@@ -89,6 +89,8 @@ An **Abstract Factory** declares methods to create the entire family of related 
 ---
 
 ## 3. Visual Architecture (Abstract Factory)
+
+![Abstract Factory Pattern Architecture](https://refactoring.guru/images/patterns/diagrams/abstract-factory/structure.png)
 
 ```mermaid
 classDiagram

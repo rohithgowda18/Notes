@@ -211,7 +211,7 @@ flowchart LR
 
 The core internal flow of every incoming web request follows **7 distinct steps**:
 
-![Spring MVC Request Processing Flow](./images/spring-mvc-flow.png)
+![Spring MVC Request Processing Flow](https://docs.spring.io/spring-framework/docs/4.3.x/spring-framework-reference/html/images/mvc.png)
 
 ```mermaid
 sequenceDiagram

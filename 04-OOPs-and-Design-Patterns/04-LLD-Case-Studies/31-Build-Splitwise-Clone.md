@@ -36,7 +36,7 @@ The goal of this lecture is to design a robust, scalable Low-Level Design (LLD) 
      └───────────────────────┘
 ```
 
-![Splitwise Min-Cash-Flow Debt Simplification](../images/splitwise-debt-simplification.png)
+![Splitwise Min-Cash-Flow Debt Simplification](https://media.geeksforgeeks.org/wp-content/cdn-uploads/cashFlow1.png)
 
 ### Functional Requirements
 1. **User & Group Management**:

@@ -27,7 +27,7 @@
 
 Spring Security intercepts web requests through a series of ordered servlet filters known as the **`SecurityFilterChain`**:
 
-![Spring Security Architecture & Filter Chain](./images/spring-security-architecture.png)
+![Spring Security Architecture & Filter Chain](https://docs.spring.io/spring-security/reference/_images/servlet/architecture/securityfilterchain.png)
 
 ```xml
 <dependency>
@@ -221,7 +221,7 @@ public class SecurityBeansConfig {
 
 ### 1. Complete JWT Authentication Workflow:
 
-![JWT Authentication & Validation Flow](./images/jwt-authentication-flow.jpg)
+![JWT Authentication & Validation Flow](https://substack-post-media.s3.amazonaws.com/public/images/1cf8685c-04c4-4291-a96c-c21e22de7529_1600x1049.png)
 
 ```mermaid
 flowchart TD

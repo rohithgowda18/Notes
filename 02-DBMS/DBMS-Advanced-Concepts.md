@@ -245,7 +245,7 @@ Once a cycle is detected, the engine must recover:
 
 While 2PL relies on locking, modern high-throughput databases (PostgreSQL, MySQL InnoDB, Oracle) rely on **Multi-Version Concurrency Control (MVCC)** to eliminate read/write lock contention.
 
-![MVCC Concept](./images/mvcc-concept.jpg)
+![MVCC Concept](https://upload.wikimedia.org/wikipedia/commons/1/1f/PostgreSQL_mvcc.svg)
 
 ### MVCC (Multi-Version Concurrency Control)
 
@@ -632,7 +632,7 @@ When the Primary dies, an election elevates a replica to become the new Primary.
 
 In microservice and sharded database architectures, a single business transaction often spans across multiple separate database instances.
 
-![Two-Phase Commit (2PC) Protocol Architecture](./images/2pc-protocol.png)
+![Two-Phase Commit (2PC) Protocol Architecture](https://upload.wikimedia.org/wikipedia/commons/b/b1/Two_phase_commit_seq_diagram_-_a_participant_aborted.png)
 
 ```mermaid
 sequenceDiagram
