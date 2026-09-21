@@ -186,9 +186,9 @@ A deadlock occurs when two or more transactions are waiting indefinitely for loc
 ### Wait-For Graph & Cycle Detection
 * **Wait-For Graph ($G = (V, E)$)**:
   - **Vertices ($V$)**: Active transactions ($T_1, T_2, T_3$).
-  - **Directed Edge ($T_1 	o T_2$)**: $T_1$ is blocked waiting for a lock held by $T_2$.
+  - **Directed Edge ($T_1 \to T_2$)**: $T_1$ is blocked waiting for a lock held by $T_2$.
 * **Cycle Detection**: The database background engine runs a background daemon thread (e.g., every 500ms or 1s) that scans the Wait-For Graph using Depth-First Search (DFS).
-* **If a cycle is detected ($T_1 	o T_2 	o T_1$)**: A deadlock exists! The database must intervene and break the cycle.
+* **If a cycle is detected ($T_1 \to T_2 \to T_1$)**: A deadlock exists! The database must intervene and break the cycle.
 
 ---
 
@@ -215,8 +215,8 @@ flowchart TD
 #### Comparison Matrix: Wait-Die vs. Wound-Wait
 | Scenario | Wait-Die (Older Waits, Younger Dies) | Wound-Wait (Older Wounds, Younger Waits) |
 |---|---|---|
-| **Older requests lock held by Younger** | $T_{	ext{old}}$ is allowed to **WAIT**. | $T_{	ext{old}}$ **WOUNDS** (aborts & preempts) $T_{	ext{young}}$. |
-| **Younger requests lock held by Older** | $T_{	ext{young}}$ **DIES** (aborts & rolls back). | $T_{	ext{young}}$ is allowed to **WAIT**. |
+| **Older requests lock held by Younger** | $T_{\text{old}}$ is allowed to **WAIT**. | $T_{\text{old}}$ **WOUNDS** (aborts & preempts) $T_{\text{young}}$. |
+| **Younger requests lock held by Older** | $T_{\text{young}}$ **DIES** (aborts & rolls back). | $T_{\text{young}}$ is allowed to **WAIT**. |
 | **Preemption Type** | Non-preemptive (Younger is never kicked out while holding a lock). | Preemptive (Older forcibly kicks out Younger). |
 | **Starvation Behavior** | When a transaction aborts, it restarts with its **original timestamp**. Over time, it becomes the oldest and is guaranteed to complete without dying. | Minimal rollbacks; younger transactions wait quietly without frequent abortions. |
 
@@ -268,9 +268,9 @@ Under high traffic, readers starve writers and writers starve readers.
 3. **Read Visibility & Snapshot Isolation**:
    - When transaction $T$ begins, it takes an instant in-memory **Snapshot** of all currently active transaction IDs.
    - For any row read, $T$ checks:
-     - Is `xmin` committed and was it born *before* my snapshot was taken? $	o$ **Visible**.
-     - Is `xmax` present and committed *before* my snapshot was taken? $	o$ **Invisible (Treated as deleted)**.
-     - Is `xmin` born *after* my snapshot or currently uncommitted? $	o$ **Invisible**.
+     - Is `xmin` committed and was it born *before* my snapshot was taken? $\to$ **Visible**.
+     - Is `xmax` present and committed *before* my snapshot was taken? $\to$ **Invisible (Treated as deleted)**.
+     - Is `xmin` born *after* my snapshot or currently uncommitted? $\to$ **Invisible**.
 4. **Vacuum / Purge Mechanics**:
    - Because updates create new row versions, old dead tuples accumulate (**bloat**).
    - A background process (**PostgreSQL `VACUUM`** or **InnoDB Undo Purge thread**) cleans up dead tuples that are no longer visible to any active transaction snapshot.
@@ -279,11 +279,11 @@ Under high traffic, readers starve writers and writers starve readers.
 
 ### Timestamp Ordering (Thomas Write Rule)
 Each transaction is assigned a timestamp $TS(T)$ on start. Each data item $Q$ stores:
-- $W	ext{-timestamp}(Q)$: Largest timestamp of any transaction that successfully executed `write(Q)`.
-- $R	ext{-timestamp}(Q)$: Largest timestamp of any transaction that successfully executed `read(Q)`.
+- $W\text{-timestamp}(Q)$: Largest timestamp of any transaction that successfully executed `write(Q)`.
+- $R\text{-timestamp}(Q)$: Largest timestamp of any transaction that successfully executed `read(Q)`.
 
 #### Thomas Write Rule (Optimization):
-If transaction $T$ attempts to execute `write(Q)` and $TS(T) < W	ext{-timestamp}(Q)$:
+If transaction $T$ attempts to execute `write(Q)` and $TS(T) < W\text{-timestamp}(Q)$:
 - In strict timestamp ordering, $T$ would be aborted.
 - **Thomas Write Rule**: Simply **ignore the write** and proceed! Because an even younger transaction has already overwritten $Q$, $T$'s write is obsolete and safely discarded without violating conflict serializability.
 
@@ -309,8 +309,8 @@ Databases store data on persistent disk (HDD/SSD), where random I/O latency is o
 
 #### 1. Why Not Binary Search Trees (BST / AVL / Red-Black)?
 - A Binary Search Tree has a fan-out of only $2$.
-- For 10 million rows, tree depth is $pprox \log_2(10^7) pprox 24$.
-- Traversing 24 levels requires **24 random disk I/O reads** ($pprox 24 	imes 10	ext{ms} = 240	ext{ms}$ per lookup — unacceptable).
+- For 10 million rows, tree depth is $\approx \log_2(10^7) \approx 24$.
+- Traversing 24 levels requires **24 random disk I/O reads** ($\approx 24 \times 10\text{ms} = 240\text{ms}$ per lookup — unacceptable).
 
 #### 2. Why B+ Trees Over Standard B-Trees?
 In a standard B-Tree, both internal nodes and leaf nodes store full data records (keys + row data).
@@ -344,8 +344,8 @@ flowchart TD
    - Because internal nodes don't store row payloads, a single 8KB/16KB database page can store **1,000+ key-pointer pairs**.
    - With a fan-out of $B = 1,000$:
      - Level 1 (Root): $1,000$ entries
-     - Level 2: $1,000 	imes 1,000 = 1,000,000$ entries
-     - Level 3: $1,000 	imes 1,000,000 = 1,000,000,000$ (1 Billion rows!)
+     - Level 2: $1,000 \times 1,000 = 1,000,000$ entries
+     - Level 3: $1,000 \times 1,000,000 = 1,000,000,000$ (1 Billion rows!)
    - **Any record among 1 Billion rows is retrieved in at most 3 to 4 disk page reads!**
 2. **Blazing Fast Range Scans ($\mathcal{O}(\log N + K)$)**:
    - For `WHERE age BETWEEN 20 AND 30`:
@@ -400,7 +400,7 @@ Because rows can be variable-length (e.g., `VARCHAR`, `TEXT`), fixed-offset arra
 
 ### Buffer Pool Manager
 
-RAM is $pprox 100,000 	imes$ faster than physical disk. The database allocates a dedicated memory cache called the **Buffer Pool**.
+RAM is $\approx 100,000 \times$ faster than physical disk. The database allocates a dedicated memory cache called the **Buffer Pool**.
 
 ```mermaid
 flowchart LR
@@ -480,7 +480,7 @@ To achieve ACID Durability without incurring the catastrophic latency penalty of
 
 #### Why WAL is Needed:
 - Flushing an entire 8KB table page for a 4-byte balance change is slow and creates random I/O.
-- WAL writes are **purely sequential append-only writes**, maximizing disk write throughput ($100	imes$ faster than random page writes).
+- WAL writes are **purely sequential append-only writes**, maximizing disk write throughput ($100\times$ faster than random page writes).
 - When a transaction runs `COMMIT`, the database only flushes the **lightweight sequential WAL log buffer** to disk. The heavy table pages can stay dirty in RAM!
 
 ---
@@ -541,24 +541,24 @@ Consider an unnormalized table: `Employee_Department(emp_id, emp_name, dept_id, 
 The **closure** of an attribute set $X$ under a set of Functional Dependencies $F$, denoted $X^+$, is the complete set of attributes that can be functionally determined by $X$.
 
 #### Algorithm to Find Attribute Closure $X^+$:
-1. Initialize $	ext{Result} = X$.
-2. Repeatedly inspect each functional dependency $A 	o B$ in $F$:
-   - If $A \subseteq 	ext{Result}$, then add $B$ to $	ext{Result}$: $	ext{Result} = 	ext{Result} \cup B$.
-3. Repeat until $	ext{Result}$ no longer expands.
+1. Initialize $\text{Result} = X$.
+2. Repeatedly inspect each functional dependency $A \to B$ in $F$:
+   - If $A \subseteq \text{Result}$, then add $B$ to $\text{Result}$: $\text{Result} = \text{Result} \cup B$.
+3. Repeat until $\text{Result}$ no longer expands.
 
 #### Example Walkthrough:
 Given Relation $R(A, B, C, D, E)$ and FDs:
-- $F_1: A 	o B$
-- $F_2: B 	o C$
-- $F_3: C 	o D$
-- $F_4: D 	o E$
+- $F_1: A \to B$
+- $F_2: B \to C$
+- $F_3: C \to D$
+- $F_4: D \to E$
 
 **Calculate $(A)^+$**:
 - Step 1: $(A)^+ = \{A\}$
-- Using $A 	o B \implies (A)^+ = \{A, B\}$
-- Using $B 	o C \implies (A)^+ = \{A, B, C\}$
-- Using $C 	o D \implies (A)^+ = \{A, B, C, D\}$
-- Using $D 	o E \implies (A)^+ = \{A, B, C, D, E\}$
+- Using $A \to B \implies (A)^+ = \{A, B\}$
+- Using $B \to C \implies (A)^+ = \{A, B, C\}$
+- Using $C \to D \implies (A)^+ = \{A, B, C, D\}$
+- Using $D \to E \implies (A)^+ = \{A, B, C, D, E\}$
 - **Result**: $(A)^+ = \{A, B, C, D, E\}$. Since $(A)^+$ derives all attributes of $R$, **$A$ is a Candidate Key!**
 
 ---
@@ -569,7 +569,7 @@ When decomposing relation $R$ into $R_1$ and $R_2$:
 
 #### 1. Lossless Join Test (Non-Additive Join):
 A decomposition is strictly **lossless** if and only if the common attributes functionally determine at least one of the decomposed relations:
-$$\mathbf{(R_1 \cap R_2) 	o R_1} \quad 	ext{OR} \quad \mathbf{(R_1 \cap R_2) 	o R_2}$$
+$$\mathbf{(R_1 \cap R_2) \to R_1} \quad \text{OR} \quad \mathbf{(R_1 \cap R_2) \to R_2}$$
 *(The shared attribute must be a Candidate Key in $R_1$ or $R_2$)*.
 
 #### 2. Dependency Preservation Test:
@@ -622,7 +622,7 @@ Under asynchronous replication, replicas receive changes with a slight delay (**
 ### Failover & Split-Brain Mitigation
 When the Primary dies, an election elevates a replica to become the new Primary.
 - **Split-Brain Disaster**: If network partitions, and both the old primary and new primary believe they are the leader, both accept writes simultaneously, resulting in irreversible conflicting state.
-- **Mitigation**: **Quorum consensus** (e.g., Raft/Paxos algorithms requiring $\lfloor N/2 floor + 1$ votes before a node is permitted to accept writes).
+- **Mitigation**: **Quorum consensus** (e.g., Raft/Paxos algorithms requiring $\lfloor N/2 \rfloor + 1$ votes before a node is permitted to accept writes).
 
 ---
 
@@ -682,7 +682,7 @@ sequenceDiagram
 ### CAP Theorem in Real Database Systems
 A distributed system can guarantee at most **two out of three**:
 
-$$\mathbf{C} 	ext{ (Consistency)} \quad + \quad \mathbf{A} 	ext{ (Availability)} \quad + \quad \mathbf{P} 	ext{ (Partition Tolerance)}$$
+$$\mathbf{C} \text{ (Consistency)} \quad + \quad \mathbf{A} \text{ (Availability)} \quad + \quad \mathbf{P} \text{ (Partition Tolerance)}$$
 
 Because physical networks will *always* experience hardware/network cable cuts and latency partitions ($P$ is mandatory):
 - **CP Systems (e.g., PostgreSQL primary-secondary, HBase, Zookeeper)**: During network partition, reject writes on disconnected nodes to guarantee strict single-truth consistency.

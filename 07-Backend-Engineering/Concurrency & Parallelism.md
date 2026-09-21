@@ -30,12 +30,12 @@
 If a web server processes requests strictly **synchronously** (one at a time):
 - When a user sends a request requiring a database query, the server sends bytes over the socket and sits **completely idle** waiting for database network packets.
 - Latency scales with distance:
-  - **Localhost DB**: $pprox 1 - 2\text{ ms}$
-  - **Same Cloud Region / Availability Zone**: $pprox 20 - 30\text{ ms}$
-  - **Cross-Region / Remote Data Center**: $pprox 90 - 100\text{ ms}$
+  - **Localhost DB**: $\approx 1 - 2\text{ ms}$
+  - **Same Cloud Region / Availability Zone**: $\approx 20 - 30\text{ ms}$
+  - **Cross-Region / Remote Data Center**: $\approx 90 - 100\text{ ms}$
 
 ### Quantifying the Waste (The Hardware Perspective)
-- A modern server CPU operates at roughly **$3\text{ GHz}$**, executing **$pprox 3\text{ billion instructions per second}$** ($\mathbf{3\text{ million instructions per millisecond}}$).
+- A modern server CPU operates at roughly **$3\text{ GHz}$**, executing **$\approx 3\text{ billion instructions per second}$** ($\mathbf{3\text{ million instructions per millisecond}}$).
 - If your server sits idle for $100\text{ ms}$ waiting for a database response:
   $$\text{Wasted CPU Potential} = 100\text{ ms} \times 3,000,000\text{ instructions/ms} = \mathbf{300,000,000\text{ instructions!}}$$
 - Instead of executing $300\text{ million}$ instructions from other waiting users, the CPU executed **zero**.
@@ -161,22 +161,22 @@ Process (Isolated Memory Space, Heap, File Descriptors)
 ```
 
 ### Preemptive Scheduling
-- The OS scheduler assigns each thread a **time-slice** (quantum, $pprox 1-2\text{ ms}$).
+- The OS scheduler assigns each thread a **time-slice** (quantum, $\approx 1-2\text{ ms}$).
 - When the quantum expires, the OS scheduler **preempts** (forcibly pauses) the thread, saves its state, and switches to another thread.
 - If a thread calls a blocking socket read, it notifies the kernel and transitions to the **BLOCKED** state until network packets arrive.
 
 ### Why "1 Thread Per Request" Fails at Scale (The 3 Overheads):
 1. **Memory Allocation Overhead**:
-   - Each OS thread allocates a dedicated call stack ($pprox 1\text{MB}$ in Linux/Java).
+   - Each OS thread allocates a dedicated call stack ($\approx 1\text{MB}$ in Linux/Java).
    - $10,000\text{ concurrent requests} \times 1\text{MB stack} = \mathbf{10\text{ GB RAM}}$ just for idle thread stacks!
 2. **Thread Creation Overhead**:
-   - Spawning an OS thread requires a kernel system call (`clone`/`pthread_create`), allocating kernel data structures and instruction pointers ($pprox 100\mu\text{s} - 1\text{ms}$).
+   - Spawning an OS thread requires a kernel system call (`clone`/`pthread_create`), allocating kernel data structures and instruction pointers ($\approx 100\mu\text{s} - 1\text{ms}$).
 3. **Context Switching CPU Waste**:
    - To switch threads, the CPU must:
      - Save current CPU registers and Program Counter to memory.
      - Flush translation lookaside buffers (TLB) and invalidate L1/L2 CPU caches.
      - Restore the new thread's registers.
-   - Cost: $pprox 1 - 10\mu\text{s}$ per switch. With thousands of active threads, the CPU spends more time switching contexts than executing actual code!
+   - Cost: $\approx 1 - 10\mu\text{s}$ per switch. With thousands of active threads, the CPU spends more time switching contexts than executing actual code!
 
 [⬆ Back to Top](#📑-table-of-contents)
 
@@ -309,7 +309,7 @@ for {
     go c.serve(connCtx) // 👈 Spawns new Goroutine for EVERY HTTP request!
 }
 ```
-- Because a Goroutine starts with only **$pprox 2\text{KB}$ of stack** (compared to $1\text{MB}$ for an OS thread), a server can easily hold **$100,000+$ concurrent Goroutines** in memory without crashing!
+- Because a Goroutine starts with only **$\approx 2\text{KB}$ of stack** (compared to $1\text{MB}$ for an OS thread), a server can easily hold **$100,000+$ concurrent Goroutines** in memory without crashing!
 - When a Goroutine blocks on a database query, the Go runtime intercepts the call in user space, parks the Goroutine, and immediately swaps another Goroutine onto the OS thread without invoking the kernel scheduler.
 
 [⬆ Back to Top](#📑-table-of-contents)

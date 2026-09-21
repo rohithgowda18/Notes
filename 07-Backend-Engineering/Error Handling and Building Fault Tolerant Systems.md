@@ -156,7 +156,7 @@ Pure exponential backoff still causes **thundering herd synchronization** becaus
 
 **Full Jitter** breaks synchronization by introducing a random uniform distribution between $0$ and the calculated exponential ceiling:
 
-$$	ext{Sleep} = 	ext{random}\left(0, \, \min\left(	ext{MaxCap}, \, 	ext{Base} 	imes 2^{	ext{attempt}}ight)ight)$$
+$$\text{Sleep} = \text{random}\left(0, \, \min\left(\text{MaxCap}, \, \text{Base} \times 2^{\text{attempt}}\right)\right)$$
 
 #### Java Production Implementation:
 ```java
@@ -439,15 +439,15 @@ flowchart TD
 | Algorithm | How it Works | Burst Handling | Memory Footprint | Best Used For |
 | :--- | :--- | :---: | :---: | :--- |
 | **Token Bucket** | Tokens refill at fixed rate up to capacity $C$. Each request consumes a token. | **Handles bursts** up to capacity $C$. | $O(1)$ per user (Stores last timestamp + token count). | General API rate limiting (AWS API Gateway, Stripe). |
-| **Leaky Bucket** | Requests enter a fixed-size FIFO queue and leak out to the backend at a smooth, constant rate. | **Smooths bursts** into a flat output stream; drops if queue is full. | $O(	ext{Queue Size})$ | Traffic shaping, downstream services that cannot tolerate sudden spikes. |
-| **Fixed Window Counter** | Counts requests in fixed time blocks (e.g., 12:00:00–12:01:00). Resets to 0 at minute mark. | **Vulnerable to $2	imes$ boundary spikes** (e.g., 100 calls at 12:00:59 and 100 calls at 12:01:01). | $O(1)$ (Single counter per window). | Simple coarse rate limiting where boundary spikes are acceptable. |
+| **Leaky Bucket** | Requests enter a fixed-size FIFO queue and leak out to the backend at a smooth, constant rate. | **Smooths bursts** into a flat output stream; drops if queue is full. | $O(\text{Queue Size})$ | Traffic shaping, downstream services that cannot tolerate sudden spikes. |
+| **Fixed Window Counter** | Counts requests in fixed time blocks (e.g., 12:00:00–12:01:00). Resets to 0 at minute mark. | **Vulnerable to $2\times$ boundary spikes** (e.g., 100 calls at 12:00:59 and 100 calls at 12:01:01). | $O(1)$ (Single counter per window). | Simple coarse rate limiting where boundary spikes are acceptable. |
 | **Sliding Window Log** | Stores timestamp of every request in a Redis Sorted Set (`ZSET`). Prunes logs older than $(now - window)$. | **Perfect accuracy**, zero boundary spikes. | **High $O(N)$** (Stores every single request timestamp). | High-security endpoints (Login, Password Reset, Banking transfers). |
 | **Sliding Window Counter** | Blends count of previous window with current window based on time overlap percentage. | **Smooth boundary transitions** with negligible approximation error ($< 0.05\%$). | **$O(1)$** (Stores only two integers per client). | Large-scale, high-concurrency enterprise edge routers (Cloudflare, Kong). |
 
 ---
 
 ### Mathematical Formula: Sliding Window Counter Approximation
-$$	ext{Estimated Count} = 	ext{Count}_{	ext{current}} + 	ext{Count}_{	ext{previous}} 	imes \left(1 - rac{	ext{Time Elapsed in Current Window}}{	ext{Window Duration}}ight)$$
+$$\text{Estimated Count} = \text{Count}_{\text{current}} + \text{Count}_{\text{previous}} \times \left(1 - \frac{\text{Time Elapsed in Current Window}}{\text{Window Duration}}\right)$$
 
 ```
 Example: Limit = 100 req/min
@@ -530,7 +530,7 @@ When designing distributed systems (e.g., Uber, Netflix, Amazon Checkout) in tec
 
 #### Scenario 2: "What is the difference between a retry storm and a thundering herd, and how do you mitigate both?"
 > **Answer**: 
-> - **Retry Storm**: Occurs when thousands of clients immediately retry failed requests simultaneously against a failing service, multiplying the load ($N 	imes 	ext{retries}$) and preventing recovery. Mitigated via **Exponential Backoff with Full Jitter** and circuit breakers.
+> - **Retry Storm**: Occurs when thousands of clients immediately retry failed requests simultaneously against a failing service, multiplying the load ($N \times \text{retries}$) and preventing recovery. Mitigated via **Exponential Backoff with Full Jitter** and circuit breakers.
 > - **Thundering Herd**: Occurs when a high-traffic cached key expires, causing hundreds of concurrent requests to miss the cache simultaneously and hammer the underlying database with identical queries. Mitigated via **Mutex locking (Singleflight)** or **probabilistic early cache renewal (XFetch)**.
 
 #### Scenario 3: "Why should you prefer the Token Bucket algorithm over Fixed Window Counter for public API rate limiting?"
@@ -549,7 +549,7 @@ When designing distributed systems (e.g., Uber, Netflix, Amazon Checkout) in tec
 | Fault-Tolerance Pattern | Primary Failure It Solves | Key Implementation Tactic | Common Framework / Tool |
 | :--- | :--- | :--- | :--- |
 | **Timeouts** | Threads hanging indefinitely on dead connections. | Connect (1s) + Read (3s) + Deadline headers. | OkHttp, HttpClient, gRPC Context. |
-| **Exponential Backoff & Jitter** | Retry storms finishing off struggling servers. | $Sleep = 	ext{random}(0, 	ext{Base} 	imes 2^{	ext{attempt}})$. | Resilience4j, Spring Retry, AWS SDK. |
+| **Exponential Backoff & Jitter** | Retry storms finishing off struggling servers. | $Sleep = \text{random}(0, \text{Base} \times 2^{\text{attempt}})$. | Resilience4j, Spring Retry, AWS SDK. |
 | **Circuit Breaker** | Repeatedly hammering broken downstream services. | Closed $ightarrow$ Open (Fast Fail) $ightarrow$ Half-Open. | Resilience4j, Envoy, Istio. |
 | **Graceful Degradation** | Complete outages and white error screens. | Stale cache, static stubs, async queue buffer. | Redis cache, Kafka, Local WAL. |
 | **Bulkheads** | Single slow dependency starving all thread pools. | Dedicated thread pools or connection limits. | Resilience4j Bulkhead, HikariCP pools. |

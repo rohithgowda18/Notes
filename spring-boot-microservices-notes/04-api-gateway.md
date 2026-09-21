@@ -130,7 +130,7 @@ flowchart TD
 | :--- | :--- | :--- |
 | **Engine** | Blocking Tomcat Servlet (`1 Thread per Request`) | Non-blocking Event Loop (**Netty Reactor**) |
 | **Throughput** | Degrades under slow downstream microservices | Handles **tens of thousands of concurrent connections** with low memory |
-| **Memory Footprint** | High (500 threads $	imes$ 1MB stack = 500MB RAM) | Minimal (small fixed thread pool = CPU core count) |
+| **Memory Footprint** | High (500 threads $\times$ 1MB stack = 500MB RAM) | Minimal (small fixed thread pool = CPU core count) |
 
 ---
 

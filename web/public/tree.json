@@ -37,6 +37,12 @@
       "size": 1677369
     },
     {
+      "path": "02-DBMS/DBMS-Advanced-Concepts.md",
+      "name": "DBMS-Advanced-Concepts.md",
+      "type": "markdown",
+      "size": 43176
+    },
+    {
       "path": "02-DBMS/DBMS_Full_Notes.pdf",
       "name": "DBMS_Full_Notes.pdf",
       "type": "pdf",
@@ -46,7 +52,7 @@
       "path": "02-DBMS/README.md",
       "name": "README.md",
       "type": "markdown",
-      "size": 2215
+      "size": 2502
     },
     {
       "path": "02-DBMS/SQL-Advanced-Syntax-CheatSheet.md",
@@ -112,7 +118,7 @@
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/04-UML-Diagrams-Class-and-Sequence-Diagrams.md",
       "name": "04-UML-Diagrams-Class-and-Sequence-Diagrams.md",
       "type": "markdown",
-      "size": 13418
+      "size": 13396
     },
     {
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/05-SOLID-Design-Principles-Part-1.md",
@@ -310,7 +316,7 @@
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/31-Build-Splitwise-Clone.md",
       "name": "31-Build-Splitwise-Clone.md",
       "type": "markdown",
-      "size": 35777
+      "size": 35825
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/33-Build-Tic-Tac-Toe-Game.md",
@@ -460,7 +466,7 @@
       "path": "07-Backend-Engineering/Concurrency & Parallelism.md",
       "name": "Concurrency & Parallelism.md",
       "type": "markdown",
-      "size": 21071
+      "size": 20611
     },
     {
       "path": "07-Backend-Engineering/Docker CheatSheet ApnaCollege.pdf",
@@ -478,13 +484,13 @@
       "path": "07-Backend-Engineering/Elastic Search.md",
       "name": "Elastic Search.md",
       "type": "markdown",
-      "size": 27966
+      "size": 27419
     },
     {
       "path": "07-Backend-Engineering/Error Handling and Building Fault Tolerant Systems.md",
       "name": "Error Handling and Building Fault Tolerant Systems.md",
       "type": "markdown",
-      "size": 30683
+      "size": 30150
     },
     {
       "path": "07-Backend-Engineering/README.md",
@@ -730,7 +736,7 @@
       "path": "README.md",
       "name": "README.md",
       "type": "markdown",
-      "size": 13200
+      "size": 13446
     },
     {
       "path": "spring-boot-microservices-notes/01-fundamentals.md",
@@ -754,7 +760,7 @@
       "path": "spring-boot-microservices-notes/04-api-gateway.md",
       "name": "04-api-gateway.md",
       "type": "markdown",
-      "size": 24983
+      "size": 24422
     },
     {
       "path": "spring-boot-microservices-notes/05-resilience-fault-tolerance.md",

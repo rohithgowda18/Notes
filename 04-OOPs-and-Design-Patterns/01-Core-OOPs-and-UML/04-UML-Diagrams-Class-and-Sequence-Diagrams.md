@@ -174,7 +174,7 @@ sequenceDiagram
     end
 
     destroy Txn
-    Note over Txn: Transaction completed & destroyed ('X')
+    ATM--xTxn: destroy (dereference)
 
     ATM-->>User: ejectCard() & receipt
     deactivate ATM

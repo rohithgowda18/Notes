@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 import rehypeSlug from "rehype-slug";
 import rehypeRaw from "rehype-raw";
+import "katex/dist/katex.min.css";
 import { Link } from "react-router-dom";
 import { CodeBlock } from "./CodeBlock";
 import { MermaidRenderer } from "./MermaidRenderer";
@@ -86,8 +89,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   return (
     <div className="markdown-body dark:text-neutral-200">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, rehypeSlug]}
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeRaw, rehypeKatex, rehypeSlug]}
         components={{
           // Unwrap outer pre from ReactMarkdown since CodeBlock provides its own container
           pre({ children }) {

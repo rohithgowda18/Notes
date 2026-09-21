@@ -351,3 +351,16 @@ span[class*="linenumber"] {
   justify-content: center;
 }
 
+/* KaTeX Math Equations */
+.markdown-body .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+  max-width: 100%;
+}
+
+.markdown-body .katex {
+  font-size: 1.05em;
+}
+
+

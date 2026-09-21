@@ -92,7 +92,7 @@ classDiagram
         +createJsonPost(String url, String body) HttpRequest
     }
 
-    HttpRequest +-- Builder : static inner class
+    HttpRequest *-- Builder : static inner class
     HttpRequestDirector --> Builder : directs assembly
 ```
 

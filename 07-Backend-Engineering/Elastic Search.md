@@ -242,7 +242,7 @@ flowchart LR
 #### 4. Field Boosting
 - **Concept**: Assigning different weights to different document fields during query execution.
 - **Hierarchy of Relevance**:
-  $$	ext{Title Match} > 	ext{Description Match} > 	ext{Body / Content Match}$$
+  $$\text{Title Match} > \text{Description Match} > \text{Body / Content Match}$$
 - If the term `"machine"` appears in the **Title** on page 1, that document gets a major relevance boost over a document where `"machine"` only appears deep within the text content.
 
 #### Elasticsearch DSL Query with Field Boosting:
@@ -518,7 +518,7 @@ pie title Backend Engineer Focus & Codebase Exposure
 | :--- | :--- | :--- |
 | **Primary Data Structure** | B-Tree / Heap tables | Inverted Index / Postings lists |
 | **Full-Text Search Mechanism** | Character-by-character scan (`LIKE '%...%'`) | Direct term dictionary lookup ($O(1)$) |
-| **Full Table Scan Complexity** | $O(N)$ across all rows and text bytes | $O(	ext{term occurrences})$ in postings list |
+| **Full Table Scan Complexity** | $O(N)$ across all rows and text bytes | $O(\text{term occurrences})$ in postings list |
 | **Relevance Ranking** | None (arbitrary disk or sort order) | BM25 (TF, IDF, Doc Length, Field Boosts) |
 | **Typo Tolerance** | None (exact string matching only) | Fuzzy matching via Levenshtein distance |
 | **Data Format** | Relational rows and columns | Schemaless / Mapped JSON documents |
@@ -539,7 +539,7 @@ pie title Backend Engineer Focus & Codebase Exposure
 > 1. **Term Frequency (TF)**: How often the search term appears in the document (with diminishing returns).
 > 2. **Inverse Document Frequency (IDF)**: How rare the term is across the entire corpus (rarer words grant higher scores).
 > 3. **Document Length Normalization**: Matches in shorter documents are weighted more heavily than in long documents.
-> Additionally, **Field Boosting** allows weighting specific fields (e.g., matching the `title` field by $3	imes$ over `description`).
+> Additionally, **Field Boosting** allows weighting specific fields (e.g., matching the `title` field by $3\times$ over `description`).
 
 #### Q4: In Elasticsearch, what is the difference between `text` and `keyword` fields?
 > **Answer**: 

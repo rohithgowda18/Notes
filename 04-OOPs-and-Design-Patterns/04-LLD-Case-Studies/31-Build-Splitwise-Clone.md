@@ -67,26 +67,26 @@ The goal of this lecture is to design a robust, scalable Low-Level Design (LLD) 
 
 ```mermaid
 graph TD
-    Client[Splitwise / Main Orchestrator] --> Group[Group (Observable Subject)]
-    Client --> User[User (Observer)]
+    Client["Splitwise / Main Orchestrator"] --> Group["Group (Observable Subject)"]
+    Client --> User["User (Observer)"]
     
     subgraph "Observer Pattern"
         Group -->|Notifies| User
-        User -.->|implements| Observer[Observer Interface]
+        User -.->|implements| Observer["Observer Interface"]
     end
 
     subgraph "Strategy & Factory Pattern"
         Group --> SplitFactory[SplitFactory]
         SplitFactory --> ISplitStrategy[ISplitStrategy]
-        ISplitStrategy <|.. EqualSplitStrategy[EqualSplitStrategy]
-        ISplitStrategy <|.. ExactSplitStrategy[ExactSplitStrategy]
-        ISplitStrategy <|.. PercentageSplitStrategy[PercentageSplitStrategy]
+        EqualSplitStrategy[EqualSplitStrategy] -.->|implements| ISplitStrategy
+        ExactSplitStrategy[ExactSplitStrategy] -.->|implements| ISplitStrategy
+        PercentageSplitStrategy[PercentageSplitStrategy] -.->|implements| ISplitStrategy
     end
 
     subgraph "Debt & Settlement Engine"
         Group --> Expense[Expense Entity]
-        Expense --> Split[Split (userId, amount)]
-        Group --> DebtSimplifier[DebtSimplifier (Greedy Min-Cash-Flow)]
+        Expense --> Split["Split (userId, amount)"]
+        Group --> DebtSimplifier["DebtSimplifier (Greedy Min-Cash-Flow)"]
     end
 ```
 
