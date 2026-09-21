@@ -63,15 +63,15 @@ sequenceDiagram
     participant DB as Persistent Disk
 
     App->>Log: BEGIN TRANSACTION T1
-    App->>Mem: Read(Ram) -> Returns 200
-    Note over App: Check Funds: 200 >= 100 (Sufficient)
+    App->>Mem: Read(Ram) => Returns 200
+    Note over App: Check Funds: Ram balance is at least 100
     Note over App: Compute: Ram_Balance = 200 - 100 = 100
     App->>Mem: Write(Ram, 100)
-    App->>Log: Log Entry: <T1, Ram, Old: 200, New: 100>
-    App->>Mem: Read(Shyam) -> Returns 100
+    App->>Log: Log Entry: [T1, Ram, Old: 200, New: 100]
+    App->>Mem: Read(Shyam) => Returns 100
     Note over App: Compute: Shyam_Balance = 100 + 100 = 200
     App->>Mem: Write(Shyam, 200)
-    App->>Log: Log Entry: <T1, Shyam, Old: 100, New: 200>
+    App->>Log: Log Entry: [T1, Shyam, Old: 100, New: 200]
 
     alt All Operations Successful
         App->>Log: COMMIT T1
@@ -196,7 +196,7 @@ sequenceDiagram
     Note over DB: Initial Value A = 10
     T1->>DB: Write(A, 20) [In-Memory Log]
     Note over T2: T1 is still active & uncommitted!
-    T2->>DB: Read(A) -> Reads 20 (DIRTY READ!)
+    T2->>DB: Read(A) [Reads 20: DIRTY READ!]
     Note over T1: System error in T1!
     T1->>DB: ABORT / ROLLBACK (A reverts to 10)
     Note over T2: T2 now holds invalid stale data (20) that never existed in DB!
@@ -213,11 +213,11 @@ sequenceDiagram
     participant T2 as Transaction 2
 
     Note over DB: Price A = ₹10
-    T1->>DB: Read(A) -> Returns ₹10
+    T1->>DB: Read(A): Returns ₹10
     T2->>DB: Write(A, ₹20)
     T2->>DB: COMMIT
     Note over DB: Price A is now committed at ₹20
-    T1->>DB: Read(A) again -> Returns ₹20!
+    T1->>DB: Read(A) again: Returns ₹20!
     Note over T1: Inconsistent! Two identical queries yielded different results.
 ```
 
@@ -231,10 +231,10 @@ sequenceDiagram
     participant DB as Employees Table
     participant T2 as Transaction 2 (HR)
 
-    T1->>DB: SELECT COUNT(*) FROM Emp WHERE Dept = 10 -> Returns 2
+    T1->>DB: SELECT COUNT(*) FROM Emp WHERE Dept = 10 (Returns 2)
     T2->>DB: INSERT INTO Emp VALUES ('E3', Dept 10)
     T2->>DB: COMMIT
-    T1->>DB: SELECT COUNT(*) FROM Emp WHERE Dept = 10 -> Returns 3!
+    T1->>DB: SELECT COUNT(*) FROM Emp WHERE Dept = 10 (Returns 3!)
     Note over T1: PHANTOM ROW! Row E3 appeared mid-transaction.
 ```
 
@@ -249,8 +249,8 @@ sequenceDiagram
     participant T2 as Transaction 2
 
     Note over DB: Balance = ₹100
-    T1->>DB: Read(Balance) -> 100
-    T2->>DB: Read(Balance) -> 100
+    T1->>DB: Read(Balance): 100
+    T2->>DB: Read(Balance): 100
     Note over T1: Computes: 100 + 50 = 150
     Note over T2: Computes: 100 - 20 = 80
     T1->>DB: Write(Balance, 150) & COMMIT
@@ -361,14 +361,14 @@ Two operations conflict if and only if:
 3. At least one of the operations is a **`Write`**.
 
 ```mermaid
-classDiagram
-    class OperationPairs {
-        +Ri(A) and Rj(A): Non-Conflicting (Read-Read)
-        +Ri(A) and Wj(A): CONFLICTING (Read-Write)
-        +Wi(A) and Rj(A): CONFLICTING (Write-Read)
-        +Wi(A) and Wj(A): CONFLICTING (Write-Write)
-        +Wi(A) and Wj(B): Non-Conflicting (Different items)
-    }
+flowchart TD
+    subgraph Pairs ["Operation Pairs on the Same Data Item"]
+        direction LR
+        P1["Read(A) + Read(A)<br/>✅ Non-Conflicting"]
+        P2["Read(A) + Write(A)<br/>⚠️ CONFLICT"]
+        P3["Write(A) + Read(A)<br/>⚠️ CONFLICT"]
+        P4["Write(A) + Write(A)<br/>⚠️ CONFLICT"]
+    end
 ```
 
 ---
@@ -552,17 +552,17 @@ Instead of maintaining lock tables and wait-queues, **Timestamp Ordering** coord
 flowchart TD
     Op["Transaction T_i issues operation on Q"] --> CheckOp{"Operation Type?"}
 
-    CheckOp -->|"Read(Q)"| RCheck{"TS(T_i) < W-TS(Q)?"}
+    CheckOp -->|"Read(Q)"| RCheck{"TS(T_i) is older than W-TS(Q)?"}
     RCheck -->|"Yes (Obsolete read)"| AbortR["ABORT & Rollback T_i"]
-    RCheck -->|"No (Valid)"| ExecR["Execute Read(Q)\nR-TS(Q) = max(R-TS(Q), TS(T_i))"]
+    RCheck -->|"No (Valid)"| ExecR["Execute Read(Q)<br/>R-TS(Q) = max(R-TS(Q), TS(T_i))"]
 
-    CheckOp -->|"Write(Q)"| WCheck1{"TS(T_i) < R-TS(Q)?"}
+    CheckOp -->|"Write(Q)"| WCheck1{"TS(T_i) is older than R-TS(Q)?"}
     WCheck1 -->|"Yes (Value already read)"| AbortW1["ABORT & Rollback T_i"]
-    WCheck1 -->|"No"| WCheck2{"TS(T_i) < W-TS(Q)?"}
+    WCheck1 -->|"No"| WCheck2{"TS(T_i) is older than W-TS(Q)?"}
     WCheck2 -->|"Yes (Value overwritten)"| Choice{"Protocol?"}
     Choice -->|"Basic BTO"| AbortW2["ABORT & Rollback T_i"]
     Choice -->|"Thomas' Write Rule"| IgnoreW["IGNORE Write & Continue!"]
-    WCheck2 -->|"No"| ExecW["Execute Write(Q)\nW-TS(Q) = TS(T_i)"]
+    WCheck2 -->|"No"| ExecW["Execute Write(Q)<br/>W-TS(Q) = TS(T_i)"]
 ```
 
 ### The Intuition Anchor (Older vs. Younger):
