@@ -79,25 +79,25 @@ Career OS solves this with a unified, high-performance command center powered by
 flowchart TD
     Web["🌐 React 19 SPA (Vite + TypeScript + TanStack Query)<br/>Port: 5173"]
 
-    Gateway["🛡️ Spring Cloud API Gateway (Reactive WebFlux)<br/>Port: 8080 | Predicates & Dynamic Routing | CORS Deduplication"]
+    Gateway["🛡️ Spring Cloud API Gateway (Reactive WebFlux)<br/>Port: 8080 &bull; Dynamic Routing &bull; CORS Deduplication"]
 
-    Eureka["📡 Netflix Eureka Service Registry<br/>Port: 8761 | Heartbeat: 5s | Eviction: 5s"]
+    Eureka["📡 Netflix Eureka Service Registry<br/>Port: 8761 &bull; Heartbeat: 5s &bull; Eviction: 5s"]
 
-    Auth["🔐 Career OS Auth Service<br/>Port: 8081 | Spring Security 6 + JJWT (HS512) | OAuth2 (Google & GitHub)"]
-    Backend["⚙️ Core Backend Service<br/>Port: 8085 | Placements, Applications, Routines, Skills, Analytics"]
-    AI["🧠 AI Extraction Service<br/>Port: 8082 | Google Gemini 2.5 Flash | URL Preservation Engine"]
+    Auth["🔐 Career OS Auth Service<br/>Port: 8081 &bull; Spring Security 6 + JJWT &bull; OAuth2 Social"]
+    Backend["⚙️ Core Backend Service<br/>Port: 8085 &bull; Placements, Applications, Routines, Skills, Analytics"]
+    AI["🧠 AI Extraction Service<br/>Port: 8082 &bull; Google Gemini 2.5 Flash &bull; URL Preservation Engine"]
 
-    DB[("🗄️ PostgreSQL 15 Database (event_tracker_db)<br/>Port: 5432 | HikariCP Connection Pool")]
+    DB[("🗄️ PostgreSQL 15 Database (event_tracker_db)<br/>Port: 5432 &bull; HikariCP Connection Pool")]
 
-    Web -->|HTTPS / REST| Gateway
-    Gateway <-->|Dynamic lb:// Resolution| Eureka
+    Web -->|"HTTPS / REST"| Gateway
+    Gateway -.->|"Dynamic lb:// Service Resolution"| Eureka
 
-    Gateway -->|lb://career-os-auth-service| Auth
-    Gateway -->|lb://career-os| Backend
-    Gateway -->|lb://ai-extraction-service| AI
+    Gateway -->|"lb://career-os-auth-service"| Auth
+    Gateway -->|"lb://career-os"| Backend
+    Gateway -->|"lb://ai-extraction-service"| AI
 
-    Auth -->|JDBC| DB
-    Backend -->|JDBC| DB
+    Auth -->|"JDBC"| DB
+    Backend -->|"JDBC"| DB
 ```
 
 ### Detailed Network Topography & Port Mapping
