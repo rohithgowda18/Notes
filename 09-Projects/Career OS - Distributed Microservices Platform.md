@@ -9,7 +9,7 @@
 
 ## 📑 Table of Contents
 1. [Executive Summary & Elevator Pitch](#1-executive-summary--elevator-pitch)
-2. [Resume-Ready STAR Bullet Points & Metrics](#2-resume-ready-star-bullet-points--metrics)
+2. [Resume-Ready Project Summary & Tech Stack](#2-resume-ready-project-summary--tech-stack)
 3. [End-to-End System Architecture & Topography](#3-end-to-end-system-architecture--topography)
 4. [Microservices Inventory & Role Matrix](#4-microservices-inventory--role-matrix)
 5. [Complete REST API Catalog (38 Endpoints)](#5-complete-rest-api-catalog-38-endpoints)
@@ -53,21 +53,11 @@ Career OS solves this with a unified, high-performance command center powered by
 
 ---
 
-## 2. Resume-Ready STAR Bullet Points & Metrics
+## 2. Resume-Ready Project Summary & Tech Stack
 
 ### Short Project Summary (For Resume Experience / Projects)
 **Career OS — Distributed Microservices Career & Placement Intelligence Platform**  
 *Tech Stack:* Java 17, Spring Boot 3.3, Spring Cloud Gateway, Netflix Eureka, PostgreSQL 15, Spring Data JPA, Spring Security, JWT (HS512), OAuth2, Google Gemini AI API, Docker Compose, React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query.
-
-### STAR Format Bullet Points (Quantified & Action-Oriented)
-- **Architected and deployed a distributed microservices platform** using **Spring Boot 3.3**, **Spring Cloud Gateway**, and **Netflix Eureka**, decoupling business logic, auth, and AI ingestion across 5 services with under **50ms** gateway routing latency.
-- **Engineered an AI-driven data extraction pipeline** leveraging **Google Gemini 2.5 Flash** and Java 11 `HttpClient`, extracting structured placement metadata (company, role, CTC, test dates) from raw emails in **<2 seconds** with a 3-tier exponential backoff retry mechanism.
-- **Implemented zero-trust stateless authentication** using **Spring Security 6**, **JWT (HS512)**, and **OAuth2 (Google & GitHub)**, enabling independent token signature verification across downstream services without distributed database bottlenecks.
-- **Guaranteed database idempotency and ACID integrity** in **PostgreSQL 15** by designing composite unique constraints (`user_id, event_url`, `user_id, company_name, role, application_link`, `routine_task_id, completion_date`) and cascading foreign keys across 7 relational tables.
-- **Refactored error architecture to clean declarative code** by eliminating all `try-catch` blocks across controllers and implementing centralized **`@RestControllerAdvice`** handlers mapping duplicate exceptions to `409 Conflict` and validation failures to `400 Bad Request`.
-- **Engineered an automated request profiling filter** (`RequestLatencyLoggingFilter`) extending `OncePerRequestFilter` to calculate request execution times in nanoseconds, inject W3C **`Server-Timing`** headers, and log latency alerts for slow API routes (`≥500ms`).
-- **Optimized containerization and build pipelines** using **Eclipse Temurin 17 Alpine JREs** with local JAR packaging, slashing Docker Compose image build times from **8 minutes to 15 seconds** (**75% reduction**) and container memory footprint to **<150MB** per service.
-- **Built a modern, responsive web application** using **React 19, TypeScript, Vite, and TanStack Query**, incorporating client-side caching, optimistic state mutations, dark/glassmorphic themes, and interactive Recharts analytics.
 
 ---
 
