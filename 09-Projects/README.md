@@ -6,7 +6,7 @@ This directory contains deep-dive interview preparation guides for full-stack an
 
 ## 📑 Projects Index
 
-### 1. 🎯 [Career OS — 15+ LPA Java Backend Interview Masterclass](./Career%20OS%20-%2015%20LPA%20Java%20Backend%20Interview%20Masterclass.md)
+### 1. 🚀 [Career OS — 15+ LPA Java Backend & Microservices Masterclass](./Career%20OS.md)
 - **Role**: Senior Java Backend & Distributed Systems Engineer
 - **Stack**: Java 17, Spring Boot 3.3, Spring Cloud Gateway, Eureka, PostgreSQL 15, Gemini 2.5 Flash, Docker
 - **Core Focus**:
@@ -19,29 +19,7 @@ This directory contains deep-dive interview preparation guides for full-stack an
 
 ---
 
-### 2. ⚡ [Career OS — Placement Intelligence & Microservices Platform](./Career%20OS%20-%20Placement%20Intelligence%20%26%20Microservices%20Platform.md)
-- **Role**: Backend & Distributed Systems Engineer
-- **Stack**: Java 17, Spring Boot 3.3, Spring Cloud Gateway, Netflix Eureka, PostgreSQL 15, React 19, TypeScript, Gemini 2.5 Flash
-- **Core Focus**:
-  - Unified revision guide formatted with Problem/Solution vectors, multi-tier subgraph architecture, and production roadmap.
-  - 7-stage placement pipeline, hackathons, and idempotent daily habit streak engine.
-  - Sub-2-second Generative AI email extraction with anti-hallucination URL preservation heuristics.
-  - Technical trade-offs matrix and top Staff/Senior interview preparation Q&As.
-
----
-
-### 3. 📘 [Career OS — Complete Technical Dossier & Interview Masterclass](./Career%20OS%20-%20Distributed%20Microservices%20Platform.md)
-- **Role**: Backend & Distributed Systems Engineer
-- **Stack**: Java 17, Spring Boot 3.3, Spring Cloud Gateway, Netflix Eureka, PostgreSQL 15, Spring Data JPA, Spring Security 6, JJWT (HS512), OAuth2, Google Gemini 2.5 Flash, Docker Compose, React 19, TypeScript, Vite, TanStack Query
-- **Core Focus**:
-  - Exhaustive 38-endpoint REST catalog, Spring singleton bean lifecycles, and servlet filter request profiling.
-  - Composite unique constraint database idempotency guarantees and `@RestControllerAdvice` error architecture.
-  - Low-latency Eureka synchronization tuning and local-JAR Docker containerization (<150MB footprint).
-  - Complete 30-question deep-dive technical interview masterclass.
-
----
-
-### 4. 🚗 [Drive Verify — Vehicle Registration & Fraud Verification Platform](./Drive%20Verify%20-%20Vehicle%20Registration%20%26%20Fraud%20Verification.md)
+### 2. 🚗 [Drive Verify — Vehicle Registration & Fraud Verification Platform](./Drive%20Verify%20-%20Vehicle%20Registration%20%26%20Fraud%20Verification.md)
 - **Role**: Full-Stack Developer
 - **Stack**: Java 21, Spring Boot, MongoDB, React, TypeScript, Zod, React Query
 - **Core Focus**:
@@ -53,7 +31,7 @@ This directory contains deep-dive interview preparation guides for full-stack an
 
 ---
 
-### 5. 🤖 [Video-Mind AI (YT_ChatBot) — RAG YouTube Intelligence](./YT_ChatBot%20-%20RAG%20Video-Mind%20AI%20Revision.md)
+### 3. 🤖 [Video-Mind AI (YT_ChatBot) — RAG YouTube Intelligence](./YT_ChatBot%20-%20RAG%20Video-Mind%20AI%20Revision.md)
 - **Role**: AI / Full-Stack Engineer
 - **Stack**: Python, FastAPI, LangChain, HuggingFace MiniLM, FAISS, Gemini 2.5 Flash, React
 - **Core Focus**:
@@ -65,7 +43,7 @@ This directory contains deep-dive interview preparation guides for full-stack an
 
 ---
 
-### 6. 🧬 [XMARs — Mutation Analysis, Machine Learning & SHAP](./XMARS.md)
+### 4. 🧬 [XMARs — Mutation Analysis, Machine Learning & SHAP](./XMARS.md)
 - 🎯 [XMARs Interview Questions & Answers (Cheat Sheet)](./XMARs%20Interview%20Questions%20%26%20Answers.md)
 - **Role**: ML / Mutation Analysis Subsystem Lead (4-Person Team Project)
 - **Stack**: Python, Scikit-Learn, SHAP, Pandas, NumPy, RobustScaler
