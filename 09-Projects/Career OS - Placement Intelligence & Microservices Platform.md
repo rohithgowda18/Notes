@@ -141,117 +141,26 @@ flowchart TD
 
 ```mermaid
 erDiagram
-    USERS ||--o| USER_PROFILES : "1-to-1 (has profile)"
-    USERS ||--o{ APPLICATIONS : "1-to-N (submits events)"
-    USERS ||--o{ PLACEMENTS : "1-to-N (applies to jobs)"
-    USERS ||--o{ SKILLS : "1-to-N (possesses)"
-    USERS ||--o{ ROUTINE_TASKS : "1-to-N (maintains habits)"
-    ROUTINE_TASKS ||--o{ ROUTINE_COMPLETION : "1-to-N (tracks daily)"
-
-    USERS {
-        bigserial id PK
-        varchar email "NOT NULL, UNIQUE"
-        varchar password "NOT NULL (BCrypt)"
-        varchar display_name
-        varchar role "NOT NULL, DEFAULT 'USER'"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    USER_PROFILES {
-        bigserial id PK
-        bigint user_id FK "NOT NULL, UNIQUE, ON DELETE CASCADE"
-        varchar college
-        text skills
-        varchar github_url
-        varchar linkedin_url
-        varchar portfolio_url
-        varchar location
-        boolean email_alerts "NOT NULL, DEFAULT TRUE"
-        boolean weekly_digest "NOT NULL, DEFAULT FALSE"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    APPLICATIONS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL, ON DELETE CASCADE"
-        varchar event_name "NOT NULL"
-        varchar event_type "NOT NULL"
-        varchar status "NOT NULL"
-        timestamp deadline
-        text notes
-        varchar event_url
-        varchar location
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    PLACEMENTS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL, ON DELETE CASCADE"
-        varchar company_name "NOT NULL"
-        varchar role "NOT NULL"
-        varchar location
-        varchar stipend
-        varchar ctc
-        varchar application_link
-        timestamp assessment_date
-        timestamp interview_date
-        varchar status "NOT NULL"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    SKILLS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL, ON DELETE CASCADE"
-        varchar name "NOT NULL"
-        varchar category "NOT NULL"
-        varchar level "NOT NULL"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    ROUTINE_TASKS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL, ON DELETE CASCADE"
-        varchar title "NOT NULL"
-        int display_order "NOT NULL, DEFAULT 0"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    ROUTINE_COMPLETION {
-        bigserial id PK
-        bigint routine_task_id FK "NOT NULL, ON DELETE CASCADE"
-        date completion_date "NOT NULL"
-        boolean completed "NOT NULL, DEFAULT FALSE"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
+    USERS ||--o| USER_PROFILES : "has profile (1:1)"
+    USERS ||--o{ APPLICATIONS : "submits events (1:N)"
+    USERS ||--o{ PLACEMENTS : "applies to jobs (1:N)"
+    USERS ||--o{ SKILLS : "possesses (1:N)"
+    USERS ||--o{ ROUTINE_TASKS : "maintains habits (1:N)"
+    ROUTINE_TASKS ||--o{ ROUTINE_COMPLETION : "tracks daily (1:N)"
 ```
 
-### Table Schema & Constraint Specifications:
+### Database Tables, Foreign Keys & Indexing Strategy
 
-#### 1. `users` & `user_profiles` (1-to-1 Relationship)
-- **`users`**: Security-isolated entity containing only credentials (`email`, `password` hashed via BCrypt, `role`).
-- **`user_profiles`**: Extended profile attributes (`college`, `skills`, social URLs, `email_alerts`, `weekly_digest`). Foreign key `user_id` enforced with `UNIQUE` and `ON DELETE CASCADE`.
+| Table Name | Primary Key | Foreign Key (Cascade Delete) | Unique Constraints & Performance Indexes | Core Idempotency Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| **`users`** | `id BIGSERIAL` | None | `UNIQUE (email)` | Enforces unique email registration; fast credential lookup. |
+| **`user_profiles`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id)` | Strictly enforces a 1-to-1 relationship with `users`. |
+| **`applications`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id, event_url)`<br>`idx_applications_status ON (status)` | **Idempotency Guarantee:** Prevents duplicate event URL entries per user. Speeds up status tab filtering. |
+| **`placements`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id, company_name, role, application_link)`<br>`idx_placements_status ON (status)` | **Idempotency Guarantee:** Eliminates duplicate job submissions for the same role and link. Speeds up funnel metrics. |
+| **`skills`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id, name)` | Prevents duplicate skill tags for the same user. |
+| **`routine_tasks`** | `id BIGSERIAL` | `user_id -> users(id)` | `idx_routine_tasks_user_id ON (user_id)` | Fast retrieval of user habit templates ordered by `display_order`. |
+| **`routine_completion`** | `id BIGSERIAL` | `routine_task_id -> routine_tasks(id)` | `CONSTRAINT uq_routine_completion UNIQUE (routine_task_id, completion_date)` | Enables $\mathcal{O}(1)$ idempotent daily completion toggles and batch lookups without duplicate rows. |
 
-#### 2. `applications` (Event & Hackathon Tracking)
-- Columns: `id`, `user_id`, `event_name`, `event_type` (`Hackathon`, `Workshop`, `Conference`, `Internship`, `Other`), `status` (`Interested`, `Applied`, `UnderReview`, `Accepted`, `Rejected`), `deadline`, `notes`, `event_url`, `location`.
-- **Composite Unique Index**: `UNIQUE (user_id, event_url)` — Guarantees database-level idempotency against duplicate submissions.
-- **Performance Index**: `idx_applications_status ON applications(status)`.
-
-#### 3. `placements` (Job & Internship Pipeline)
-- Columns: `id`, `user_id`, `company_name`, `role`, `location`, `stipend`, `ctc`, `application_link`, `assessment_date`, `interview_date`, `status` (`PlacementStatus` enum).
-- **Composite Unique Index**: `UNIQUE (user_id, company_name, role, application_link)` — Prevents duplicate job applications.
-- **Performance Index**: `idx_placements_status ON placements(status)`.
-
-#### 4. `routine_tasks` & `routine_completion` (Habit Engine)
-- **`routine_tasks`**: Defines the user habit template (`id`, `user_id`, `title`, `display_order`). Indexed by `idx_routine_tasks_user_id`.
-- **`routine_completion`**: Daily execution record (`id`, `routine_task_id`, `completion_date`, `completed`).
-- **Composite Unique Constraint**: `CONSTRAINT uq_routine_completion UNIQUE (routine_task_id, completion_date)`. Enables $\mathcal{O}(1)$ upsert/toggle operations and batch daily lookups (`findByRoutineTaskIdInAndCompletionDate`) avoiding N+1 queries.
 
 ---
 

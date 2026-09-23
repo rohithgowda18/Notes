@@ -300,146 +300,25 @@ The platform utilizes **PostgreSQL 15** running in an isolated Docker container 
 
 ```mermaid
 erDiagram
-    USERS ||--o| USER_PROFILES : "1-to-1 (has profile)"
-    USERS ||--o{ APPLICATIONS : "1-to-N (submits events)"
-    USERS ||--o{ PLACEMENTS : "1-to-N (applies to jobs)"
-    USERS ||--o{ SKILLS : "1-to-N (possesses)"
-    USERS ||--o{ ROUTINE_TASKS : "1-to-N (maintains habits)"
-    ROUTINE_TASKS ||--o{ ROUTINE_COMPLETION : "1-to-N (tracks daily)"
-
-    USERS {
-        bigserial id PK
-        varchar email "NOT NULL, UNIQUE"
-        varchar password "NOT NULL (BCrypt)"
-        varchar display_name
-        varchar role "NOT NULL, DEFAULT USER"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    USER_PROFILES {
-        bigserial id PK
-        bigint user_id FK "NOT NULL, UNIQUE"
-        varchar college
-        text skills
-        varchar github_url
-        varchar linkedin_url
-        varchar portfolio_url
-        varchar location
-        boolean email_alerts "DEFAULT TRUE"
-        boolean weekly_digest "DEFAULT FALSE"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    APPLICATIONS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL"
-        varchar event_name "NOT NULL"
-        varchar event_type "NOT NULL"
-        varchar status "NOT NULL"
-        timestamp deadline
-        text notes
-        varchar event_url
-        varchar location
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    PLACEMENTS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL"
-        varchar company_name "NOT NULL"
-        varchar role "NOT NULL"
-        varchar location
-        varchar stipend
-        varchar ctc
-        varchar application_link
-        timestamp assessment_date
-        timestamp interview_date
-        varchar status "NOT NULL"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    SKILLS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL"
-        varchar name "NOT NULL"
-        varchar category "NOT NULL"
-        varchar level "NOT NULL"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    ROUTINE_TASKS {
-        bigserial id PK
-        bigint user_id FK "NOT NULL"
-        varchar title "NOT NULL"
-        int display_order "DEFAULT 0"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
-
-    ROUTINE_COMPLETION {
-        bigserial id PK
-        bigint routine_task_id FK "NOT NULL"
-        date completion_date "NOT NULL"
-        boolean completed "DEFAULT FALSE"
-        timestamp created_at "NOT NULL"
-        timestamp updated_at "NOT NULL"
-    }
+    USERS ||--o| USER_PROFILES : "has profile (1:1)"
+    USERS ||--o{ APPLICATIONS : "submits events (1:N)"
+    USERS ||--o{ PLACEMENTS : "applies to jobs (1:N)"
+    USERS ||--o{ SKILLS : "possesses (1:N)"
+    USERS ||--o{ ROUTINE_TASKS : "maintains habits (1:N)"
+    ROUTINE_TASKS ||--o{ ROUTINE_COMPLETION : "tracks daily (1:N)"
 ```
 
-### Table Schema Specifications, Constraints & Indexing Strategy
+### Database Tables, Foreign Keys & Indexing Strategy
 
-#### 1. `users`
-- **Primary Key:** `id BIGSERIAL`
-- **Columns:** `email` (VARCHAR 255, NOT NULL), `password` (VARCHAR 255, NOT NULL), `display_name` (VARCHAR 255), `role` (VARCHAR 50, DEFAULT 'USER'), `created_at`, `updated_at`.
-- **Constraints:** `UNIQUE(email)`
-- **Architectural Rationale:** Kept minimal and security-focused. Does not store profile links or college details to keep authentication token generation fast and table scans compact.
-
-#### 2. `user_profiles`
-- **Primary Key:** `id BIGSERIAL`
-- **Foreign Key:** `user_id BIGINT REFERENCES users(id) ON DELETE CASCADE`
-- **Constraints:** `UNIQUE(user_id)` — strictly enforces a 1-to-1 relationship.
-- **Columns:** `college`, `skills`, `github_url`, `linkedin_url`, `portfolio_url`, `location`, `email_alerts` (BOOLEAN DEFAULT TRUE), `weekly_digest` (BOOLEAN DEFAULT FALSE).
-
-#### 3. `applications` (Events & Hackathons)
-- **Primary Key:** `id BIGSERIAL`
-- **Foreign Key:** `user_id BIGINT REFERENCES users(id) ON DELETE CASCADE`
-- **Columns:** `event_name` (NOT NULL), `event_type` (NOT NULL), `status` (NOT NULL), `deadline`, `notes`, `event_url`, `location`.
-- **Enums:**
-  - `EventType`: `Hackathon`, `Workshop`, `Conference`, `Internship`, `Other`
-  - `ApplicationStatus`: `Interested`, `Applied`, `UnderReview`, `Accepted`, `Rejected`
-- **Indexes:**
-  - `idx_applications_status ON applications(status)` — Optimizes dashboard status grouping and tab filtering queries.
-  - `unique_user_event_url UNIQUE (user_id, event_url)` — **Idempotency Guarantee:** Prevents users or AI parsers from duplicating the exact same event URL under a single user account.
-
-#### 4. `placements` (Job & Internship Pipeline)
-- **Primary Key:** `id BIGSERIAL`
-- **Foreign Key:** `user_id BIGINT REFERENCES users(id) ON DELETE CASCADE`
-- **Columns:** `company_name` (NOT NULL), `role` (NOT NULL), `location`, `stipend`, `ctc`, `application_link`, `assessment_date`, `interview_date`, `status` (NOT NULL).
-- **Enum (`PlacementStatus`):**
-  - `APPLIED`, `ASSESSMENT_SCHEDULED`, `ASSESSMENT_COMPLETED`, `INTERVIEW_SCHEDULED`, `INTERVIEW_COMPLETED`, `OFFER_RECEIVED`, `REJECTED`
-- **Indexes:**
-  - `idx_placements_status ON placements(status)` — Speeds up analytics funnel calculations and filter queries.
-  - `unique_user_company_role_link UNIQUE (user_id, company_name, role, application_link)` — Enforces unique application submissions per company, role, and job link.
-
-#### 5. `skills`
-- **Primary Key:** `id BIGSERIAL`
-- **Foreign Key:** `user_id BIGINT REFERENCES users(id) ON DELETE CASCADE`
-- **Columns:** `name` (NOT NULL), `category` (NOT NULL), `level` (NOT NULL).
-- **Indexes:** `unique_user_skill UNIQUE (user_id, name)` — Prevents duplicate skill tags for the same user.
-
-#### 6. `routine_tasks` & `routine_completion` (Habit Engine)
-- **`routine_tasks`:** Defines the habit template.
-  - Columns: `id`, `user_id`, `title`, `display_order`, `created_at`, `updated_at`.
-  - Index: `idx_routine_tasks_user_id ON routine_tasks(user_id)` — Rapid retrieval of ordered user habit lists.
-- **`routine_completion`:** Tracks execution per calendar day.
-  - Columns: `id`, `routine_task_id`, `completion_date` (DATE), `completed` (BOOLEAN), timestamps.
-  - **Composite Unique Constraint:** `CONSTRAINT uq_routine_completion UNIQUE (routine_task_id, completion_date)`.
-  - **Design Value:** Enables $\mathcal{O}(1)$ idempotent completion toggling. Prevents duplicate row creation for the same day and allows instant daily status lookup via `findByRoutineTaskIdInAndCompletionDate`.
+| Table Name | Primary Key | Foreign Key (Cascade Delete) | Unique Constraints & Performance Indexes | Core Idempotency Rationale |
+| :--- | :--- | :--- | :--- | :--- |
+| **`users`** | `id BIGSERIAL` | None | `UNIQUE (email)` | Enforces unique email registration; fast credential lookup. |
+| **`user_profiles`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id)` | Strictly enforces a 1-to-1 relationship with `users`. |
+| **`applications`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id, event_url)`<br>`idx_applications_status ON (status)` | **Idempotency Guarantee:** Prevents duplicate event URL entries per user. Speeds up status tab filtering. |
+| **`placements`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id, company_name, role, application_link)`<br>`idx_placements_status ON (status)` | **Idempotency Guarantee:** Eliminates duplicate job submissions for the same role and link. Speeds up funnel metrics. |
+| **`skills`** | `id BIGSERIAL` | `user_id -> users(id)` | `UNIQUE (user_id, name)` | Prevents duplicate skill tags for the same user. |
+| **`routine_tasks`** | `id BIGSERIAL` | `user_id -> users(id)` | `idx_routine_tasks_user_id ON (user_id)` | Fast retrieval of user habit templates ordered by `display_order`. |
+| **`routine_completion`** | `id BIGSERIAL` | `routine_task_id -> routine_tasks(id)` | `CONSTRAINT uq_routine_completion UNIQUE (routine_task_id, completion_date)` | Enables $\mathcal{O}(1)$ idempotent daily completion toggles and batch lookups without duplicate rows. |
 
 ---
 
