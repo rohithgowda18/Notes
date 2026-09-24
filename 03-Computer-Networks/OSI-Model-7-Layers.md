@@ -37,21 +37,21 @@ It partitions network communications into **7 distinct, logical layers** structu
 flowchart TD
     subgraph Host["🌐 Upper / Host Software Layers (Application Data)"]
         direction LR
-        L7["<b>Layer 7: Application</b><br/>PDU: Data<br/>HTTP, HTTPS, DNS, SMTP"]
-        L6["<b>Layer 6: Presentation</b><br/>PDU: Data<br/>Translation, Compression, TLS"]
-        L5["<b>Layer 5: Session</b><br/>PDU: Data<br/>Auth, Sync, Checkpoints"]
+        L7["<b>Layer 7: Application</b> &bull; PDU: Data<br/>HTTP, HTTPS, DNS, SMTP"]
+        L6["<b>Layer 6: Presentation</b> &bull; PDU: Data<br/>Translation, Compression, TLS/SSL"]
+        L5["<b>Layer 5: Session</b> &bull; PDU: Data<br/>Session Auth, Sync, Checkpoints"]
         L7 --> L6 --> L5
     end
 
     subgraph Heart["🚚 Heart of OSI — Transport Layer (End-to-End Reliability)"]
-        L4["<b>Layer 4: Transport Layer</b> &nbsp;&bull;&nbsp; PDU: Segment / Datagram<br/>TCP & UDP &bull; Port Addressing (0–65535) &bull; Flow & Congestion Control &bull; ARQ Checksums"]
+        L4["<b>Layer 4: Transport Layer</b> &nbsp;&bull;&nbsp; PDU: Segment / Datagram<br/>TCP & UDP &bull; Port Addressing (0–65535) &bull; Flow & Congestion Control"]
     end
 
     subgraph Media["⚡ Lower / Media & Hardware Layers (Physical Network Delivery)"]
         direction LR
-        L3["<b>Layer 3: Network</b><br/>PDU: Packet<br/>IP Addressing, Routing, Routers"]
-        L2["<b>Layer 2: Data Link</b><br/>PDU: Frame<br/>MAC Addressing, Switches, CRC"]
-        L1["<b>Layer 1: Physical</b><br/>PDU: Bits<br/>Signals, Media, Hubs, Cables"]
+        L3["<b>Layer 3: Network</b> &bull; PDU: Packet<br/>IP Addressing, Routing, Routers"]
+        L2["<b>Layer 2: Data Link</b> &bull; PDU: Frame<br/>MAC Addressing, Switches, CRC-32"]
+        L1["<b>Layer 1: Physical</b> &bull; PDU: Bits<br/>Signals, Media, Hubs, Cables"]
         L3 --> L2 --> L1
     end
 
@@ -69,25 +69,25 @@ When a host transmits data, each layer encapsulates the payload by prepending a 
 flowchart TD
     subgraph Sender["Host A (Sender) — Data Encapsulation (Top-Down)"]
         direction TB
-        E1["<b>1. Application Layer (L7)</b><br/>User Payload Data: <b>( User Data )</b>"]
-        E2["<b>2. Transport Layer (L4)</b><br/>Prepends Port Header &bull; <b>Segment = ( L4 Header + Data )</b>"]
-        E3["<b>3. Network Layer (L3)</b><br/>Prepends IP Header &bull; <b>Packet = ( L3 Header + L4 Header + Data )</b>"]
-        E4["<b>4. Data Link Layer (L2)</b><br/>Prepends MAC + Appends CRC &bull; <b>Frame = ( L2 Header + Packet + FCS Trailer )</b>"]
-        E5["<b>5. Physical Layer (L1)</b><br/>Encodes Frame into Physical Signals &bull; <b>Raw Bits: 01101001...</b>"]
+        E1["<b>1. Application (L7):</b> User Data Payload"]
+        E2["<b>2. Transport (L4):</b> Adds Port Header &nbsp;&bull;&nbsp; <b>Segment = (L4 Header + Data)</b>"]
+        E3["<b>3. Network (L3):</b> Adds IP Header &nbsp;&bull;&nbsp; <b>Packet = (L3 Header + Segment)</b>"]
+        E4["<b>4. Data Link (L2):</b> Adds MAC + CRC &nbsp;&bull;&nbsp; <b>Frame = (L2 Header + Packet + FCS)</b>"]
+        E5["<b>5. Physical (L1):</b> Encodes to Signals &nbsp;&bull;&nbsp; <b>Raw Bits (01101001...)</b>"]
         E1 --> E2 --> E3 --> E4 --> E5
     end
 
     subgraph Channel["Physical Transmission Media"]
-        Cable["⚡ <b>Physical Transmission Medium (Ethernet Copper / Fiber / Wi-Fi)</b><br/>Continuous Unstructured Bitstream: 01101001 01110010 01100001..."]
+        Cable["⚡ <b>Physical Medium (Ethernet / Fiber / Wi-Fi):</b> Continuous Binary Bitstream"]
     end
 
     subgraph Receiver["Host B (Receiver) — Data Decapsulation (Bottom-Up)"]
         direction TB
-        D5["<b>5. Physical Layer (L1)</b><br/>Receives Physical Signals &bull; Reconstructs <b>Frame Bits</b>"]
-        D4["<b>4. Data Link Layer (L2)</b><br/>Verifies CRC Checksum (FCS) &bull; Strips MAC & Trailer &bull; Extracts <b>Packet</b>"]
-        D3["<b>3. Network Layer (L3)</b><br/>Validates Destination IP &bull; Strips IP Header &bull; Extracts <b>Segment</b>"]
-        D2["<b>2. Transport Layer (L4)</b><br/>Inspects Port & Sequence &bull; Strips L4 Header &bull; Extracts <b>Data</b>"]
-        D1["<b>1. Application Layer (L7)</b><br/>Delivers Original Payload: <b>( User Data )</b> to Target Application"]
+        D5["<b>5. Physical (L1):</b> Receives Signals &nbsp;&bull;&nbsp; Reconstructs Frame Bits"]
+        D4["<b>4. Data Link (L2):</b> Verifies CRC &nbsp;&bull;&nbsp; Strips MAC/FCS &rarr; Extracts <b>Packet</b>"]
+        D3["<b>3. Network (L3):</b> Validates Destination IP &nbsp;&bull;&nbsp; Strips IP Header &rarr; Extracts <b>Segment</b>"]
+        D2["<b>2. Transport (L4):</b> Inspects Destination Port &nbsp;&bull;&nbsp; Strips L4 Header &rarr; Extracts <b>Data</b>"]
+        D1["<b>1. Application (L7):</b> Delivers Original User Data to Target Application"]
         D5 --> D4 --> D3 --> D2 --> D1
     end
 
