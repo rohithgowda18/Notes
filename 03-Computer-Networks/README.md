@@ -7,6 +7,7 @@ This directory contains comprehensive Computer Networking notes, diagrams, quick
 ## 📑 Contents
 
 ### 📘 Comprehensive Visual Guide
+- 📖 **[The 7 Layers of the OSI Model](./OSI-Model-7-Layers.md)** — Complete visual breakdown of the 7 OSI layers, PDUs, encapsulation/decapsulation, protocols, devices, and interview FAQs with Mermaid diagrams.
 - 📖 **[Comprehensive Networking Guide](./01-Comprehensive-Guide/README.md)** — Detailed visual guide covering network layers, OSI & TCP/IP stack, socket programming, DNS resolution, TCP handshakes, TLS/SSL, and web protocols with 30 embedded diagrams.
 
 ### 📝 Placement Revision Notes
