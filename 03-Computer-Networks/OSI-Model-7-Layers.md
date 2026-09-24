@@ -35,13 +35,13 @@ It partitions network communications into **7 distinct, logical layers** structu
 
 ```mermaid
 flowchart TD
-    L7["<b>Layer 7 — Application (Host Software)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Data &nbsp;&nbsp;&bull;&nbsp;&nbsp; HTTP, HTTPS, DNS, SMTP &nbsp;&nbsp;&bull;&nbsp;&nbsp; User Software Network Services"]
-    L6["<b>Layer 6 — Presentation (Host Software)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Data &nbsp;&nbsp;&bull;&nbsp;&nbsp; Syntax Translation, Compression, TLS/SSL Encryption"]
-    L5["<b>Layer 5 — Session (Host Software)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Data &nbsp;&nbsp;&bull;&nbsp;&nbsp; Session Lifecycle, Auth, Dialogue Tracking, Checkpoints"]
-    L4["<b>Layer 4 — Transport (Heart of OSI)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Segment / Datagram &nbsp;&nbsp;&bull;&nbsp;&nbsp; TCP & UDP, Port Numbers, Flow & Congestion Control"]
-    L3["<b>Layer 3 — Network (Media / Hardware)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Packet &nbsp;&nbsp;&bull;&nbsp;&nbsp; Logical IP Addressing, Routing Protocols, Subnetting &nbsp;&bull;&nbsp; Routers"]
-    L2["<b>Layer 2 — Data Link (Media / Hardware)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Frame &nbsp;&nbsp;&bull;&nbsp;&nbsp; Physical MAC Addressing, Framing, CSMA/CD, CRC-32 (FCS) &nbsp;&bull;&nbsp; Switches"]
-    L1["<b>Layer 1 — Physical (Media / Hardware)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Bits &nbsp;&nbsp;&bull;&nbsp;&nbsp; Signal Encoding (Voltage, Light, RF), Media & Topologies &nbsp;&bull;&nbsp; Hubs, Cables"]
+    L7["<b>Layer 7 — Application Layer</b> &nbsp;&bull;&nbsp; <i>Host Software</i><br/>PDU: Data &nbsp;&bull;&nbsp; Protocols: HTTP, HTTPS, DNS, SMTP, SSH &nbsp;&bull;&nbsp; User Software Network Services"]
+    L6["<b>Layer 6 — Presentation Layer</b> &nbsp;&bull;&nbsp; <i>Host Software</i><br/>PDU: Data &nbsp;&bull;&nbsp; Syntax Translation, Data Compression (gzip), Encryption (TLS/SSL)"]
+    L5["<b>Layer 5 — Session Layer</b> &nbsp;&bull;&nbsp; <i>Host Software</i><br/>PDU: Data &nbsp;&bull;&nbsp; Protocols: RPC, NetBIOS, SOCKS5 &nbsp;&bull;&nbsp; Session Lifecycle, Auth, Checkpoints"]
+    L4["<b>Layer 4 — Transport Layer</b> &nbsp;&bull;&nbsp; <i>Heart of OSI</i><br/>PDU: Segment (TCP) / Datagram (UDP) &nbsp;&bull;&nbsp; Port Addressing, Flow & Congestion Control"]
+    L3["<b>Layer 3 — Network Layer</b> &nbsp;&bull;&nbsp; <i>Media & Hardware</i><br/>PDU: Packet &nbsp;&bull;&nbsp; Logical IP Addressing, Routing Protocols (OSPF, BGP) &nbsp;&bull;&nbsp; Routers, L3 Switches"]
+    L2["<b>Layer 2 — Data Link Layer</b> &nbsp;&bull;&nbsp; <i>Media & Hardware</i><br/>PDU: Frame &nbsp;&bull;&nbsp; Physical MAC Addressing (48-bit), Framing, CSMA/CD, CRC-32 &nbsp;&bull;&nbsp; Switches, NICs"]
+    L1["<b>Layer 1 — Physical Layer</b> &nbsp;&bull;&nbsp; <i>Media & Hardware</i><br/>PDU: Bits &nbsp;&bull;&nbsp; Signal Encoding (Voltage, Light, RF Waves), Media & Topologies &nbsp;&bull;&nbsp; Hubs, Cables"]
 
     L7 --> L6 --> L5 --> L4 --> L3 --> L2 --> L1
 ```
