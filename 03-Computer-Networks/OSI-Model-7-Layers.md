@@ -34,14 +34,14 @@ It partitions network communications into **7 distinct, logical layers** structu
 ## 🏗️ Visual Architecture: The 7 Layers & PDUs
 
 ```mermaid
-flowchart LR
-    L7["<b>Layer 7: Application</b><br/>Host Software &bull; PDU: Data<br/>HTTP, HTTPS, DNS, SMTP"]
-    L6["<b>Layer 6: Presentation</b><br/>Host Software &bull; PDU: Data<br/>Syntax, Compression, TLS/SSL"]
-    L5["<b>Layer 5: Session</b><br/>Host Software &bull; PDU: Data<br/>Auth, Sessions, Checkpoints"]
-    L4["<b>Layer 4: Transport</b><br/>Heart of OSI &bull; PDU: Segment<br/>TCP & UDP, Port Numbers"]
-    L3["<b>Layer 3: Network</b><br/>Media Layer &bull; PDU: Packet<br/>IP Addressing, Routing, Routers"]
-    L2["<b>Layer 2: Data Link</b><br/>Media Layer &bull; PDU: Frame<br/>MAC Addressing, Switches, CRC"]
-    L1["<b>Layer 1: Physical</b><br/>Media Layer &bull; PDU: Bits<br/>Signals, Media, Hubs, Cables"]
+flowchart TD
+    L7["<b>Layer 7 — Application (Host Software)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Data &nbsp;&nbsp;&bull;&nbsp;&nbsp; HTTP, HTTPS, DNS, SMTP &nbsp;&nbsp;&bull;&nbsp;&nbsp; User Software Network Services"]
+    L6["<b>Layer 6 — Presentation (Host Software)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Data &nbsp;&nbsp;&bull;&nbsp;&nbsp; Syntax Translation, Compression, TLS/SSL Encryption"]
+    L5["<b>Layer 5 — Session (Host Software)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Data &nbsp;&nbsp;&bull;&nbsp;&nbsp; Session Lifecycle, Auth, Dialogue Tracking, Checkpoints"]
+    L4["<b>Layer 4 — Transport (Heart of OSI)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Segment / Datagram &nbsp;&nbsp;&bull;&nbsp;&nbsp; TCP & UDP, Port Numbers, Flow & Congestion Control"]
+    L3["<b>Layer 3 — Network (Media / Hardware)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Packet &nbsp;&nbsp;&bull;&nbsp;&nbsp; Logical IP Addressing, Routing Protocols, Subnetting &nbsp;&bull;&nbsp; Routers"]
+    L2["<b>Layer 2 — Data Link (Media / Hardware)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Frame &nbsp;&nbsp;&bull;&nbsp;&nbsp; Physical MAC Addressing, Framing, CSMA/CD, CRC-32 (FCS) &nbsp;&bull;&nbsp; Switches"]
+    L1["<b>Layer 1 — Physical (Media / Hardware)</b> &nbsp;&nbsp;&bull;&nbsp;&nbsp; PDU: Bits &nbsp;&nbsp;&bull;&nbsp;&nbsp; Signal Encoding (Voltage, Light, RF), Media & Topologies &nbsp;&bull;&nbsp; Hubs, Cables"]
 
     L7 --> L6 --> L5 --> L4 --> L3 --> L2 --> L1
 ```
@@ -356,12 +356,12 @@ flowchart TD
 ## 🛠️ Network Devices by Layer
 
 ```mermaid
-flowchart LR
-    D7["<b>L7 Application</b><br/>App Gateway, WAF, Envoy"]
-    D4["<b>L4 Transport</b><br/>L4 Load Balancer, Firewall"]
-    D3["<b>L3 Network</b><br/>Router, Layer 3 Switch"]
-    D2["<b>L2 Data Link</b><br/>Switch, Bridge, NIC"]
-    D1["<b>L1 Physical</b><br/>Hub, Repeater, Cables"]
+flowchart TD
+    D7["<b>Layer 7 (Application):</b> Application Gateways &nbsp;&bull;&nbsp; Reverse Proxies &nbsp;&bull;&nbsp; WAF &nbsp;&bull;&nbsp; Envoy &bull; NGINX"]
+    D4["<b>Layer 4 (Transport):</b> Layer 4 Load Balancers (HAProxy TCP Mode) &nbsp;&bull;&nbsp; Stateful Firewalls"]
+    D3["<b>Layer 3 (Network):</b> Network Routers &nbsp;&bull;&nbsp; Layer 3 Switches &nbsp;&bull;&nbsp; BGP Edge Gateways"]
+    D2["<b>Layer 2 (Data Link):</b> Layer 2 Network Switches &nbsp;&bull;&nbsp; Network Bridges &nbsp;&bull;&nbsp; NICs"]
+    D1["<b>Layer 1 (Physical):</b> Network Hubs &nbsp;&bull;&nbsp; Signal Repeaters &nbsp;&bull;&nbsp; Optical Transceivers (SFP+) &bull; Cabling"]
 
     D7 --> D4 --> D3 --> D2 --> D1
 ```
