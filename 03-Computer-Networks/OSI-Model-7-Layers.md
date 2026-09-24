@@ -34,14 +34,14 @@ It partitions network communications into **7 distinct, logical layers** structu
 ## 🏗️ Visual Architecture: The 7 Layers & PDUs
 
 ```mermaid
-flowchart TD
-    L7["Layer 7 — Application (Host Software) &nbsp;•&nbsp; PDU: Data &nbsp;•&nbsp; HTTP, HTTPS, DNS, SMTP &nbsp;•&nbsp; User Network Services"]
-    L6["Layer 6 — Presentation (Host Software) &nbsp;•&nbsp; PDU: Data &nbsp;•&nbsp; Syntax Translation, Compression, TLS/SSL Encryption"]
-    L5["Layer 5 — Session (Host Software) &nbsp;•&nbsp; PDU: Data &nbsp;•&nbsp; Session Management, Auth, Dialogue Tracking, Checkpoints"]
-    L4["Layer 4 — Transport (Heart of OSI) &nbsp;•&nbsp; PDU: Segment / Datagram &nbsp;•&nbsp; TCP & UDP, Port Addressing, Flow & Congestion Control"]
-    L3["Layer 3 — Network (Media / Hardware) &nbsp;•&nbsp; PDU: Packet &nbsp;•&nbsp; Logical IP Addressing, Routing Protocols, Subnetting &nbsp;•&nbsp; Routers"]
-    L2["Layer 2 — Data Link (Media / Hardware) &nbsp;•&nbsp; PDU: Frame &nbsp;•&nbsp; Physical MAC Addressing, Framing, CSMA/CD, CRC-32 (FCS) &nbsp;•&nbsp; Switches"]
-    L1["Layer 1 — Physical (Media / Hardware) &nbsp;•&nbsp; PDU: Bits &nbsp;•&nbsp; Signal Encoding (Voltage, Light, RF), Media & Topologies &nbsp;•&nbsp; Hubs, Cables"]
+flowchart LR
+    L7["<b>Layer 7: Application</b><br/>Host Software &bull; PDU: Data<br/>HTTP, HTTPS, DNS, SMTP"]
+    L6["<b>Layer 6: Presentation</b><br/>Host Software &bull; PDU: Data<br/>Syntax, Compression, TLS/SSL"]
+    L5["<b>Layer 5: Session</b><br/>Host Software &bull; PDU: Data<br/>Auth, Sessions, Checkpoints"]
+    L4["<b>Layer 4: Transport</b><br/>Heart of OSI &bull; PDU: Segment<br/>TCP & UDP, Port Numbers"]
+    L3["<b>Layer 3: Network</b><br/>Media Layer &bull; PDU: Packet<br/>IP Addressing, Routing, Routers"]
+    L2["<b>Layer 2: Data Link</b><br/>Media Layer &bull; PDU: Frame<br/>MAC Addressing, Switches, CRC"]
+    L1["<b>Layer 1: Physical</b><br/>Media Layer &bull; PDU: Bits<br/>Signals, Media, Hubs, Cables"]
 
     L7 --> L6 --> L5 --> L4 --> L3 --> L2 --> L1
 ```
@@ -356,12 +356,12 @@ flowchart TD
 ## 🛠️ Network Devices by Layer
 
 ```mermaid
-flowchart TD
-    D7["L7 — Application Gateway • Reverse Proxy • WAF • Envoy"]
-    D4["L4 — Layer 4 Load Balancer • Stateful Firewall"]
-    D3["L3 — Network Router • Layer 3 Switch"]
-    D2["L2 — Network Switch • Network Bridge • NIC"]
-    D1["L1 — Hub • Repeater • Transceiver (SFP) • Cables"]
+flowchart LR
+    D7["<b>L7 Application</b><br/>App Gateway, WAF, Envoy"]
+    D4["<b>L4 Transport</b><br/>L4 Load Balancer, Firewall"]
+    D3["<b>L3 Network</b><br/>Router, Layer 3 Switch"]
+    D2["<b>L2 Data Link</b><br/>Switch, Bridge, NIC"]
+    D1["<b>L1 Physical</b><br/>Hub, Repeater, Cables"]
 
     D7 --> D4 --> D3 --> D2 --> D1
 ```
