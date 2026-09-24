@@ -238,8 +238,8 @@ flowchart TD
 
 **Addressing**
 * **Logical IP Addresses:**
-  * **IPv4:** 32-bit dotted-decimal notation (e.g., `192.168.1.1`), providing $\approx 4.3 \times 10^9$ addresses.
-  * **IPv6:** 128-bit hexadecimal notation (e.g., `2001:0db8:85a3::8a2e:0370:7334`), providing $3.4 \times 10^{38}$ addresses.
+  * **IPv4:** 32-bit dotted-decimal notation (e.g., `192.168.1.1`), providing ~4.3 billion addresses (`2^32`).
+  * **IPv6:** 128-bit hexadecimal notation (e.g., `2001:0db8:85a3::8a2e:0370:7334`), providing ~340 undecillion addresses (`2^128`).
 
 **Core Functions (What It Actually Does)**
 * **Logical Addressing:** Stamps transport segments into **Packets** with source and destination **IP addresses** (globally routable addresses).
@@ -441,7 +441,7 @@ flowchart TD
 * **Congestion Control (Network-Wide: Senders → Intermediate Routers):**
   * **Objective:** Prevents all active senders combined from overwhelming intermediate router queues and switches on the network path.
   * **Governed By:** The sender's calculated **Congestion Window (`cwnd`)**.
-  * **Effective Sending Window:** $\text{Window} = \min(\text{rwnd}, \text{cwnd})$.
+  * **Effective Sending Window:** `Effective Window = min(rwnd, cwnd)` (sender transmits only as much as the smaller limit allows).
   * **Algorithms:**
     * **Slow Start:** Exponential growth of `cwnd` per RTT until `ssthresh` (Slow Start Threshold).
     * **Congestion Avoidance:** Linear additive growth (`AIMD`) of `cwnd` per RTT once past `ssthresh`.
@@ -451,20 +451,29 @@ flowchart TD
 
 ### 4. What is a Subnet Mask and why is it essential at Layer 3?
 
-* **Definition:** A **Subnet Mask** (e.g., `255.255.255.0` or `/24` in CIDR notation) is a 32-bit bitmask that partitions an IP address into two distinct segments:
-  1. **Network ID:** Identifies the specific network or subnet segment.
-  2. **Host ID:** Identifies the unique host interface on that subnet.
+* **Definition:** A **Subnet Mask** (e.g., `255.255.255.0` or `/24` in CIDR notation) is a 32-bit bitmask that splits an IP address into two distinct parts:
+  * **Network ID:** Identifies which subnet / network segment the device belongs to.
+  * **Host ID:** Identifies the unique host interface on that subnet.
 
-* **Binary Example (`192.168.1.45 / 24`):**
-  $$\begin{aligned}
-  \text{IP Address:} & \quad \texttt{11000000 . 10101000 . 00000001 . 00101101} \quad (192.168.1.45) \\
-  \text{Subnet Mask:} & \quad \texttt{11000000 . 11111111 . 11111111 . 00000000} \quad (255.255.255.0) \\
-  \hline
-  \text{Network ID (Bitwise AND):} & \quad \texttt{11000000 . 10101000 . 00000001 . 00000000} \quad (192.168.1.0) \\
-  \text{Host ID (Host Portion):} & \quad \texttt{00000000 . 00000000 . 00000000 . 00101101} \quad (.45)
-  \end{aligned}$$
+* **Binary Bitwise AND Operation (`192.168.1.45 / 24`):**
 
-* **Why Routers Depend On It:**
-  * When a host or router prepares to send a packet, it performs a bitwise `AND` operation between the destination IP and the subnet mask.
-  * **If destination Network ID == local Network ID:** The destination is on the **same local subnet**; the host uses **Layer 2 ARP** to find the destination MAC address and transmits the frame directly.
-  * **If destination Network ID != local Network ID:** The destination is on a **remote network**; the host forwards the packet to the **Default Gateway router**, which evaluates its routing table to forward the packet across hops.
+```text
+IP Address:    192.168.1.45   -->  11000000 . 10101000 . 00000001 . 00101101
+Subnet Mask:   255.255.255.0  -->  11111111 . 11111111 . 11111111 . 00000000  (/24 = 24 ones)
+------------------------------------------------------------------------------------------------
+Bitwise AND:   192.168.1.0    -->  11000000 . 10101000 . 00000001 . 00000000  (Network ID)
+Host Portion:  .45            -->  00000000 . 00000000 . 00000000 . 00101101  (Host ID)
+```
+
+| Component | Decimal Notation | 32-Bit Binary Representation | Function |
+|:---|:---|:---|:---|
+| **IP Address** | `192.168.1.45` | `11000000 . 10101000 . 00000001 . 00101101` | Host machine's unique logical IP |
+| **Subnet Mask** | `255.255.255.0` (`/24`) | `11111111 . 11111111 . 11111111 . 00000000` | 24 Network bits (`1`s) + 8 Host bits (`0`s) |
+| **Network ID** | `192.168.1.0` | `11000000 . 10101000 . 00000001 . 00000000` | Local subnet identifier (result of bitwise `AND`) |
+| **Host ID** | `.45` | `00000000 . 00000000 . 00000000 . 00101101` | Specific device on the `192.168.1.0` subnet |
+
+* **Why Routers & Hosts Depend On It (Routing Decision in 2 Steps):**
+  * **Step 1 — Bitwise AND Check:** When sending a packet, the host does `Destination IP AND Subnet Mask` to extract the destination's Network ID.
+  * **Step 2 — Destination Routing Decision:**
+    * **Same Subnet (Local Delivery):** If `Destination Network ID == Local Network ID`, the target device is on the **same local LAN**. The host uses **ARP** (`IP → MAC`) to find the destination MAC address and transmits the frame directly via the Layer 2 switch.
+    * **Different Subnet (Remote Delivery):** If `Destination Network ID != Local Network ID`, the target device is on a **remote network or the Internet**. The host forwards the packet to its **Default Gateway router** (using the router's MAC address), which checks its routing table to forward the packet across intermediate hops.
