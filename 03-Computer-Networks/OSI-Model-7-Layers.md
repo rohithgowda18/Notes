@@ -53,25 +53,32 @@ flowchart TD
 When a host transmits data, each layer encapsulates the payload by prepending a protocol header (and appending a trailer at Layer 2). The receiving host decapsulates the headers in reverse order.
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant HostA as Sender (Host A)
-    participant L4 as Transport (L4)
-    participant L3 as Network (L3)
-    participant L2 as Data Link (L2)
-    participant L1 as Physical (L1)
-    participant HostB as Receiver (Host B)
+flowchart TD
+    subgraph Sender["Host A (Sender) — Data Encapsulation (Top-Down)"]
+        direction TB
+        E1["<b>1. Application Layer (L7)</b><br/>User Payload Data: <b>( User Data )</b>"]
+        E2["<b>2. Transport Layer (L4)</b><br/>Prepends Port Header &bull; <b>Segment = ( L4 Header + Data )</b>"]
+        E3["<b>3. Network Layer (L3)</b><br/>Prepends IP Header &bull; <b>Packet = ( L3 Header + L4 Header + Data )</b>"]
+        E4["<b>4. Data Link Layer (L2)</b><br/>Prepends MAC + Appends CRC &bull; <b>Frame = ( L2 Header + Packet + FCS Trailer )</b>"]
+        E5["<b>5. Physical Layer (L1)</b><br/>Encodes Frame into Physical Signals &bull; <b>Raw Bits: 01101001...</b>"]
+        E1 --> E2 --> E3 --> E4 --> E5
+    end
 
-    HostA->>L4: Application Data
-    Note over L4: Encapsulation: Adds L4 Port Header
-    L4->>L3: Segment = [L4 Header + Data]
-    Note over L3: Encapsulation: Adds L3 IP Header (Src/Dst IP)
-    L3->>L2: Packet = [L3 Header + Segment]
-    Note over L2: Encapsulation: Adds L2 MAC Header + FCS Trailer (CRC)
-    L2->>L1: Frame = [L2 Header + Packet + FCS Trailer]
-    Note over L1: Signal Encoding: Frame converted to Raw Bits
-    L1-->>HostB: Physical Transmission (01101001...)
-    Note over HostB: Decapsulation: Strips L1 Bits -> L2 Frame -> L3 Packet -> L4 Segment -> Data
+    subgraph Channel["Physical Transmission Media"]
+        Cable["⚡ <b>Physical Transmission Medium (Ethernet Copper / Fiber / Wi-Fi)</b><br/>Continuous Unstructured Bitstream: 01101001 01110010 01100001..."]
+    end
+
+    subgraph Receiver["Host B (Receiver) — Data Decapsulation (Bottom-Up)"]
+        direction TB
+        D5["<b>5. Physical Layer (L1)</b><br/>Receives Physical Signals &bull; Reconstructs <b>Frame Bits</b>"]
+        D4["<b>4. Data Link Layer (L2)</b><br/>Verifies CRC Checksum (FCS) &bull; Strips MAC & Trailer &bull; Extracts <b>Packet</b>"]
+        D3["<b>3. Network Layer (L3)</b><br/>Validates Destination IP &bull; Strips IP Header &bull; Extracts <b>Segment</b>"]
+        D2["<b>2. Transport Layer (L4)</b><br/>Inspects Port & Sequence &bull; Strips L4 Header &bull; Extracts <b>Data</b>"]
+        D1["<b>1. Application Layer (L7)</b><br/>Delivers Original Payload: <b>( User Data )</b> to Target Application"]
+        D5 --> D4 --> D3 --> D2 --> D1
+    end
+
+    Sender --> Channel --> Receiver
 ```
 
 ---
