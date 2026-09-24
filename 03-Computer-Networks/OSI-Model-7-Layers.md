@@ -35,21 +35,13 @@ It partitions network communications into **7 distinct, logical layers** structu
 
 ```mermaid
 flowchart TD
-    subgraph Host["Upper / Host Software Layers"]
-        L7["L7 — Application<br/>Data • HTTP, DNS, SMTP • User Services"]
-        L6["L6 — Presentation<br/>Data • Syntax Translation, Compression, Encryption"]
-        L5["L5 — Session<br/>Data • Session Management, Checkpointing, Auth"]
-    end
-
-    subgraph TransportSec["Heart of OSI"]
-        L4["L4 — Transport<br/>Segment / Datagram • TCP, UDP • Port Addressing"]
-    end
-
-    subgraph Media["Lower / Media & Hardware Layers"]
-        L3["L3 — Network<br/>Packet • IP Addressing • Routing • Routers"]
-        L2["L2 — Data Link<br/>Frame • MAC Addressing • Switches, NICs • CRC"]
-        L1["L1 — Physical<br/>Bits • Signals & Media • Hubs, Cables"]
-    end
+    L7["Layer 7 — Application (Host Software) &nbsp;•&nbsp; PDU: Data &nbsp;•&nbsp; HTTP, HTTPS, DNS, SMTP &nbsp;•&nbsp; User Network Services"]
+    L6["Layer 6 — Presentation (Host Software) &nbsp;•&nbsp; PDU: Data &nbsp;•&nbsp; Syntax Translation, Compression, TLS/SSL Encryption"]
+    L5["Layer 5 — Session (Host Software) &nbsp;•&nbsp; PDU: Data &nbsp;•&nbsp; Session Management, Auth, Dialogue Tracking, Checkpoints"]
+    L4["Layer 4 — Transport (Heart of OSI) &nbsp;•&nbsp; PDU: Segment / Datagram &nbsp;•&nbsp; TCP & UDP, Port Addressing, Flow & Congestion Control"]
+    L3["Layer 3 — Network (Media / Hardware) &nbsp;•&nbsp; PDU: Packet &nbsp;•&nbsp; Logical IP Addressing, Routing Protocols, Subnetting &nbsp;•&nbsp; Routers"]
+    L2["Layer 2 — Data Link (Media / Hardware) &nbsp;•&nbsp; PDU: Frame &nbsp;•&nbsp; Physical MAC Addressing, Framing, CSMA/CD, CRC-32 (FCS) &nbsp;•&nbsp; Switches"]
+    L1["Layer 1 — Physical (Media / Hardware) &nbsp;•&nbsp; PDU: Bits &nbsp;•&nbsp; Signal Encoding (Voltage, Light, RF), Media & Topologies &nbsp;•&nbsp; Hubs, Cables"]
 
     L7 --> L6 --> L5 --> L4 --> L3 --> L2 --> L1
 ```
