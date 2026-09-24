@@ -90,62 +90,61 @@ flowchart TD
 ### Layer 7: Application Layer
 
 **Primary Role**
-* Serves as the direct interface between user software applications and network services.
-* Does **not** represent the end-user GUI application itself (e.g., Chrome, Outlook), but rather the **application-level network protocols** invoked by that software.
+* Serves as the direct window for user software applications to access network services.
+* Does **not** refer to the GUI application itself (e.g., Chrome, Outlook), but to the **network communication protocols** those applications invoke.
 
 **Protocol Data Unit (PDU)**
 * **Data**
 
 **Addressing**
-* Service Name / URL / Fully Qualified Domain Name (FQDN) mapped to port numbers.
+* Service Name / URL / Fully Qualified Domain Name (FQDN) mapped to port numbers (e.g., `https://google.com` → Port 443).
 
 **Core Functions**
-* **Application Service Interface:** Provides standardized network APIs for file exchange, web access, and messaging.
-* **Resource Identification & Location:** Identifies remote communication partners and validates service availability.
-* **User Authentication:** Validates user identity and application credentials at the entry gateway.
+* **Application Interface:** Provides standard APIs for applications to exchange data across the network.
+* **Service Identification:** Identifies remote communication endpoints and verifies if network services are reachable.
+* **User Authentication:** Validates user identity and application credentials at the application gateway.
 
-**Key Protocols & Port Numbers**
-* **HTTP (Port 80) / HTTPS (Port 443):** Web communication and stateless REST API transport over TLS.
-* **DNS (Port 53):** Resolves human-readable domain names into machine-routable IP addresses (UDP for queries, TCP for zone transfers).
-* **FTP (Port 20 / 21):** Client-server file transfer (Port 21 for control/commands, Port 20 for data).
-* **SMTP (Port 25 / 587):** Push protocol for outgoing email transfer between Mail Transfer Agents (MTAs).
-* **IMAP (Port 143 / 993) / POP3 (Port 110 / 995):** Pull protocols for retrieving stored email messages from remote mail servers.
-* **SSH (Port 22):** Encrypted cryptographic protocol for remote terminal administration and secure file copy (SFTP/SCP).
-* **DHCP (Port 67 / 68):** Automated client configuration protocol dynamically assigning IP addresses, subnet masks, and default gateways.
+**Key Protocols (What They Actually Do)**
+* **HTTP (Port 80) / HTTPS (Port 443):** Transfers web pages and REST API payloads (**HTTPS = HTTP + TLS/SSL encryption**).
+* **DNS (Port 53):** Resolves human-readable domain names into IP addresses (**Domain → IP**, e.g., `google.com` → `142.250.190.46`). Uses UDP for quick lookups, TCP for large zone transfers.
+* **FTP (Port 20 / 21):** Client-server file transfer (**Port 21 = Commands/Control**, **Port 20 = Data transfer**).
+* **SMTP (Port 25 / 587):** **Pushes / sends** outgoing emails from clients to mail servers, and between mail servers.
+* **IMAP (Port 143 / 993) / POP3 (Port 110 / 995):** **Pulls / retrieves** emails from a mail server (**IMAP syncs across multiple devices**, **POP3 downloads and deletes locally**).
+* **SSH (Port 22):** Secure, encrypted remote terminal login and command execution (**Encrypted replacement for insecure Telnet**).
+* **DHCP (Port 67 / 68):** Automatically assigns IP addresses, subnet masks, and default gateways to devices joining a network (**Automates network setup**).
 
 **Key Devices**
-* **Application Gateways**, **Web Application Firewalls (WAF)**, and **Reverse Proxies** (NGINX, Envoy).
+* **Application Gateways**, **Web Application Firewalls (WAF)**, and **Reverse Proxies / Load Balancers** (NGINX, Envoy).
 
 ---
 
 ### Layer 6: Presentation Layer
 
 **Primary Role**
-* Standardizes, serializes, and formats data syntax between disparate operating systems.
-* Ensures application data sent from one host is completely interpretable by the receiving host's application layer.
+* Standardizes, formats, serializes, and prepares data syntax so that both sender and receiver operating systems understand the payload.
 
 **Protocol Data Unit (PDU)**
 * **Data**
 
 **Addressing**
-* Data format schemas, MIME types, character encoding schemes.
+* MIME Types, data format schemas (e.g., `application/json`, `text/html`), character encoding headers.
 
-**Core Functions**
-* **Data Translation & Formatting:** Translates between different character encodings and machine formats (e.g., **ASCII to EBCDIC**, **Unicode / UTF-8**, and host endianness to **Big-Endian Network Byte Order**).
-* **Data Compression:** Minimizes payload byte sizes to optimize bandwidth utilization and lower latency (e.g., **gzip**, **Brotli**, **zlib**, **JPEG**, **MP4**).
-* **Encryption & Decryption:** Manages cryptographic transformations for confidentiality, integrity, and non-repudiation (e.g., **TLS/SSL cryptographic negotiation**, **AES-256**, **RSA/ECC key exchange**).
+**Core Functions (What It Actually Does)**
+* **Translation (Data Formatting):** Converts data between different system encodings so different operating systems can communicate (**ASCII ↔ EBCDIC**, **Unicode / UTF-8**, **Host Byte Order ↔ Big-Endian Network Byte Order**).
+* **Data Compression (Bandwidth Savings):** Reduces raw payload size to optimize bandwidth usage and speed up transfers (**gzip**, **Brotli**, **JPEG**, **MP4**).
+* **Encryption & Decryption (Security):** Encrypts outgoing data at the sender for confidentiality and decrypts incoming data at the receiver (**SSL / TLS**, **AES-256**, **RSA / ECC**).
 
 **Key Standards & Formats**
-* **Text / Serialized Data:** JSON, XML, Protocol Buffers (Protobuf), ASN.1.
+* **Data Serialization:** JSON, XML, Protocol Buffers (Protobuf), ASN.1.
 * **Media Formats:** JPEG, PNG, MP4, H.264, MP3.
-* **Security Standards:** TLS 1.3 / SSL, X.509 Digital Certificates.
+* **Security Standards:** TLS 1.3, SSL, X.509 Digital Certificates.
 
 ---
 
 ### Layer 5: Session Layer
 
 **Primary Role**
-* Establishes, maintains, coordinates, and terminates dialogues (sessions) between communicating applications.
+* Establishes, maintains, coordinates, and terminates communication dialogues (sessions) between two communicating systems.
 
 **Protocol Data Unit (PDU)**
 * **Data**
@@ -153,20 +152,20 @@ flowchart TD
 **Addressing**
 * Session IDs, Connection Tokens, RPC channel descriptors.
 
-**Core Functions**
-* **Session Establishment & Teardown:** Manages the full lifecycle of a logical communication session between endpoints.
-* **Authentication & Authorization:** Validates user identity and session permissions prior to accepting ongoing data streams.
-* **Session Tracking & Dialogue Separation:** Isolates data streams belonging to different concurrent application threads, preventing packet crossover.
-* **Dialogue Control:** Regulates conversation directionality:
-  * **Simplex:** One-way communication only (e.g., sensor telemetry).
-  * **Half-Duplex:** Two-way communication, but only one party transmits at a time (e.g., walkie-talkie).
-  * **Full-Duplex:** Simultaneous bidirectional communication (e.g., telephone call).
-* **Synchronization & Checkpointing (Recovery):** Injects checkpoints into long data streams; if a transmission drops, transfer resumes from the last confirmed checkpoint rather than restarting from byte zero.
+**Core Functions (What It Actually Does)**
+* **Session Lifecycle:** Opens, maintains, and cleanly closes communication sessions between two endpoints.
+* **Authentication & Authorization:** Checks who you are (**Authentication**) and what permissions you have (**Authorization**) before accepting ongoing data streams.
+* **Dialogue Separation & Tracking:** Keeps data streams of concurrent applications isolated so packets from different browser tabs or programs never get mixed up.
+* **Dialogue Modes (Directionality):**
+  * **Simplex:** One-way transmission only (e.g., sensor telemetry, broadcast TV).
+  * **Half-Duplex:** Two-way transmission, but only one party transmits at a time (e.g., walkie-talkie).
+  * **Full-Duplex:** Simultaneous two-way transmission (e.g., telephone call, modern switched Ethernet).
+* **Checkpoints & Recovery (Synchronization):** Inserts recovery markers into long data streams; if the network drops mid-flight (e.g., an 800 MB file drops at 650 MB), the transfer **resumes from the last confirmed checkpoint** instead of restarting from 0%.
 
 **Representative Technologies & Protocols**
-* **RPC (Remote Procedure Call):** Executes procedures across separate address spaces.
-* **NetBIOS:** Network Basic Input/Output System session management in legacy Windows environments.
-* **PPTP (Point-to-Point Tunneling Protocol):** VPN tunnel management.
+* **RPC (Remote Procedure Call):** Invokes functions on a remote server as if calling them locally.
+* **NetBIOS:** Session management in legacy Windows networks.
+* **PPTP (Point-to-Point Tunneling Protocol):** Manages VPN tunnel connections.
 * **SOCKS5:** Proxy protocol facilitating secure client-server socket handshakes.
 
 ---
@@ -174,23 +173,23 @@ flowchart TD
 ### Layer 4: Transport Layer
 
 **Primary Role**
-* Manages **end-to-end communication**, **process-to-process multiplexing**, **segmentation**, and **transmission reliability** between host applications.
+* Manages **end-to-end communication**, **process-to-process delivery**, **segmentation**, and **transmission reliability** between host applications.
 
 **Protocol Data Unit (PDU)**
 * **Segment** (TCP) / **Datagram** (UDP)
 
 **Addressing**
 * **Port Numbers** (16-bit unsigned integers: `0` to `65535`):
-  * **Well-Known Ports:** `0 – 1023` (HTTP 80, HTTPS 443, SSH 22).
-  * **Registered Ports:** `1024 – 49151` (MySQL 3306, PostgreSQL 5432).
-  * **Dynamic / Ephemeral Ports:** `49152 – 65535` (client source ports assigned by OS).
+  * **Well-Known Ports (`0 – 1023`):** Reserved for standard system services (HTTP 80, HTTPS 443, SSH 22, DNS 53).
+  * **Registered Ports (`1024 – 49151`):** User processes and third-party apps (MySQL 3306, PostgreSQL 5432, Redis 6379).
+  * **Dynamic / Ephemeral Ports (`49152 – 65535`):** Temporary client source ports assigned dynamically by the host OS.
 
-**Core Functions**
-* **Process-to-Process Multiplexing & Demultiplexing:** Uses source and destination port numbers combined with IP addresses (forming a **Socket: `IP:Port`**) to direct incoming packets to the exact target process.
-* **Segmentation & Reassembly:** Splits large application data blocks into smaller segments conforming to the network **Maximum Transmission Unit (MTU)**; assigns sequence numbers so the receiver can reconstruct the stream in exact order.
-* **Flow Control (End-to-End):** Implements dynamic sliding-window mechanisms (e.g., **TCP Sliding Window**) to match transmission speed to receiver buffer capacity, preventing receiver buffer overflow.
-* **Error Control & Reliability:** Uses 16-bit **checksums** for corruption detection and **Automatic Repeat Request (ARQ)** for selective or cumulative retransmission of dropped segments.
-* **Congestion Control (Network-Wide):** Dynamically adjusts sending rates to prevent overloading intermediate network routers and switches (e.g., Slow Start, Congestion Avoidance, Fast Retransmit, Fast Recovery).
+**Core Functions (What It Actually Does)**
+* **Process-to-Process Delivery (Multiplexing / Demultiplexing):** Uses **Port Numbers** combined with IP addresses (**Socket = `IP:Port`**) to direct incoming packets to the exact running program/process.
+* **Segmentation & Reassembly:** Slices large application data into smaller **Segments** stamped with **sequence numbers** at the sender, and reassembles them in exact order at the receiver.
+* **Flow Control (Sender → Receiver):** Prevents a fast sender from overflowing a slower receiver's internal buffer (**TCP Sliding Window / `rwnd`**).
+* **Error Control (Reliability):** Uses 16-bit **checksums** to detect corrupted packets and **ARQ (Automatic Repeat Request)** to automatically retransmit missing or damaged segments.
+* **Congestion Control (Senders → Network Routers):** Dynamically throttles sending speed to prevent intermediate network routers and switches from getting choked with traffic (**`cwnd`**, **Slow Start**, **AIMD**).
 
 **Core Protocols: TCP vs. UDP**
 
@@ -213,18 +212,19 @@ flowchart TD
 ```
 
 * **TCP (Transmission Control Protocol):**
-  * **Connection-Oriented:** Requires a **3-Way Handshake (SYN → SYN-ACK → ACK)** before data transfer and a **4-Way Handshake (FIN → ACK → FIN → ACK)** for clean termination.
-  * **Reliable:** Guarantees delivery via positive ACKs and retransmissions.
-  * **Ordered:** Sequence numbers guarantee packets are reassembled in original order.
-  * **Use Cases:** Web (HTTP/HTTPS), File Transfer (FTP), Email (SMTP), Remote Login (SSH).
+  * **Connection-Oriented:** Establishes connection via **3-Way Handshake (SYN → SYN-ACK → ACK)** before sending data; terminates cleanly via **4-Way Handshake (FIN → ACK → FIN → ACK)**.
+  * **Reliable:** Guarantees delivery via acknowledgments (ACKs) and automatic retransmissions.
+  * **In-Order Delivery:** Uses sequence numbers so out-of-order packets are reordered correctly.
+  * **Flow & Congestion Controlled:** Dynamically adapts transmission rate to network and receiver limits.
+  * **Best For:** Web browsing (HTTP/HTTPS), file transfers (FTP), email (SMTP), remote shells (SSH).
 * **UDP (User Datagram Protocol):**
-  * **Connectionless:** No handshake, no state maintenance, zero connection overhead.
-  * **Unreliable / Best-Effort:** No retransmission, no sequence numbers, no flow or congestion control.
-  * **Low Latency & High Speed:** 8-byte fixed header (versus TCP's 20–60 byte header).
-  * **Use Cases:** DNS lookups, VoIP, Live Video Streaming (RTP/WebRTC), Online Multiplayer Gaming.
+  * **Connectionless:** No handshake, no session state, zero startup latency.
+  * **Unreliable / Best-Effort:** No ACKs, no retransmissions, no packet ordering.
+  * **Lightweight & Fast:** Minimal 8-byte fixed header (versus TCP's 20–60 byte header).
+  * **Best For:** Real-time applications where speed beats reliability: DNS queries, VoIP calls, live video streaming (RTP), online multiplayer gaming.
 
 **Key Devices**
-* **Layer 4 Load Balancers** (HAProxy in TCP mode, AWS NLB), **Stateful Packet Inspection Firewalls**.
+* **Layer 4 Load Balancers** (HAProxy in TCP mode, AWS Network Load Balancer), **Stateful Firewalls**.
 
 ---
 
@@ -241,57 +241,61 @@ flowchart TD
   * **IPv4:** 32-bit dotted-decimal notation (e.g., `192.168.1.1`), providing $\approx 4.3 \times 10^9$ addresses.
   * **IPv6:** 128-bit hexadecimal notation (e.g., `2001:0db8:85a3::8a2e:0370:7334`), providing $3.4 \times 10^{38}$ addresses.
 
-**Core Functions**
-* **Logical Addressing:** Encapsulates transport segments into Packets, stamping source and destination IP addresses.
-* **Routing:** Evaluates network topology via routing protocols to compute the optimal, lowest-cost forwarding path across autonomous systems.
-* **Packet Forwarding:** Inspects the destination IP of incoming packets and matches it against a local **Routing Table** to forward the packet out the appropriate egress interface.
-* **Subnetting & Network Segmentation:** Divides contiguous networks into smaller, isolated logical subnets using **subnet masks** (e.g., `255.255.255.0` or `/24` in CIDR notation).
-* **Packet Fragmentation & Reassembly:** Splits oversized packets exceeding the egress link's **Maximum Transmission Unit (MTU)** (typically 1500 bytes for standard Ethernet); includes Fragment Offset and Flags (`DF` - Don't Fragment, `MF` - More Fragments).
+**Core Functions (What It Actually Does)**
+* **Logical Addressing:** Stamps transport segments into **Packets** with source and destination **IP addresses** (globally routable addresses).
+* **Routing:** Evaluates network topology via routing protocols to calculate the best, lowest-cost end-to-end path across intermediate routers.
+* **Packet Forwarding:** Reads a packet's destination IP, checks the local **Routing Table**, and forwards it out the appropriate network interface.
+* **Subnetting:** Splits a large network into smaller logical subnets using a **Subnet Mask** (e.g., `255.255.255.0` or `/24` in CIDR notation) to isolate broadcast traffic and conserve IP space.
+* **Fragmentation & Reassembly:** Slices oversized packets exceeding the egress link's **Maximum Transmission Unit (MTU)** (typically 1500 bytes for standard Ethernet) into smaller fragments, and reassembles them at the destination host.
 
-**Key Protocols**
-* **Routed Protocols:** **IPv4**, **IPv6**.
-* **Control & Diagnostics:** **ICMP** (Internet Control Message Protocol: `ping`, `traceroute`), **IGMP** (multicast group management).
-* **Routing Protocols (Interior):** **OSPF** (Open Shortest Path First - link-state), **RIP** (Routing Information Protocol - distance-vector), **EIGRP**.
-* **Routing Protocols (Exterior):** **BGP** (Border Gateway Protocol - path-vector protocol powering Internet inter-AS routing).
-* **Address Resolution:** **ARP** (Address Resolution Protocol: resolves IPv4 address to Layer 2 MAC address), **RARP** (Reverse ARP).
-* **Security:** **IPsec** (Authentication Header `AH`, Encapsulating Security Payload `ESP`).
+**Key Protocols (What They Actually Do)**
+* **IPv4 / IPv6:** Core routed protocols that encapsulate data and deliver packets across the Internet.
+* **ICMP (Internet Control Message Protocol):** Network diagnostic tool for error reporting and connectivity checks:
+  * **`ping`:** Uses ICMP Echo Request / Echo Reply to verify host reachability and round-trip time.
+  * **`traceroute`:** Uses ICMP Time Exceeded (TTL expiration) to trace every router hop along a path.
+* **IGMP (Internet Group Management Protocol):** Manages multicast group memberships (allows one sender to broadcast audio/video to multiple subscribers simultaneously).
+* **ARP (Address Resolution Protocol):** Resolves an IP address to a physical MAC address (**IP → MAC**).
+* **RARP (Reverse ARP):** Resolves a physical MAC address to an IP address (**MAC → IP**).
+* **OSPF (Open Shortest Path First):** Interior routing protocol that finds the shortest path within an organization using Dijkstra's Link-State algorithm.
+* **BGP (Border Gateway Protocol):** Exterior routing protocol that connects independent Internet Service Providers (ASes) and routes traffic across the global Internet.
+* **IPsec:** Secures IP communications via authentication (**AH**) and payload encryption (**ESP**).
 
 **Key Devices**
-* **Routers**, **Layer 3 Switches**, **BGP Edge Gateways**.
+* **Network Routers**, **Layer 3 Switches**, **BGP Edge Gateways**.
 
 ---
 
 ### Layer 2: Data Link Layer
 
 **Primary Role**
-* Guarantees error-free, hop-by-hop **node-to-node frame delivery** across the immediate **local network segment (LAN)** over physical communication media.
+* Handles error-free, hop-by-hop **node-to-node frame delivery** across the immediate **local network segment (LAN)** over physical communication links.
 
 **Protocol Data Unit (PDU)**
 * **Frame**
 
 **Addressing**
-* **Physical MAC Addresses (Media Access Control):** 48-bit hexadecimal hardware identifier permanently burned into the Network Interface Card (NIC) by the manufacturer (e.g., `00:1A:2B:3C:4D:5E`):
+* **Physical MAC Addresses (Media Access Control):** 48-bit hexadecimal hardware identifier permanently burned into the Network Interface Card (NIC) (e.g., `00:1A:2B:3C:4D:5E`):
   * **First 24 bits:** Organizationally Unique Identifier (OUI, vendor code assigned by IEEE).
-  * **Last 24 bits:** Device-specific Network Interface Controller serial number.
+  * **Last 24 bits:** Unique device serial number assigned by the hardware manufacturer.
 
 **Sub-layers**
 1. **LLC (Logical Link Control - IEEE 802.2):**
-   * Acts as the interface between the hardware MAC sub-layer and the software Network layer.
-   * Manages flow control, frame synchronization, and protocol multiplexing (EtherType field).
+   * Acts as the bridge between hardware MAC addressing and upper-layer Network protocols.
+   * Handles protocol multiplexing via the EtherType field (identifies whether the payload is IPv4, IPv6, or ARP).
 2. **MAC (Media Access Control - IEEE 802.3 / 802.11):**
-   * Regulates physical access to the transmission medium.
-   * Handles physical addressing, frame delimiting, and collision detection/avoidance.
+   * Regulates physical access to the transmission medium and controls channel access to avoid collisions.
 
-**Core Functions**
-* **Framing:** Encapsulates network layer IP packets into discrete frames by adding a **Frame Header** (Preamble, Source/Dest MAC, EtherType) and a **Frame Trailer**.
-* **Media Access Regulation:** Manages access to shared transmission channels to prevent and resolve packet collisions:
-  * **CSMA/CD (Carrier Sense Multiple Access with Collision Detection):** Used in legacy half-duplex Ethernet; aborts transmission upon collision and waits a random backoff time.
-  * **CSMA/CA (Carrier Sense Multiple Access with Collision Avoidance):** Used in 802.11 Wi-Fi networks; utilizes RTS/CTS handshakes before transmission to avoid collisions.
-* **Error Detection:** Appends a 4-byte **Frame Check Sequence (FCS)** trailer computed using **Cyclic Redundancy Check (CRC-32)**; if a mathematical mismatch occurs upon reception, the corrupted frame is **silently dropped** (retransmission is left to Layer 4 TCP).
-* **VLAN Tagging:** Inserts **IEEE 802.1Q tags** into Ethernet frames for virtual LAN isolation.
+**Core Functions (What It Actually Does)**
+* **Framing:** Wraps network layer IP packets into **Frames** by adding a **Frame Header** (Preamble, Source MAC, Destination MAC, EtherType) and an **FCS Trailer**.
+* **Physical Addressing:** Uses local **MAC addresses** to forward frames directly from one device interface to the next hop on the local subnet.
+* **Media Access Control (Collision Management on Shared Channels):**
+  * **CSMA/CD (Carrier Sense Multiple Access with Collision Detection):** Listens before transmitting; if two devices transmit at the same time and a collision occurs, both stop, send a jam signal, and wait a random exponential backoff time before retrying (**Used in wired half-duplex Ethernet**).
+  * **CSMA/CA (Carrier Sense Multiple Access with Collision Avoidance):** Listens before transmitting and uses RTS/CTS (Request to Send / Clear to Send) handshakes to prevent collisions before they can happen (**Used in 802.11 Wi-Fi**).
+* **Error Detection (CRC / FCS):** Calculates a 32-bit **Cyclic Redundancy Check (CRC)** stored in the **Frame Check Sequence (FCS)** trailer. If physical noise corrupts any bit during transit, the receiver's CRC recalculation fails and the frame is **silently discarded** (Layer 4 TCP handles retransmission).
+* **VLAN Tagging (IEEE 802.1Q):** Inserts a 4-byte VLAN tag into Ethernet frames to logically partition a single physical switch into multiple isolated virtual LANs.
 
 **Key Protocols**
-* **Ethernet (IEEE 802.3)**, **Wi-Fi (IEEE 802.11)**, **Point-to-Point Protocol (PPP)**, **HDLC**, **Frame Relay**, **Spanning Tree Protocol (STP / RSTP - IEEE 802.1D/w)**.
+* **Ethernet (IEEE 802.3)**, **Wi-Fi (IEEE 802.11)**, **Point-to-Point Protocol (PPP)**, **Spanning Tree Protocol (STP - IEEE 802.1D)** (prevents bridge loops on redundant switch paths).
 
 **Key Devices**
 * **Layer 2 Network Switches**, **Network Bridges**, **Network Interface Cards (NICs)**.
@@ -307,31 +311,31 @@ flowchart TD
 * **Bits**
 
 **Addressing**
-* None (operates purely on physical electrical, optical, and radio signals).
+* None (operates purely at the physical signal and hardware level).
 
-**Core Functions**
-* **Signal Encoding & Modulation:** Converts digital bits into physical phenomena:
-  * **Electrical Voltage Pulses:** Across copper wires (e.g., Manchester encoding, PAM-4).
-  * **Optical Light Pulses:** Across fiber-optic strands (e.g., laser pulses, LED modulations).
-  * **Modulated Radio Frequency (RF) Waves:** Across air (e.g., QAM, OFDM, spread spectrum).
-* **Bit Synchronization:** Synchronizes sender and receiver internal oscillator clocks using preambles to ensure correct bit boundary sampling.
-* **Data Transmission Rates:** Defines bit rate, baud rate, and signal bandwidth (e.g., 100 Mbps Fast Ethernet, 1 Gbps Gigabit Ethernet, 10/40/100 Gbps).
-* **Physical Topologies:** Dictates how network nodes are physically wired together:
-  * **Star Topology:** Nodes connect to a central switch/hub (modern standard).
-  * **Mesh Topology:** Redundant interconnects between all critical nodes.
-  * **Bus & Ring Topologies:** Shared linear or circular media (legacy).
+**Core Functions (What It Actually Does)**
+* **Signal Encoding (Bits → Physical Signals):** Converts digital 1s and 0s into physical phenomena:
+  * **Electrical Voltage Pulses:** Across copper Ethernet cables (e.g., Manchester encoding, PAM-4).
+  * **Light Pulses:** Across fiber-optic glass cables (e.g., laser / LED pulses).
+  * **Radio Frequency (RF) Waves:** Across wireless air (e.g., 2.4 GHz, 5 GHz, 6 GHz Wi-Fi frequencies).
+* **Bit Synchronization:** Synchronizes sender and receiver internal oscillator clocks using preambles so bits are sampled at the exact right microsecond intervals.
+* **Data Transmission Rates:** Determines transmission speed (**bit/baud rate**) and physical bandwidth (e.g., 100 Mbps Fast Ethernet, 1 Gbps Gigabit Ethernet, 10/40/100 Gbps).
+* **Physical Network Topologies:** Dictates how cables physically connect nodes:
+  * **Star Topology:** All devices connect to a central switch/hub (modern standard; single link failure doesn't affect others).
+  * **Mesh Topology:** Redundant direct links between critical nodes (highest fault tolerance).
+  * **Bus & Ring Topologies:** Shared linear cable or circular loop (legacy; break in cable brings down entire network).
 * **Transmission Duplex Modes:**
-  * **Simplex:** Unidirectional data transmission (e.g., broadcast television).
-  * **Half-Duplex:** Bidirectional, but alternating one party at a time (e.g., legacy hub Ethernet).
-  * **Full-Duplex:** Simultaneous bidirectional transmission (e.g., modern switched Ethernet with dedicated transmit/receive pairs).
+  * **Simplex:** One-way only (e.g., TV / radio broadcast).
+  * **Half-Duplex:** Two-way, but alternating one party at a time (e.g., walkie-talkie, legacy hub Ethernet).
+  * **Full-Duplex:** Simultaneous bidirectional transmission (e.g., modern switched Ethernet with dedicated transmit and receive wire pairs).
 
 **Physical Transmission Media**
 * **Twisted-Pair Copper Cables:** Cat5e (1 Gbps), Cat6 (10 Gbps up to 55m), Cat6a (10 Gbps up to 100m), Cat8 (40 Gbps) terminated with **RJ-45 connectors**.
-* **Fiber-Optic Cables:** Single-Mode Fiber (SMF - long-distance high-bandwidth laser) and Multi-Mode Fiber (MMF - short-distance LED) terminated with **LC / SC connectors**.
-* **Wireless RF Bands:** 2.4 GHz, 5 GHz, and 6 GHz spectrum allocations.
+* **Fiber-Optic Cables:** Single-Mode Fiber (SMF - long-distance laser transmission) and Multi-Mode Fiber (MMF - short-distance LED transmission) terminated with **LC / SC connectors**.
+* **Wireless RF Spectra:** 2.4 GHz (longer range, more interference), 5 GHz (higher speed, less range), 6 GHz (Wi-Fi 6E/7 wide channels).
 
 **Key Hardware**
-* **Network Hubs**, **Signal Repeaters**, **Modems**, **Optical Transceivers (SFP / SFP+ / QSFP)**, **Patch Panels**, and **Physical Cabling**.
+* **Network Hubs** (multiport repeaters that broadcast incoming bits to all ports), **Signal Repeaters** (amplify signals over long distances), **Modems**, **Optical Transceivers (SFP / SFP+)**, and **Cables**.
 
 ---
 
@@ -370,17 +374,17 @@ flowchart TD
 
 * **Layer 2 Switch:**
   * **Operates on:** **Frames**.
-  * **Addressing:** Physical **MAC addresses**.
-  * **Mechanism:** Maintains a **MAC Address Table (CAM Table)** mapping MAC addresses to physical switch ports.
-  * **Scope:** Forwards traffic exclusively within the **same local subnet or VLAN**. Floods broadcasts (FF:FF:FF:FF:FF:FF) to all ports.
-  * **Does NOT:** Inspect or understand IP addresses.
+  * **Addressing:** Physical **MAC addresses** (48-bit).
+  * **Mechanism:** Maintains a **MAC Address Table (CAM Table)** mapping device MAC addresses to physical switch ports.
+  * **Scope:** Forwards traffic exclusively within the **same local subnet or VLAN**. Floods unknown unicasts and broadcasts (`FF:FF:FF:FF:FF:FF`) to all ports.
+  * **Does NOT:** Understand or inspect IP addresses.
 
 * **Layer 3 Router (or Layer 3 Switch):**
   * **Operates on:** **Packets**.
-  * **Addressing:** Logical **IP addresses**.
+  * **Addressing:** Logical **IP addresses** (32-bit IPv4 / 128-bit IPv6).
   * **Mechanism:** Maintains a **Routing Table** populated by routing protocols (OSPF, BGP).
   * **Scope:** Forwards traffic across **different subnets and independent networks**.
-  * **Key Behavior:** Strips the incoming Layer 2 frame header/trailer, decrements the IP **TTL (Time to Live)**, re-encapsulates the packet into a new Layer 2 frame with the next-hop MAC, and transmits it.
+  * **Key Behavior:** Strips the incoming Layer 2 frame header/trailer, decrements the IP **TTL (Time to Live)**, re-encapsulates the packet into a brand new Layer 2 frame with the next-hop MAC, and transmits it.
 
 ---
 
@@ -420,10 +424,10 @@ flowchart TD
     O1 -.-> T1
 ```
 
-* **Application Layer (TCP/IP):** Combines OSI **Layers 7, 6, and 5** (HTTP, DNS, TLS, and session handling are all implemented directly in user-space applications or application-level runtimes).
+* **Application Layer (TCP/IP):** Combines OSI **Layers 7, 6, and 5** (HTTP, DNS, TLS encryption, and session handling are all implemented directly in user-space software and application runtimes).
 * **Transport Layer (TCP/IP):** Directly maps to OSI **Layer 4** (TCP, UDP).
 * **Internet Layer (TCP/IP):** Directly maps to OSI **Layer 3** (IP, ICMP, ARP).
-* **Network Access / Link Layer (TCP/IP):** Combines OSI **Layers 2 and 1** (Ethernet hardware, MAC framing, physical cables).
+* **Network Access / Link Layer (TCP/IP):** Combines OSI **Layers 2 and 1** (Ethernet framing, MAC addressing, network cables, physical bit signaling).
 
 ---
 
@@ -432,16 +436,16 @@ flowchart TD
 * **Flow Control (End-to-End: Sender → Receiver):**
   * **Objective:** Prevents a high-speed sender from overflowing a slower receiver's internal buffer.
   * **Governed By:** The receiver's advertised **Receive Window (`rwnd`)** in the TCP header.
-  * **Mechanism:** Receiver notifies sender of available buffer space; when `rwnd = 0`, sender halts transmission until a window update arrives.
+  * **Mechanism:** Receiver tells sender how much free buffer space it has; when `rwnd = 0`, the sender stops transmitting until buffer space frees up.
 
 * **Congestion Control (Network-Wide: Senders → Intermediate Routers):**
   * **Objective:** Prevents all active senders combined from overwhelming intermediate router queues and switches on the network path.
   * **Governed By:** The sender's calculated **Congestion Window (`cwnd`)**.
-  * **Effective Window:** $\text{Window} = \min(\text{rwnd}, \text{cwnd})$.
+  * **Effective Sending Window:** $\text{Window} = \min(\text{rwnd}, \text{cwnd})$.
   * **Algorithms:**
     * **Slow Start:** Exponential growth of `cwnd` per RTT until `ssthresh` (Slow Start Threshold).
     * **Congestion Avoidance:** Linear additive growth (`AIMD`) of `cwnd` per RTT once past `ssthresh`.
-    * **Fast Retransmit & Fast Recovery:** Triggered by 3 duplicate ACKs; halves `cwnd` and retransmits missing segment without waiting for full RTO timeout.
+    * **Fast Retransmit & Fast Recovery:** Triggered by 3 duplicate ACKs; halves `cwnd` and immediately retransmits the missing segment without waiting for the full RTO timeout.
 
 ---
 
