@@ -1,68 +1,72 @@
 # 🏛️ System Architecture Diagrams — Projects
 
-This document contains detailed end-to-end system architecture blueprints for **Video-Mind AI (YT_ChatBot)** and **Drive Verify (Vehicle Registration & Fraud Verification Platform)**.
+This document contains detailed end-to-end system architecture blueprints for:
+1. 🚀 **Career OS** — Distributed Cloud-Native Microservices Architecture
+2. 🚗 **Drive Verify** — Vehicle Registration & Fraud Verification Architecture
+3. 🤖 **Video-Mind AI (YT_ChatBot)** — RAG YouTube Intelligence Architecture
 
 ---
 
-## 1. 🤖 Video-Mind AI (YT_ChatBot) — RAG System Architecture
+## 1. 🚀 Career OS — Distributed Cloud-Native Microservices Architecture
 
-> **Stack:** React 19 • TypeScript • Vite • FastAPI • LangChain LCEL • HuggingFace all-MiniLM-L6-v2 • FAISS • Google Gemini 2.5 Flash
+> **Stack:** React 19 • TypeScript • Vite • Spring Boot 3.3 • Spring Cloud Gateway • Netflix Eureka • PostgreSQL 15 • Google Gemini 2.5 Flash
 
 ```mermaid
 flowchart TD
-    %% Client Tier
-    subgraph ClientTier ["Client Tier (Frontend)"]
-        Client["Web Client<br/>React 19 &bull; TypeScript &bull; Vite<br/>TailwindCSS &bull; Lucide &bull; Mermaid.js"]
+    %% Client Layer
+    subgraph ClientLayer ["Client Layer (Frontend)"]
+        Client["React 19 SPA<br/>(TypeScript, Vite, TanStack Query)<br/>Port: 5173"]
     end
 
-    %% Backend Service Tier
-    subgraph BackendTier ["Backend Application Service"]
-        API["API Layer & Validation<br/>FastAPI &bull; Uvicorn<br/>Pydantic v2 Schemas &bull; CORS Middleware"]
-
-        RAG["RAG Orchestration Engine<br/>LangChain LCEL<br/>Custom Rolling-Window Chunker"]
-
-        Embed["Local Embedding Model<br/>HuggingFace all-MiniLM-L6-v2<br/>(384-dimensional Dense Vectors)"]
+    %% Ingress & Discovery
+    subgraph IngressLayer ["Ingress & Routing Layer"]
+        Gateway["API Gateway<br/>(Spring Cloud Gateway, WebFlux)<br/>Port: 8080"]
+        
+        Eureka["Service Discovery<br/>(Netflix Eureka Server)<br/>Port: 8761"]
     end
 
-    %% Local Vector Storage Tier
-    subgraph StorageTier ["Storage Tier (Persistent Vector Store)"]
-        FAISS[("Local FAISS Store<br/>faiss_indexes/{video_id}/<br/>index.faiss (Vectors) + index.pkl (Docstore)")]
+    %% Microservices Mesh
+    subgraph ServiceMesh ["Microservices Layer"]
+        Auth["Auth Service<br/>(Spring Boot, Spring Security, JJWT)<br/>Port: 8081"]
+
+        Backend["Core Backend Service<br/>(Spring Boot, Spring Data JPA, Hibernate)<br/>Port: 8085"]
+
+        AI["AI Extraction Service<br/>(Spring Boot, Java 11 HttpClient)<br/>Port: 8082"]
     end
 
-    %% External Services Tier
-    subgraph ExternalTier ["External Services & Third-Party APIs"]
-        YT_API["YouTube Data Services<br/>YouTube Transcript API & oEmbed<br/>(Captions, Timestamps & Video Info)"]
-
-        Gemini["LLM Service<br/>Google Gemini 2.5 Flash<br/>(Grounded Q&A, Summary, MindMap, Quiz)"]
-
-        YT_Player["YouTube Video Player<br/>IFrame Embed API<br/>(In-App Playback & Timestamp Seek)"]
+    %% Persistence Layer
+    subgraph StorageLayer ["Persistence Layer"]
+        DB[("PostgreSQL 15 Database<br/>(HikariCP, ACID, Composite Unique Indexes)<br/>Port: 5432")]
     end
 
-    %% Data Flow
-    Client -->|"1. HTTP POST Request (URL / Question / History)"| API
-    API -->|"2. Forward validated payload"| RAG
+    %% External Services
+    subgraph ExternalLayer ["External Services"]
+        OAuth["Identity Providers<br/>(Google & GitHub OAuth2)"]
 
-    %% Ingestion Flow
-    RAG -->|"3a. Fetch captions & metadata"| YT_API
-    YT_API -->|"3b. Transcript snippets & details"| RAG
-    RAG -->|"4a. Generate chunk embeddings"| Embed
-    Embed -->|"4b. Persist vectors & docstore"| FAISS
+        Gemini["Google Gemini API<br/>(Gemini 2.5 Flash REST)"]
+    end
 
-    %% Retrieval & Semantic Search
-    RAG -->|"5a. Query vector embedding"| Embed
-    RAG -->|"5b. Similarity search (top-k chunks)"| FAISS
-    FAISS -->|"5c. Matched chunks with timestamps"| RAG
+    %% Client to Ingress
+    Client -->|"HTTPS / REST (JWT)"| Gateway
 
-    %% LLM Generation
-    RAG -->|"6a. Grounded prompt + context + history"| Gemini
-    Gemini -->|"6b. Synthesized answer / summary / quiz"| RAG
+    %% Discovery Lookups & Heartbeats
+    Gateway <-->|"Instance Lookup (lb://)"| Eureka
+    Auth -.->|"Heartbeat (5s)"| Eureka
+    Backend -.->|"Heartbeat (5s)"| Eureka
+    AI -.->|"Heartbeat (5s)"| Eureka
 
-    %% Response Flow
-    RAG -->|"7. Format answer, citations & latency metrics"| API
-    API -->|"8. HTTP JSON Response"| Client
+    %% Gateway Routing
+    Gateway -->|"/api/auth/**, /api/profile/**"| Auth
+    Gateway -->|"/api/applications/**, /api/placements/**, /api/routines/**"| Backend
+    Gateway -->|"/api/extraction/**"| AI
 
-    %% In-App Media Seek
-    Client -.->|"Direct seek to cited timestamp (&t=seconds)"| YT_Player
+    %% Microservices to Persistence
+    Auth -->|"JDBC (Users, Profiles)"| DB
+    Backend -->|"JDBC (Applications, Placements, Habits, Skills)"| DB
+
+    %% Microservices to External
+    Auth <-->|"OAuth2 Handshake"| OAuth
+    AI <-->|"JSON Extraction (Sub-2s)"| Gemini
 ```
 
 ---
@@ -141,4 +145,67 @@ flowchart TD
 
     %% Monitoring Flow
     BackendTier -.->|"Exposes Metrics"| Actuator
+```
+
+---
+
+## 3. 🤖 Video-Mind AI (YT_ChatBot) — RAG System Architecture
+
+> **Stack:** React 19 • TypeScript • Vite • FastAPI • LangChain LCEL • HuggingFace all-MiniLM-L6-v2 • FAISS • Google Gemini 2.5 Flash
+
+```mermaid
+flowchart TD
+    %% Client Tier
+    subgraph ClientTier ["Client Tier (Frontend)"]
+        Client["Web Client<br/>React 19 &bull; TypeScript &bull; Vite<br/>TailwindCSS &bull; Lucide &bull; Mermaid.js"]
+    end
+
+    %% Backend Service Tier
+    subgraph BackendTier ["Backend Application Service"]
+        API["API Layer & Validation<br/>FastAPI &bull; Uvicorn<br/>Pydantic v2 Schemas &bull; CORS Middleware"]
+
+        RAG["RAG Orchestration Engine<br/>LangChain LCEL<br/>Custom Rolling-Window Chunker"]
+
+        Embed["Local Embedding Model<br/>HuggingFace all-MiniLM-L6-v2<br/>(384-dimensional Dense Vectors)"]
+    end
+
+    %% Local Vector Storage Tier
+    subgraph StorageTier ["Storage Tier (Persistent Vector Store)"]
+        FAISS[("Local FAISS Store<br/>faiss_indexes/{video_id}/<br/>index.faiss (Vectors) + index.pkl (Docstore)")]
+    end
+
+    %% External Services Tier
+    subgraph ExternalTier ["External Services & Third-Party APIs"]
+        YT_API["YouTube Data Services<br/>YouTube Transcript API & oEmbed<br/>(Captions, Timestamps & Video Info)"]
+
+        Gemini["LLM Service<br/>Google Gemini 2.5 Flash<br/>(Grounded Q&A, Summary, MindMap, Quiz)"]
+
+        YT_Player["YouTube Video Player<br/>IFrame Embed API<br/>(In-App Playback & Timestamp Seek)"]
+    end
+
+    %% Data Flow
+    Client -->|"1. HTTP POST Request (URL / Question / History)"| API
+    API -->|"2. Forward validated payload"| RAG
+
+    %% Ingestion Flow
+    RAG -->|"3a. Fetch captions & metadata"| YT_API
+    YT_API -->|"3b. Transcript snippets & details"| RAG
+    RAG -->|"4a. Generate chunk embeddings"| Embed
+    Embed -->|"4b. Persist vectors & docstore"| FAISS
+
+    %% Retrieval & Semantic Search
+    RAG -->|"5a. Query vector embedding"| Embed
+    RAG -->|"5b. Similarity search (top-k chunks)"| FAISS
+    FAISS -->|"5c. Matched chunks with timestamps"| RAG
+
+    %% LLM Generation
+    RAG -->|"6a. Grounded prompt + context + history"| Gemini
+    Gemini -->|"6b. Synthesized answer / summary / quiz"| RAG
+
+    %% Response Flow
+    RAG -->|"7. Format answer, citations & latency metrics"| API
+    API -->|"8. HTTP JSON Response"| Client
+
+    %% In-App Media Seek
+    Client -.->|"Direct seek to cited timestamp (&t=seconds)"| YT_Player
 ```

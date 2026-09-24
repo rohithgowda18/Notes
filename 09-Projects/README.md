@@ -4,6 +4,11 @@ This directory contains deep-dive interview preparation guides for full-stack an
 
 ---
 
+## 🏛️ System Architecture Blueprints
+- 📊 **[Consolidated System Architecture Diagrams](./architecture%20diagram.md)**: Interactive end-to-end Mermaid blueprints for **Career OS** (Spring Cloud Microservices & AI Gateway), **Drive Verify** (Vehicle Registration & Fraud Verification), and **Video-Mind AI** (LangChain RAG System).
+
+---
+
 ## 📑 Projects Index
 
 ### 1. 🚀 [Career OS — 15+ LPA Java Backend & Microservices Masterclass](./Career%20OS.md)

@@ -80,7 +80,7 @@ sequenceDiagram
     else Network / System Failure Occurs
         App->>Log: ABORT / ROLLBACK T1
         Log->>Mem: Revert Ram to 200, Shyam to 100 using Undo logs
-        Note over DB: No partial update persisted; Zero money lost
+        Note over DB: No partial update persisted — Zero money lost
     end
 ```
 

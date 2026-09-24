@@ -51,42 +51,55 @@ Raw Recruitment Email ──▶ 1. AI Parser (Gemini) ──▶ 2. Idempotent DB
 
 ```mermaid
 flowchart TD
-    subgraph Client ["1. Client Application"]
-        React["React 19 SPA (Vite + TypeScript)<br>Port: 5173"]
+    subgraph ClientLayer ["Client Layer (Frontend)"]
+        Client["React 19 SPA<br/>(TypeScript, Vite, TanStack Query)<br/>Port: 5173"]
     end
 
-    subgraph Edge ["2. Edge & Ingress Routing"]
-        Gateway["Spring Cloud Gateway<br>Port: 8080 (Reactive WebFlux)<br>- Path Predicates & Timeouts<br>- CORS Header Deduplication Filter"]
-    end
-
-    subgraph Registry ["3. Service Registry"]
-        Eureka["Netflix Eureka Server<br>Port: 8761<br>- Heartbeat: 5s | Eviction: 5s"]
-    end
-
-    subgraph Mesh ["4. Microservices Mesh"]
-        Auth["Auth Service (Port: 8081)<br>- JWT HS512 & BCrypt<br>- OAuth2 Google/GitHub<br>- User Profiles"]
+    subgraph IngressLayer ["Ingress & Routing Layer"]
+        Gateway["API Gateway<br/>(Spring Cloud Gateway, WebFlux)<br/>Port: 8080"]
         
-        AI["AI Extraction Service (Port: 8082)<br>- Gemini 2.5 Flash REST<br>- URL Preservation Heuristic<br>- 3-Tier Backoff Retry"]
-        
-        Backend["Core Backend Service (Port: 8085)<br>- Placements & Applications<br>- Habit Streak Engine<br>- RequestLatencyLoggingFilter"]
+        Eureka["Service Discovery<br/>(Netflix Eureka Server)<br/>Port: 8761"]
     end
 
-    subgraph Storage ["5. Persistence Tier"]
-        DB[("PostgreSQL 15 (Port: 5432)<br>Database: event_tracker_db<br>- Relational Schema<br>- Composite Unique Constraints")]
+    subgraph ServiceMesh ["Microservices Layer"]
+        Auth["Auth Service<br/>(Spring Boot, Spring Security, JJWT)<br/>Port: 8081"]
+
+        Backend["Core Backend Service<br/>(Spring Boot, Spring Data JPA, Hibernate)<br/>Port: 8085"]
+
+        AI["AI Extraction Service<br/>(Spring Boot, Java 11 HttpClient)<br/>Port: 8082"]
     end
 
-    React -->|REST / Bearer JWT| Gateway
-    Gateway <-->|Dynamic Instance Lookup| Eureka
-    Gateway -->|lb://career-os-auth-service| Auth
-    Gateway -->|lb://ai-extraction-service| AI
-    Gateway -->|lb://career-os| Backend
+    subgraph StorageLayer ["Persistence Layer"]
+        DB[("PostgreSQL 15 Database<br/>(HikariCP, ACID, Composite Unique Indexes)<br/>Port: 5432")]
+    end
 
-    Auth <-->|Heartbeat| Eureka
-    AI <-->|Heartbeat| Eureka
-    Backend <-->|Heartbeat| Eureka
+    subgraph ExternalLayer ["External Services"]
+        OAuth["Identity Providers<br/>(Google & GitHub OAuth2)"]
 
-    Auth -->|JDBC HikariCP| DB
-    Backend -->|JDBC HikariCP| DB
+        Gemini["Google Gemini API<br/>(Gemini 2.5 Flash REST)"]
+    end
+
+    %% Client to Ingress
+    Client -->|"HTTPS / REST (JWT)"| Gateway
+
+    %% Discovery Lookups & Heartbeats
+    Gateway <-->|"Instance Lookup (lb://)"| Eureka
+    Auth -.->|"Heartbeat (5s)"| Eureka
+    Backend -.->|"Heartbeat (5s)"| Eureka
+    AI -.->|"Heartbeat (5s)"| Eureka
+
+    %% Gateway Routing
+    Gateway -->|"/api/auth/**, /api/profile/**"| Auth
+    Gateway -->|"/api/applications/**, /api/placements/**, /api/routines/**"| Backend
+    Gateway -->|"/api/extraction/**"| AI
+
+    %% Microservices to Persistence
+    Auth -->|"JDBC (Users, Profiles)"| DB
+    Backend -->|"JDBC (Applications, Placements, Habits, Skills)"| DB
+
+    %% Microservices to External
+    Auth <-->|"OAuth2 Handshake"| OAuth
+    AI <-->|"JSON Extraction (Sub-2s)"| Gemini
 ```
 
 ### Architectural Pipeline Flow:

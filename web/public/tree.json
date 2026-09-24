@@ -40,7 +40,7 @@
       "path": "02-DBMS/DBMS-Advanced-Concepts.md",
       "name": "DBMS-Advanced-Concepts.md",
       "type": "markdown",
-      "size": 43254
+      "size": 27313
     },
     {
       "path": "02-DBMS/DBMS_Full_Notes.pdf",
@@ -52,7 +52,7 @@
       "path": "02-DBMS/README.md",
       "name": "README.md",
       "type": "markdown",
-      "size": 2502
+      "size": 3474
     },
     {
       "path": "02-DBMS/SQL-Advanced-Syntax-CheatSheet.md",
@@ -65,6 +65,12 @@
       "name": "SQL-High-Value-Query-Patterns.md",
       "type": "markdown",
       "size": 11566
+    },
+    {
+      "path": "02-DBMS/Transactions-and-Concurrency-Control.md",
+      "name": "Transactions-and-Concurrency-Control.md",
+      "type": "markdown",
+      "size": 35749
     },
     {
       "path": "03-Computer-Networks/01-Comprehensive-Guide/README.md",
@@ -91,10 +97,16 @@
       "size": 312561
     },
     {
+      "path": "03-Computer-Networks/OSI-Model-7-Layers.md",
+      "name": "OSI-Model-7-Layers.md",
+      "type": "markdown",
+      "size": 30111
+    },
+    {
       "path": "03-Computer-Networks/README.md",
       "name": "README.md",
       "type": "markdown",
-      "size": 2210
+      "size": 2426
     },
     {
       "path": "04-OOPs-and-Design-Patterns/01-Core-OOPs-and-UML/01-Introduction-To-System-Design.md",
@@ -124,7 +136,7 @@
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/05-SOLID-Design-Principles-Part-1.md",
       "name": "05-SOLID-Design-Principles-Part-1.md",
       "type": "markdown",
-      "size": 12766
+      "size": 12821
     },
     {
       "path": "04-OOPs-and-Design-Patterns/02-SOLID-Principles/06-SOLID-Design-Principles-Part-2.md",
@@ -136,13 +148,13 @@
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/08-Strategy-Design-Pattern.md",
       "name": "08-Strategy-Design-Pattern.md",
       "type": "markdown",
-      "size": 12038
+      "size": 12127
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/09-Factory-Design-Pattern.md",
       "name": "09-Factory-Design-Pattern.md",
       "type": "markdown",
-      "size": 9694
+      "size": 9860
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/10-Singleton-Design-Pattern.md",
@@ -154,31 +166,31 @@
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/12-Observer-Design-Pattern.md",
       "name": "12-Observer-Design-Pattern.md",
       "type": "markdown",
-      "size": 10076
+      "size": 10163
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/13-Decorator-Design-Pattern.md",
       "name": "13-Decorator-Design-Pattern.md",
       "type": "markdown",
-      "size": 10405
+      "size": 10447
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/15-Command-Design-Pattern.md",
       "name": "15-Command-Design-Pattern.md",
       "type": "markdown",
-      "size": 10860
+      "size": 10856
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/16-Adapter-Design-Pattern.md",
       "name": "16-Adapter-Design-Pattern.md",
       "type": "markdown",
-      "size": 9163
+      "size": 9250
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/17-Facade-Design-Pattern.md",
       "name": "17-Facade-Design-Pattern.md",
       "type": "markdown",
-      "size": 9019
+      "size": 9109
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/19-Composite-Design-Pattern-File-System.md",
@@ -214,7 +226,7 @@
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/28-Builder-Design-Pattern.md",
       "name": "28-Builder-Design-Pattern.md",
       "type": "markdown",
-      "size": 11165
+      "size": 11257
     },
     {
       "path": "04-OOPs-and-Design-Patterns/03-Design-Patterns/29-Iterator-Design-Pattern.md",
@@ -268,13 +280,13 @@
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/07-Build-Google-Docs-Document-Editor-LLD.md",
       "name": "07-Build-Google-Docs-Document-Editor-LLD.md",
       "type": "markdown",
-      "size": 23978
+      "size": 23987
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/11-Build-Zomato-Food-Delivery-App.md",
       "name": "11-Build-Zomato-Food-Delivery-App.md",
       "type": "markdown",
-      "size": 27271
+      "size": 27138
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/14-Build-Your-Own-Notification-Engine.md",
@@ -316,7 +328,7 @@
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/31-Build-Splitwise-Clone.md",
       "name": "31-Build-Splitwise-Clone.md",
       "type": "markdown",
-      "size": 35918
+      "size": 35943
     },
     {
       "path": "04-OOPs-and-Design-Patterns/04-LLD-Case-Studies/33-Build-Tic-Tac-Toe-Game.md",
@@ -358,7 +370,7 @@
       "path": "04-OOPs-and-Design-Patterns/OOPS-Notes.md",
       "name": "OOPS-Notes.md",
       "type": "markdown",
-      "size": 9215
+      "size": 9458
     },
     {
       "path": "04-OOPs-and-Design-Patterns/README.md",
@@ -388,13 +400,13 @@
       "path": "06-Java-and-Spring-Boot/01-Spring-Framework-and-Core-IoC.md",
       "name": "01-Spring-Framework-and-Core-IoC.md",
       "type": "markdown",
-      "size": 28971
+      "size": 29105
     },
     {
       "path": "06-Java-and-Spring-Boot/02-Spring-Boot-and-Web-MVC.md",
       "name": "02-Spring-Boot-and-Web-MVC.md",
       "type": "markdown",
-      "size": 29615
+      "size": 29684
     },
     {
       "path": "06-Java-and-Spring-Boot/03-Data-Persistence-Spring-Data-JPA.md",
@@ -406,7 +418,7 @@
       "path": "06-Java-and-Spring-Boot/04-Spring-Security-and-Authentication.md",
       "name": "04-Spring-Security-and-Authentication.md",
       "type": "markdown",
-      "size": 20841
+      "size": 21144
     },
     {
       "path": "06-Java-and-Spring-Boot/05-Spring-REST-Microservices-and-Production.md",
@@ -430,7 +442,7 @@
       "path": "06-Java-and-Spring-Boot/Maven.md",
       "name": "Maven.md",
       "type": "markdown",
-      "size": 9469
+      "size": 9468
     },
     {
       "path": "06-Java-and-Spring-Boot/README.md",
@@ -448,7 +460,7 @@
       "path": "06-Java-and-Spring-Boot/Spring Boot Interview Guide.md",
       "name": "Spring Boot Interview Guide.md",
       "type": "markdown",
-      "size": 84851
+      "size": 85261
     },
     {
       "path": "07-Backend-Engineering/Backend Scaling & Performance - Part 1.md",
@@ -478,19 +490,19 @@
       "path": "07-Backend-Engineering/Docker.md",
       "name": "Docker.md",
       "type": "markdown",
-      "size": 37100
+      "size": 37169
     },
     {
       "path": "07-Backend-Engineering/Elastic Search.md",
       "name": "Elastic Search.md",
       "type": "markdown",
-      "size": 27419
+      "size": 27653
     },
     {
       "path": "07-Backend-Engineering/Error Handling and Building Fault Tolerant Systems.md",
       "name": "Error Handling and Building Fault Tolerant Systems.md",
       "type": "markdown",
-      "size": 30150
+      "size": 30217
     },
     {
       "path": "07-Backend-Engineering/README.md",
@@ -508,7 +520,7 @@
       "path": "07-Backend-Engineering/Security.md",
       "name": "Security.md",
       "type": "markdown",
-      "size": 9197
+      "size": 9254
     },
     {
       "path": "07-Backend-Engineering/Task queues and background jobs.md",
@@ -697,16 +709,34 @@
       "size": 5765
     },
     {
+      "path": "09-Projects/architecture diagram.md",
+      "name": "architecture diagram.md",
+      "type": "markdown",
+      "size": 8215
+    },
+    {
+      "path": "09-Projects/architecture.md",
+      "name": "architecture.md",
+      "type": "markdown",
+      "size": 8215
+    },
+    {
+      "path": "09-Projects/Career OS.md",
+      "name": "Career OS.md",
+      "type": "markdown",
+      "size": 21662
+    },
+    {
       "path": "09-Projects/Drive Verify - Vehicle Registration & Fraud Verification.md",
       "name": "Drive Verify - Vehicle Registration & Fraud Verification.md",
       "type": "markdown",
-      "size": 14583
+      "size": 28116
     },
     {
       "path": "09-Projects/README.md",
       "name": "README.md",
       "type": "markdown",
-      "size": 2963
+      "size": 4153
     },
     {
       "path": "09-Projects/XMARs Interview Questions & Answers.md",
@@ -724,7 +754,7 @@
       "path": "09-Projects/YT_ChatBot - RAG Video-Mind AI Revision.md",
       "name": "YT_ChatBot - RAG Video-Mind AI Revision.md",
       "type": "markdown",
-      "size": 10329
+      "size": 14843
     },
     {
       "path": "MongoDB Handbook.pdf",
@@ -736,13 +766,13 @@
       "path": "README.md",
       "name": "README.md",
       "type": "markdown",
-      "size": 13446
+      "size": 13700
     },
     {
       "path": "spring-boot-microservices-notes/01-fundamentals.md",
       "name": "01-fundamentals.md",
       "type": "markdown",
-      "size": 20774
+      "size": 20772
     },
     {
       "path": "spring-boot-microservices-notes/02-service-communication.md",
