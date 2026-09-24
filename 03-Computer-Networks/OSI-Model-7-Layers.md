@@ -33,6 +33,8 @@ It partitions network communications into **7 distinct, logical layers** structu
 
 ## 🏗️ Visual Architecture: The 7 Layers & PDUs
 
+![OSI Model 7 Layers Architecture, Responsibilities, and Data Encapsulation Pipeline](./osi.png)
+
 ```mermaid
 flowchart TD
     subgraph Host["🌐 Upper / Host Software Layers (Application Data)"]
