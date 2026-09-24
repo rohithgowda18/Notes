@@ -35,15 +35,28 @@ It partitions network communications into **7 distinct, logical layers** structu
 
 ```mermaid
 flowchart TD
-    L7["<b>Layer 7 — Application Layer</b> &nbsp;&bull;&nbsp; <i>Host Software</i><br/>PDU: Data &nbsp;&bull;&nbsp; Protocols: HTTP, HTTPS, DNS, SMTP, SSH &nbsp;&bull;&nbsp; User Software Network Services"]
-    L6["<b>Layer 6 — Presentation Layer</b> &nbsp;&bull;&nbsp; <i>Host Software</i><br/>PDU: Data &nbsp;&bull;&nbsp; Syntax Translation, Data Compression (gzip), Encryption (TLS/SSL)"]
-    L5["<b>Layer 5 — Session Layer</b> &nbsp;&bull;&nbsp; <i>Host Software</i><br/>PDU: Data &nbsp;&bull;&nbsp; Protocols: RPC, NetBIOS, SOCKS5 &nbsp;&bull;&nbsp; Session Lifecycle, Auth, Checkpoints"]
-    L4["<b>Layer 4 — Transport Layer</b> &nbsp;&bull;&nbsp; <i>Heart of OSI</i><br/>PDU: Segment (TCP) / Datagram (UDP) &nbsp;&bull;&nbsp; Port Addressing, Flow & Congestion Control"]
-    L3["<b>Layer 3 — Network Layer</b> &nbsp;&bull;&nbsp; <i>Media & Hardware</i><br/>PDU: Packet &nbsp;&bull;&nbsp; Logical IP Addressing, Routing Protocols (OSPF, BGP) &nbsp;&bull;&nbsp; Routers, L3 Switches"]
-    L2["<b>Layer 2 — Data Link Layer</b> &nbsp;&bull;&nbsp; <i>Media & Hardware</i><br/>PDU: Frame &nbsp;&bull;&nbsp; Physical MAC Addressing (48-bit), Framing, CSMA/CD, CRC-32 &nbsp;&bull;&nbsp; Switches, NICs"]
-    L1["<b>Layer 1 — Physical Layer</b> &nbsp;&bull;&nbsp; <i>Media & Hardware</i><br/>PDU: Bits &nbsp;&bull;&nbsp; Signal Encoding (Voltage, Light, RF Waves), Media & Topologies &nbsp;&bull;&nbsp; Hubs, Cables"]
+    subgraph Host["🌐 Upper / Host Software Layers (Application Data)"]
+        direction LR
+        L7["<b>Layer 7: Application</b><br/>PDU: Data<br/>HTTP, HTTPS, DNS, SMTP"]
+        L6["<b>Layer 6: Presentation</b><br/>PDU: Data<br/>Translation, Compression, TLS"]
+        L5["<b>Layer 5: Session</b><br/>PDU: Data<br/>Auth, Sync, Checkpoints"]
+        L7 --> L6 --> L5
+    end
 
-    L7 --> L6 --> L5 --> L4 --> L3 --> L2 --> L1
+    subgraph Heart["🚚 Heart of OSI — Transport Layer (End-to-End Reliability)"]
+        L4["<b>Layer 4: Transport Layer</b> &nbsp;&bull;&nbsp; PDU: Segment / Datagram<br/>TCP & UDP &bull; Port Addressing (0–65535) &bull; Flow & Congestion Control &bull; ARQ Checksums"]
+    end
+
+    subgraph Media["⚡ Lower / Media & Hardware Layers (Physical Network Delivery)"]
+        direction LR
+        L3["<b>Layer 3: Network</b><br/>PDU: Packet<br/>IP Addressing, Routing, Routers"]
+        L2["<b>Layer 2: Data Link</b><br/>PDU: Frame<br/>MAC Addressing, Switches, CRC"]
+        L1["<b>Layer 1: Physical</b><br/>PDU: Bits<br/>Signals, Media, Hubs, Cables"]
+        L3 --> L2 --> L1
+    end
+
+    L5 --> L4
+    L4 --> L3
 ```
 
 ---
