@@ -6,6 +6,7 @@ import {
   LEETCODE_RAW_BASE,
 } from "../config/github";
 import { getStoredGitHubToken } from "./github";
+import { SimpleCache } from "./cache";
 
 const LC_TREE_CACHE_KEY = "leetcode_tree_cache";
 const LC_TREE_CACHE_TS_KEY = "leetcode_tree_timestamp";
@@ -126,8 +127,8 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
   lastSynced: number;
 }> {
   if (!forceRefresh) {
-    const cachedTree = sessionStorage.getItem(LC_TREE_CACHE_KEY);
-    const cachedTs = sessionStorage.getItem(LC_TREE_CACHE_TS_KEY);
+    const cachedTree = SimpleCache.get(LC_TREE_CACHE_KEY);
+    const cachedTs = SimpleCache.get(LC_TREE_CACHE_TS_KEY);
     if (cachedTree && cachedTs) {
       try {
         const tree = JSON.parse(cachedTree) as RepoTree;
@@ -161,8 +162,8 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
       if (items.length > 0) {
         const tree = buildTreeFromItems(items);
         const now = Date.now();
-        sessionStorage.setItem(LC_TREE_CACHE_KEY, JSON.stringify(tree));
-        sessionStorage.setItem(LC_TREE_CACHE_TS_KEY, now.toString());
+        SimpleCache.set(LC_TREE_CACHE_KEY, JSON.stringify(tree));
+        SimpleCache.set(LC_TREE_CACHE_TS_KEY, now.toString());
         return { tree, lastSynced: now };
       }
     }
@@ -178,8 +179,8 @@ export async function fetchLeetcodeTree(forceRefresh = false): Promise<{
       if (data.files && data.files.length > 0) {
         const tree = buildTreeFromItems(data.files);
         const now = Date.now();
-        sessionStorage.setItem(LC_TREE_CACHE_KEY, JSON.stringify(tree));
-        sessionStorage.setItem(LC_TREE_CACHE_TS_KEY, now.toString());
+        SimpleCache.set(LC_TREE_CACHE_KEY, JSON.stringify(tree));
+        SimpleCache.set(LC_TREE_CACHE_TS_KEY, now.toString());
         return { tree, lastSynced: now };
       }
     }
@@ -220,7 +221,7 @@ export async function fetchLeetcodeMarkdown(
   const cacheKey = `${LC_CONTENT_CACHE_PREFIX}${filePath}`;
 
   if (!forceRefresh) {
-    const cached = sessionStorage.getItem(cacheKey);
+    const cached = SimpleCache.get(cacheKey);
     if (cached && !isHtmlResponse(cached)) return cached;
   }
 
@@ -237,7 +238,7 @@ export async function fetchLeetcodeMarkdown(
     if (response.ok) {
       const content = await response.text();
       if (!isHtmlResponse(content)) {
-        sessionStorage.setItem(cacheKey, content);
+        SimpleCache.set(cacheKey, content);
         return content;
       }
     }
@@ -257,7 +258,7 @@ export async function fetchLeetcodeMarkdown(
       if (apiRes.ok) {
         const text = await apiRes.text();
         if (!isHtmlResponse(text)) {
-          sessionStorage.setItem(cacheKey, text);
+          SimpleCache.set(cacheKey, text);
           return text;
         }
       }
@@ -273,14 +274,7 @@ export async function fetchLeetcodeMarkdown(
  * Clear LeetCode caches
  */
 export function clearLeetcodeCache(): void {
-  sessionStorage.removeItem(LC_TREE_CACHE_KEY);
-  sessionStorage.removeItem(LC_TREE_CACHE_TS_KEY);
-  const keysToRemove: string[] = [];
-  for (let i = 0; i < sessionStorage.length; i++) {
-    const key = sessionStorage.key(i);
-    if (key?.startsWith(LC_CONTENT_CACHE_PREFIX)) {
-      keysToRemove.push(key);
-    }
-  }
-  keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+  SimpleCache.remove(LC_TREE_CACHE_KEY);
+  SimpleCache.remove(LC_TREE_CACHE_TS_KEY);
+  SimpleCache.clearPrefix(LC_CONTENT_CACHE_PREFIX);
 }

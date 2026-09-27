@@ -5,6 +5,7 @@ import {
   GITHUB_TOKEN,
 } from "../config/github";
 import type { FileType, RepoFile, RepoFolder, RepoTree } from "../types";
+import { SimpleCache } from "./cache";
 
 const TREE_CACHE_KEY = "study_notes_tree_cache";
 const TREE_CACHE_TIMESTAMP_KEY = "study_notes_tree_timestamp";
@@ -173,8 +174,8 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
   isLocal: boolean;
 }> {
   if (!forceRefresh) {
-    const cachedTree = sessionStorage.getItem(TREE_CACHE_KEY);
-    const cachedTimestamp = sessionStorage.getItem(TREE_CACHE_TIMESTAMP_KEY);
+    const cachedTree = SimpleCache.get(TREE_CACHE_KEY);
+    const cachedTimestamp = SimpleCache.get(TREE_CACHE_TIMESTAMP_KEY);
 
     if (cachedTree && cachedTimestamp) {
       try {
@@ -198,8 +199,8 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
       if (staticData.files && staticData.files.length > 0) {
         const tree = buildTreeFromItems(staticData.files);
         const now = Date.now();
-        sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
-        sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+        SimpleCache.set(TREE_CACHE_KEY, JSON.stringify(tree));
+        SimpleCache.set(TREE_CACHE_TIMESTAMP_KEY, now.toString());
         sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
         return { tree, lastSynced: now, isLocal: true };
       }
@@ -216,8 +217,8 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
         const localData = await localRes.json();
         const tree = buildTreeFromItems(localData.files || []);
         const now = Date.now();
-        sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
-        sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+        SimpleCache.set(TREE_CACHE_KEY, JSON.stringify(tree));
+        SimpleCache.set(TREE_CACHE_TIMESTAMP_KEY, now.toString());
         sessionStorage.setItem(FALLBACK_MODE_KEY, "true");
         return { tree, lastSynced: now, isLocal: true };
       }
@@ -246,8 +247,8 @@ export async function fetchRepositoryTree(forceRefresh = false): Promise<{
       const tree = buildTreeFromItems(items);
 
       const now = Date.now();
-      sessionStorage.setItem(TREE_CACHE_KEY, JSON.stringify(tree));
-      sessionStorage.setItem(TREE_CACHE_TIMESTAMP_KEY, now.toString());
+      SimpleCache.set(TREE_CACHE_KEY, JSON.stringify(tree));
+      SimpleCache.set(TREE_CACHE_TIMESTAMP_KEY, now.toString());
       sessionStorage.setItem(FALLBACK_MODE_KEY, "false");
 
       return { tree, lastSynced: now, isLocal: false };
@@ -283,7 +284,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
   const cacheKey = `${CONTENT_CACHE_PREFIX}${filePath}`;
 
   if (!forceRefresh) {
-    const cachedContent = sessionStorage.getItem(cacheKey);
+    const cachedContent = SimpleCache.get(cacheKey);
     if (cachedContent && !isHtmlResponse(cachedContent)) {
       return cachedContent;
     }
@@ -296,7 +297,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
       if (localRes.ok) {
         const text = await localRes.text();
         if (!isHtmlResponse(text)) {
-          sessionStorage.setItem(cacheKey, text);
+          SimpleCache.set(cacheKey, text);
           return text;
         }
       }
@@ -318,7 +319,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
     if (response.ok) {
       const content = await response.text();
       if (!isHtmlResponse(content)) {
-        sessionStorage.setItem(cacheKey, content);
+        SimpleCache.set(cacheKey, content);
         return content;
       }
     }
@@ -338,7 +339,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
       if (apiRes.ok) {
         const text = await apiRes.text();
         if (!isHtmlResponse(text)) {
-          sessionStorage.setItem(cacheKey, text);
+          SimpleCache.set(cacheKey, text);
           return text;
         }
       }
@@ -353,7 +354,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
     if (fallbackRes.ok) {
       const text = await fallbackRes.text();
       if (!isHtmlResponse(text)) {
-        sessionStorage.setItem(cacheKey, text);
+        SimpleCache.set(cacheKey, text);
         return text;
       }
     }
@@ -366,13 +367,7 @@ export async function fetchRawMarkdown(filePath: string, forceRefresh = false): 
  * Clear all cached note contents and repository tree
  */
 export function clearStudyCache(): void {
-  sessionStorage.removeItem(TREE_CACHE_KEY);
-  sessionStorage.removeItem(TREE_CACHE_TIMESTAMP_KEY);
-
-  for (let i = sessionStorage.length - 1; i >= 0; i--) {
-    const key = sessionStorage.key(i);
-    if (key && key.startsWith(CONTENT_CACHE_PREFIX)) {
-      sessionStorage.removeItem(key);
-    }
-  }
+  SimpleCache.remove(TREE_CACHE_KEY);
+  SimpleCache.remove(TREE_CACHE_TIMESTAMP_KEY);
+  SimpleCache.clearPrefix(CONTENT_CACHE_PREFIX);
 }
